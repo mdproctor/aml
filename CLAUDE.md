@@ -118,6 +118,58 @@ This is an application, not a framework. If the capability requires knowledge of
 |----------|---------------|
 | `/Users/mdproctor/claude/casehub/parent/docs/use-case-analysis.md` | Use case scoring, AML selection rationale (§8.2), compliance gap analysis |
 | `/Users/mdproctor/claude/casehub/parent/docs/tutorial-strategy.md` | AML tutorial layers 1–7 (§6), layer-by-layer teaching strategy, LangChain4j framing |
+| `/Users/mdproctor/claude/casehub/parent/docs/repos/casehub-aml.md` | AML domain ownership — entities, capability tags, trust dimensions, epics |
+
+---
+
+## Design Phase References
+
+Read these **before designing**, not after. The concern column tells you when each applies.
+
+### Domain model and API design
+
+| Concern | Read first |
+|---------|-----------|
+| Designing a new entity, record, or SPI | `casehub-aml.md` — does AML already own this? `PLATFORM.md` capability ownership table — does the foundation already own this? |
+| Deciding api vs app module placement | `PLATFORM.md` persistence module split rule — JPA-free api, JPA in app |
+| Naming capability tags or trust dimensions | `casehub-aml.md` §What It Owns — existing tag and dimension names |
+| Mapping entities to FinCEN/FATF requirements | `use-case-analysis.md §8.2` — compliance gap table, which requirement drives each entity |
+
+### Tutorial layer design
+
+| Concern | Read first |
+|---------|-----------|
+| Deciding which layer a feature belongs in | `tutorial-strategy.md §6` — layer-by-layer teaching strategy and what each layer must NOT include |
+| Understanding the teaching objective of a layer | `tutorial-strategy.md §6.<N>` — each layer's specific teaching goal and contrast setup |
+| Writing the gap comments in naive/pre-CaseHub code | The compliance gap table in this CLAUDE.md — four gap types with FinCEN framing |
+
+### Foundation integration
+
+| Concern | Read first |
+|---------|-----------|
+| Using casehub-work (WorkItem, SLA, escalation) | `/Users/mdproctor/claude/casehub/parent/docs/repos/casehub-work.md` |
+| Using casehub-qhorus (COMMAND/RESPONSE/DONE/DECLINE) | `/Users/mdproctor/claude/casehub/parent/docs/repos/casehub-qhorus.md` |
+| Using casehub-ledger (Merkle audit, GDPR, trust scoring) | `/Users/mdproctor/claude/casehub/parent/docs/repos/casehub-ledger.md` |
+| Using casehub-engine (CasePlanModel, adaptive paths, bindings) | `/Users/mdproctor/claude/casehub/parent/docs/repos/casehub-engine.md` |
+| Boundary check — does this belong in foundation or here? | `PLATFORM.md` boundary rules and application tier rule |
+
+### Persistence and migrations
+
+| Concern | Read first |
+|---------|-----------|
+| Writing a new Flyway migration | `/Users/mdproctor/claude/casehub/parent/docs/conventions/flyway-migration-rules.md` — naming, H2 MODE=PostgreSQL |
+| Assigning a migration version number | `/Users/mdproctor/claude/casehub/parent/docs/conventions/flyway-version-range-allocation.md` — V1–V999 domain, V1004+ ledger subclass joins |
+| Adding a named persistence unit or datasource | `/Users/mdproctor/claude/casehub/parent/docs/conventions/quarkus-named-datasource-schema-generation.md` |
+| Extending LedgerEntry (adding a tamper-evident subclass) | `casehub-ledger.md` Consumer Pattern section — JOINED inheritance, V1004+ migration |
+
+### Testing
+
+| Concern | Read first |
+|---------|-----------|
+| Writing a `@QuarkusTest` | `/Users/mdproctor/claude/casehub/parent/docs/conventions/quarkus-test-database.md` — H2 MODE=PostgreSQL, datasource config |
+| Naming test classes | `/Users/mdproctor/claude/casehub/parent/docs/conventions/quarkus-test-naming-convention.md` — `*Test.java` not `*IT.java` |
+| Testing SPI wiring | `/Users/mdproctor/claude/casehub/parent/docs/conventions/spi-testing-alternative-inner-classes.md` |
+| Writing integration tests | `/Users/mdproctor/claude/casehub/parent/docs/conventions/quarkus-integration-test-module-separation.md` — dedicated `integration-tests/` module |
 
 ---
 
