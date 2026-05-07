@@ -60,15 +60,15 @@ The protocol asks: Does this already exist elsewhere? Is this the right repo for
 
 **Platform architecture (fetch before any implementation decision):**
 ```
-https://raw.githubusercontent.com/casehubio/parent/main/docs/PLATFORM.md
+/Users/mdproctor/claude/casehub/parent/docs/PLATFORM.md
 ```
 
 **Foundation repo deep-dives:**
-- casehub-engine: `https://raw.githubusercontent.com/casehubio/parent/main/docs/repos/casehub-engine.md`
-- casehub-ledger: `https://raw.githubusercontent.com/casehubio/parent/main/docs/repos/casehub-ledger.md`
-- casehub-work: `https://raw.githubusercontent.com/casehubio/parent/main/docs/repos/casehub-work.md`
-- casehub-qhorus: `https://raw.githubusercontent.com/casehubio/parent/main/docs/repos/casehub-qhorus.md`
-- casehub-connectors: `https://raw.githubusercontent.com/casehubio/parent/main/docs/repos/casehub-connectors.md`
+- casehub-engine: `/Users/mdproctor/claude/casehub/parent/docs/repos/casehub-engine.md`
+- casehub-ledger: `/Users/mdproctor/claude/casehub/parent/docs/repos/casehub-ledger.md`
+- casehub-work: `/Users/mdproctor/claude/casehub/parent/docs/repos/casehub-work.md`
+- casehub-qhorus: `/Users/mdproctor/claude/casehub/parent/docs/repos/casehub-qhorus.md`
+- casehub-connectors: `/Users/mdproctor/claude/casehub/parent/docs/repos/casehub-connectors.md`
 
 ---
 
@@ -114,8 +114,8 @@ This is an application, not a framework. If the capability requires knowledge of
 
 | Document | What it covers |
 |----------|---------------|
-| `https://raw.githubusercontent.com/casehubio/parent/main/docs/use-case-analysis.md` | Use case scoring, AML selection rationale (§8.2), compliance gap analysis |
-| `https://raw.githubusercontent.com/casehubio/parent/main/docs/tutorial-strategy.md` | AML tutorial layers 1–7 (§6), layer-by-layer teaching strategy, LangChain4j framing |
+| `/Users/mdproctor/claude/casehub/parent/docs/use-case-analysis.md` | Use case scoring, AML selection rationale (§8.2), compliance gap analysis |
+| `/Users/mdproctor/claude/casehub/parent/docs/tutorial-strategy.md` | AML tutorial layers 1–7 (§6), layer-by-layer teaching strategy, LangChain4j framing |
 
 ---
 
