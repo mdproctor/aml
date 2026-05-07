@@ -272,5 +272,74 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home  # nati
 
 **Automatic behaviours:**
 - Before implementation begins — check for an active issue. If none, run issue-workflow Phase 1 before writing any code.
+- Every issue must be linked to its parent epic — no orphan issues.
 - Before any commit — confirm issue linkage.
-- All commits reference an issue — `Refs #N` or `Closes #N`.
+- All commits reference an issue — `Refs #N` or `Closes #N`. No commit may be made without an issue reference.
+
+---
+
+## Engineering Standards
+
+### IntelliJ MCP — availability and preference
+
+**Two MCPs are available:** `mcp__intellij__*` (file ops, refactoring, search, terminal) and `mcp__intellij-index__*` (symbol search, find references, go-to-definition, type hierarchy, call hierarchy).
+
+**Check availability at session start.** If either MCP is unavailable, stop and report before doing any work — do not silently fall back to Bash.
+
+**Always prefer IntelliJ over Bash** for operations the IDE can perform. IntelliJ is more correct, context-aware, and less error-prone than shell commands for:
+
+| Operation | Use IntelliJ tool, not Bash |
+|-----------|----------------------------|
+| Find a class, symbol, or file | `ide_find_class`, `ide_find_file`, `ide_search_text` |
+| Navigate to a definition | `ide_find_definition` |
+| Find all references before renaming/deleting | `ide_find_references` |
+| Rename a symbol across the project | `ide_refactor_rename` |
+| Move a file | `ide_move_file` |
+| Check for errors in a file | `ide_diagnostics` |
+| Build the project | `build_project` |
+| Read a file by project-relative path | `get_file_text_by_path` |
+| Search for text across files | `search_in_files_by_text` |
+
+Only use Bash when the operation is outside IntelliJ's scope: git commands, Maven, file creation, shell scripts.
+
+### Test-driven development
+
+Tests are part of the implementation plan — not written after the fact. Every implementation plan must include a testing section covering all four layers:
+
+| Layer | Scope | Convention to follow |
+|-------|-------|---------------------|
+| Unit tests | Pure domain logic in `api/` — records, interfaces, value types | Standard JUnit 5, no Quarkus |
+| `@QuarkusTest` | Service integration within the running application | `quarkus-test-database.md`, `quarkus-test-naming-convention.md` |
+| Integration tests | Full HTTP round-trip via REST Assured | `quarkus-integration-test-module-separation.md` — separate `integration-tests/` module |
+| SPI wiring tests | CDI alternative pattern for testing SPI implementations | `spi-testing-alternative-inner-classes.md` |
+
+For each test layer, cover: **happy path**, **robustness** (bad input, nulls, boundary values), and **correctness** (business rule enforcement, not just "no exception").
+
+Consult `docs/conventions/` in the local parent before writing any test — the platform has resolved many Quarkus testing edge cases that will bite you otherwise.
+
+### Code review
+
+- After completing any implementation: invoke `superpowers:requesting-code-review` before committing.
+- When receiving review feedback: invoke `superpowers:receiving-code-review` — do not blindly implement suggestions; verify them first.
+
+### Platform protocol compliance
+
+Before designing or implementing anything, consult the local parent repo protocols in order:
+
+1. **Platform Coherence Protocol** — `/Users/mdproctor/claude/casehub/parent/docs/PLATFORM.md` — capability ownership, boundary rules, consolidation check
+2. **Design phase references** — the table in this CLAUDE.md above — concern-specific docs for the current design decision
+3. **Conventions index** — `/Users/mdproctor/claude/casehub/parent/docs/conventions/INDEX.md` — check if a relevant convention exists before inventing a pattern
+
+The local parent folder is at `/Users/mdproctor/claude/casehub/parent/`. Always `Read` docs from there first; fall back to `WebFetch` only if the file does not exist locally.
+
+### Documentation maintenance
+
+After any code change, systematically check and update:
+
+1. **This CLAUDE.md** — does any section describe something that no longer exists or no longer matches the code?
+2. **`casehub-aml.md`** in the parent repo — reflects the current state of domain ownership, epics, dependencies
+3. **Cross-references** — any path or URL referenced in docs: verify it resolves, rename if the target moved
+4. **Drift and gaps** — code that exists without doc coverage; docs that describe code that was removed or renamed
+5. **Redundancy** — the same fact stated in multiple places; consolidate to one authoritative location and reference it from others
+
+Run this check before every handover. If a doc update requires changes in the parent repo, create a GitHub issue on `casehubio/parent` — do not commit to that repo directly.
