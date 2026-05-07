@@ -1,0 +1,47 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    types: [ opened, synchronize, reopened, closed ]
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name != 'pull_request' || github.event.action != 'closed' || github.event.pull_request.merged == true
+
+      - name: Set up Java 21
+        if: github.event_name != 'pull_request' || github.event.action != 'closed' || github.event.pull_request.merged == true
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+
+      - name: Build and test
+        if: github.event_name != 'pull_request' || github.event.action != 'closed' || github.event.pull_request.merged == true
+        run: mvn --batch-mode verify
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Surefire reports
+        uses: actions/upload-artifact@v4
+        if: always() && (github.event_name != 'pull_request' || github.event.action != 'closed' || github.event.pull_request.merged == true)
+        with:
+          name: surefire-reports
+          path: |
+            **/target/surefire-reports/*
+            **/target/failsafe-reports/*
+          if-no-files-found: ignore
+          retention-days: 5
