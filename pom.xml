@@ -19,8 +19,8 @@
   <url>https://github.com/casehubio/aml</url>
 
   <modules>
-    <module>casehub-aml-api</module>
-    <module>casehub-aml-app</module>
+    <module>api</module>
+    <module>app</module>
   </modules>
 
   <repositories>
