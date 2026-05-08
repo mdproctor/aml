@@ -9,6 +9,7 @@ import io.casehub.aml.domain.InvestigationSummary;
 import io.casehub.aml.domain.SuspiciousTransaction;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 class NaiveAmlInvestigationServiceTest {
@@ -49,5 +50,6 @@ class NaiveAmlInvestigationServiceTest {
 
         assertNotNull(first);
         assertNotNull(second);
+        assertNotSame(first, second);
     }
 }
