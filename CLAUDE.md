@@ -1,5 +1,7 @@
 # aml Workspace
 
+**Name:** casehub-aml
+
 **Project repo:** /Users/mdproctor/claude/casehub/aml
 **Workspace type:** public
 
@@ -262,6 +264,8 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home  # nati
 ```
 
 **Use `mvn` not `./mvnw`** — maven wrapper not configured on this machine.
+
+**Multi-module test scoping:** Always scope Maven with `-pl <module> -am`. When combining `-am` with `-Dtest=ClassName`, add `-Dsurefire.failIfNoSpecifiedTests=false` — otherwise upstream modules that have no matching tests fail the build.
 
 ---
 
