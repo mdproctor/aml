@@ -144,7 +144,7 @@ Read these **before designing**, not after. The concern column tells you when ea
 | Concern | Read first |
 |---------|-----------|
 | Designing a new entity, record, or SPI | `casehub-aml.md` — does AML already own this? `PLATFORM.md` capability ownership table — does the foundation already own this? |
-| Deciding api vs app module placement | `PLATFORM.md` persistence module split rule — JPA-free api, JPA in app |
+| Deciding api vs app module placement | `PLATFORM.md` persistence module split rule — JPA-free api, JPA in app. Use-case orchestration lives in app/ (PP-20260512-9b8847, parent#18) |
 | Naming capability tags or trust dimensions | `casehub-aml.md` §What It Owns — existing tag and dimension names |
 | Mapping entities to FinCEN/FATF requirements | `use-case-analysis.md §8.2` — compliance gap table, which requirement drives each entity |
 
