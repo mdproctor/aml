@@ -1,6 +1,7 @@
 package io.casehub.aml;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -9,7 +10,6 @@ import jakarta.ws.rs.core.MediaType;
 
 import io.casehub.aml.domain.InvestigationSummary;
 import io.casehub.aml.domain.SuspiciousTransaction;
-import io.casehub.aml.tutorial.NaiveAmlInvestigationService;
 
 @Path("/api/investigations")
 @ApplicationScoped
@@ -17,8 +17,11 @@ import io.casehub.aml.tutorial.NaiveAmlInvestigationService;
 @Consumes(MediaType.APPLICATION_JSON)
 public class AmlInvestigationResource {
 
+    @Inject
+    AmlInvestigationApplicationService investigationService;
+
     @POST
     public InvestigationSummary investigate(SuspiciousTransaction transaction) {
-        return new NaiveAmlInvestigationService().investigate(transaction);
+        return investigationService.investigate(transaction).summary();
     }
 }

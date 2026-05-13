@@ -5,11 +5,12 @@ import java.time.Instant;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.aml.domain.InvestigationSummary;
+import io.casehub.aml.domain.AmlInvestigationResult;
 import io.casehub.aml.domain.SuspiciousTransaction;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 class NaiveAmlInvestigationServiceTest {
@@ -23,30 +24,34 @@ class NaiveAmlInvestigationServiceTest {
                 Instant.parse("2024-03-15T10:00:00Z"), "Structuring");
     }
 
-    // Happy path: a valid transaction produces a fully populated summary
     @Test
     void investigate_validTransaction_returnsCompleteSummary() {
-        InvestigationSummary summary = service.investigate(tx("TXN-001"));
+        AmlInvestigationResult result = service.investigate(tx("TXN-001"));
 
-        assertNotNull(summary);
-        assertNotNull(summary.entityResolution());
-        assertNotNull(summary.patternAnalysis());
-        assertNotNull(summary.osintScreening());
-        assertNotNull(summary.sarNarrative());
+        assertNotNull(result);
+        assertNotNull(result.summary());
+        assertNotNull(result.summary().entityResolution());
+        assertNotNull(result.summary().patternAnalysis());
+        assertNotNull(result.summary().osintScreening());
+        assertNotNull(result.summary().sarNarrative());
     }
 
-    // Correctness: the original transaction object is preserved unchanged in the summary
+    @Test
+    void investigate_noWorkItem_complianceReviewTaskIdIsNull() {
+        AmlInvestigationResult result = service.investigate(tx("TXN-001"));
+        assertNull(result.complianceReviewTaskId());
+    }
+
     @Test
     void investigate_preservesTransactionIdentity() {
         SuspiciousTransaction input = tx("TXN-002");
-        assertSame(input, service.investigate(input).transaction());
+        assertSame(input, service.investigate(input).summary().transaction());
     }
 
-    // Correctness: two successive calls produce independent summary objects
     @Test
-    void investigate_calledTwice_producesIndependentSummaries() {
-        InvestigationSummary first  = service.investigate(tx("TXN-003"));
-        InvestigationSummary second = service.investigate(tx("TXN-004"));
+    void investigate_calledTwice_producesIndependentResults() {
+        AmlInvestigationResult first  = service.investigate(tx("TXN-003"));
+        AmlInvestigationResult second = service.investigate(tx("TXN-004"));
 
         assertNotNull(first);
         assertNotNull(second);

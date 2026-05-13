@@ -1,19 +1,27 @@
 package io.casehub.aml.tutorial;
 
+import io.quarkus.arc.DefaultBean;
+import jakarta.enterprise.context.ApplicationScoped;
+
+import io.casehub.aml.AmlInvestigationApplicationService;
+import io.casehub.aml.domain.AmlInvestigationResult;
 import io.casehub.aml.domain.EntityResolutionResult;
 import io.casehub.aml.domain.InvestigationSummary;
 import io.casehub.aml.domain.OsintResult;
 import io.casehub.aml.domain.PatternAnalysisResult;
 import io.casehub.aml.domain.SuspiciousTransaction;
 
-public class NaiveAmlInvestigationService {
+@ApplicationScoped
+@DefaultBean
+public class NaiveAmlInvestigationService implements AmlInvestigationApplicationService {
 
     private final NaiveEntityResolutionService entityResolutionService = new NaiveEntityResolutionService();
     private final NaivePatternAnalysisService  patternAnalysisService  = new NaivePatternAnalysisService();
     private final NaiveOsintScreeningService   osintScreeningService   = new NaiveOsintScreeningService();
     private final NaiveSarDraftingService      sarDraftingService      = new NaiveSarDraftingService();
 
-    public InvestigationSummary investigate(SuspiciousTransaction transaction) {
+    @Override
+    public AmlInvestigationResult investigate(SuspiciousTransaction transaction) {
         // LAYER 1 GAP: no attribution — who resolved this entity graph?
         // No record of which agent made this decision or when.
         EntityResolutionResult entity = entityResolutionService.resolve(transaction);
@@ -30,6 +38,7 @@ public class NaiveAmlInvestigationService {
         // No tamper-evident record of the reasoning chain exists.
         String sarNarrative = sarDraftingService.draft(transaction, entity, pattern, osint);
 
-        return new InvestigationSummary(transaction, entity, pattern, osint, sarNarrative);
+        InvestigationSummary summary = new InvestigationSummary(transaction, entity, pattern, osint, sarNarrative);
+        return new AmlInvestigationResult(summary, null);
     }
 }
