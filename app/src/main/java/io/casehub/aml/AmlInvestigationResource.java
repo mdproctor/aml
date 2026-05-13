@@ -8,7 +8,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
-import io.casehub.aml.domain.InvestigationSummary;
+import io.casehub.aml.domain.AmlInvestigationResult;
 import io.casehub.aml.domain.SuspiciousTransaction;
 
 @Path("/api/investigations")
@@ -21,7 +21,7 @@ public class AmlInvestigationResource {
     AmlInvestigationApplicationService investigationService;
 
     @POST
-    public InvestigationSummary investigate(SuspiciousTransaction transaction) {
-        return investigationService.investigate(transaction).summary();
+    public AmlInvestigationResult investigate(SuspiciousTransaction transaction) {
+        return investigationService.investigate(transaction);
     }
 }
