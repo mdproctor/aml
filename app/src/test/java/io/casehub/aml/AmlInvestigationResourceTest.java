@@ -23,9 +23,8 @@ class AmlInvestigationResourceTest {
             }
             """;
 
-    // Happy path: valid transaction returns 200 with all summary fields present
     @Test
-    void postInvestigation_validTransaction_returns200WithSummary() {
+    void postInvestigation_validTransaction_returns200WithSummaryAndWorkItem() {
         given()
                 .contentType(ContentType.JSON)
                 .body(VALID_TX)
@@ -33,14 +32,14 @@ class AmlInvestigationResourceTest {
                 .post("/api/investigations")
         .then()
                 .statusCode(200)
-                .body("transaction.id",   equalTo("TXN-001"))
-                .body("entityResolution", notNullValue())
-                .body("patternAnalysis",  notNullValue())
-                .body("osintScreening",   notNullValue())
-                .body("sarNarrative",     notNullValue());
+                .body("summary.transaction.id",   equalTo("TXN-001"))
+                .body("summary.entityResolution", notNullValue())
+                .body("summary.patternAnalysis",  notNullValue())
+                .body("summary.osintScreening",   notNullValue())
+                .body("summary.sarNarrative",     notNullValue())
+                .body("complianceReviewTaskId",   notNullValue());
     }
 
-    // Robustness: malformed JSON body is rejected with 400
     @Test
     void postInvestigation_malformedJson_returns400() {
         given()
