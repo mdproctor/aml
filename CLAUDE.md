@@ -352,7 +352,7 @@ Consult `docs/conventions/` in the local parent before writing any test — the 
 Before designing or implementing anything, consult the local parent repo protocols in order:
 
 1. **Platform Coherence Protocol** — `~/claude/casehub/parent/docs/PLATFORM.md` — capability ownership, boundary rules, consolidation check
-2. **Agentic Harness Protocols** — `~/claude/casehub/parent/docs/protocols/HARNESS-INDEX.md` — conventions for building on top of CaseHub
+2. **Agentic Harness Protocols** — `~/claude/casehub/parent/docs/protocols/casehub/HARNESS-INDEX.md` — conventions for building on top of CaseHub
 3. **Design phase references** — the table in this CLAUDE.md above — concern-specific docs for the current design decision
 4. **Conventions index** — `~/claude/casehub/parent/docs/conventions/INDEX.md` — check if a relevant convention exists before inventing a pattern
 
