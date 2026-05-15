@@ -133,7 +133,9 @@ public class WorkItemAmlInvestigationService implements AmlInvestigationApplicat
 
 ### Gotchas
 
-- **Flyway V2 conflict between casehub-work and casehub-qhorus.** Both ship a V2 Flyway migration. If both are on the classpath in tests, Flyway refuses to start. Workaround: disable Flyway in tests and use drop-and-create. Do not remove until casehubio/qhorus#142 and casehubio/work#162 are resolved. (GE-20260513-74dc72)
+- **Symptom:** Quarkus test startup fails with a Flyway error about duplicate migration version V2.
+  **Cause:** `casehub-work` and `casehub-qhorus` both ship a `V2` Flyway migration. When both are on the test classpath, Flyway refuses to start because two migrations share the same version number.
+  **Fix:** Disable Flyway in tests and use drop-and-create instead. Do not restore `migrate-at-start=true` until casehubio/qhorus#142 and casehubio/work#162 are resolved. (GE-20260513-74dc72)
 
   ```properties
   # app/src/test/resources/application.properties
@@ -143,7 +145,9 @@ public class WorkItemAmlInvestigationService implements AmlInvestigationApplicat
   quarkus.hibernate-orm.qhorus.database.generation=drop-and-create
   ```
 
-- **qhorus activates Hibernate Reactive unconditionally.** Any non-reactive consumer must suppress it in test properties. Do not remove until casehubio/qhorus#141 is resolved. (GE-20260513-4f26a7)
+- **Symptom:** Quarkus test startup fails with a reactive datasource or H2 connection error even though the app uses only JDBC.
+  **Cause:** `casehub-qhorus` unconditionally pulls in `quarkus-hibernate-reactive-panache`, which expects a reactive datasource. A JDBC-only consumer has none, causing startup failure.
+  **Fix:** Suppress reactive activation in test properties. Do not remove until casehubio/qhorus#141 is resolved. (GE-20260513-4f26a7)
 
   ```properties
   casehub.qhorus.reactive.enabled=false
@@ -151,7 +155,9 @@ public class WorkItemAmlInvestigationService implements AmlInvestigationApplicat
   quarkus.datasource.qhorus.reactive=false
   ```
 
-- **`@DefaultBean` displacement works across modules.** The naive service in one CDI bean and the work-item service in another — CDI sees both, the one without `@DefaultBean` wins. This is intentional and reliable, but surprising if you expect only one implementation to exist.
+- **Symptom:** CDI ambiguity error or wrong service injected when both `NaiveAmlInvestigationService` and `WorkItemAmlInvestigationService` are present.
+  **Cause:** Both implement `AmlInvestigationApplicationService`. Without `@DefaultBean` on the naive service, CDI sees two equal candidates and fails.
+  **Fix:** `@DefaultBean` on the naive service makes it the fallback; any `@ApplicationScoped` without `@DefaultBean` takes priority. This is how layer coexistence works — intentional and reliable, but only if the naive service carries `@DefaultBean`.
 
 ### Pattern to replicate (in another domain)
 
