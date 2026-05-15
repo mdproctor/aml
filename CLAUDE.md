@@ -69,21 +69,21 @@ Before any git operation, run `git rev-parse --show-toplevel` to confirm which r
 
 This repo is one component of the casehubio multi-repo platform. **Before implementing anything — any feature, SPI, data model, or abstraction — run the Platform Coherence Protocol.**
 
-> **Platform docs:** Local paths use `~/claude/casehub/parent/docs/` as root. If a path doesn't exist, the parent repo isn't cloned locally — fetch from `https://raw.githubusercontent.com/casehubio/parent/main/docs/<path>` instead.
+> **Platform docs:** Local paths use `../parent/docs/` as root. If a path doesn't exist, the parent repo isn't cloned locally — fetch from `https://raw.githubusercontent.com/casehubio/parent/main/docs/<path>` instead.
 
 The protocol asks: Does this already exist elsewhere? Is this the right repo for it? Does this create a consolidation opportunity? Is this consistent with how the platform handles the same concern in other repos?
 
 **Platform architecture (fetch before any implementation decision):**
 ```
-~/claude/casehub/parent/docs/PLATFORM.md
+../parent/docs/PLATFORM.md
 ```
 
 **Foundation repo deep-dives:**
-- casehub-engine: `~/claude/casehub/parent/docs/repos/casehub-engine.md`
-- casehub-ledger: `~/claude/casehub/parent/docs/repos/casehub-ledger.md`
-- casehub-work: `~/claude/casehub/parent/docs/repos/casehub-work.md`
-- casehub-qhorus: `~/claude/casehub/parent/docs/repos/casehub-qhorus.md`
-- casehub-connectors: `~/claude/casehub/parent/docs/repos/casehub-connectors.md`
+- casehub-engine: `../parent/docs/repos/casehub-engine.md`
+- casehub-ledger: `../parent/docs/repos/casehub-ledger.md`
+- casehub-work: `../parent/docs/repos/casehub-work.md`
+- casehub-qhorus: `../parent/docs/repos/casehub-qhorus.md`
+- casehub-connectors: `../parent/docs/repos/casehub-connectors.md`
 
 ---
 
@@ -129,9 +129,9 @@ This is an application, not a framework. If the capability requires knowledge of
 
 | Document | What it covers |
 |----------|---------------|
-| `~/claude/casehub/parent/docs/use-case-analysis.md` | Use case scoring, AML selection rationale (§8.2), compliance gap analysis |
-| `~/claude/casehub/parent/docs/tutorial-strategy.md` | AML tutorial layers 1–7 (§6), layer-by-layer teaching strategy, LangChain4j framing |
-| `~/claude/casehub/parent/docs/repos/casehub-aml.md` | AML domain ownership — entities, capability tags, trust dimensions, epics |
+| `../parent/docs/use-case-analysis.md` | Use case scoring, AML selection rationale (§8.2), compliance gap analysis |
+| `../parent/docs/tutorial-strategy.md` | AML tutorial layers 1–7 (§6), layer-by-layer teaching strategy, LangChain4j framing |
+| `../parent/docs/repos/casehub-aml.md` | AML domain ownership — entities, capability tags, trust dimensions, epics |
 
 ---
 
@@ -160,29 +160,29 @@ Read these **before designing**, not after. The concern column tells you when ea
 
 | Concern | Read first |
 |---------|-----------|
-| Using casehub-work (WorkItem, SLA, escalation) | `~/claude/casehub/parent/docs/repos/casehub-work.md` |
-| Using casehub-qhorus (COMMAND/RESPONSE/DONE/DECLINE) | `~/claude/casehub/parent/docs/repos/casehub-qhorus.md` |
-| Using casehub-ledger (Merkle audit, GDPR, trust scoring) | `~/claude/casehub/parent/docs/repos/casehub-ledger.md` |
-| Using casehub-engine (CasePlanModel, adaptive paths, bindings) | `~/claude/casehub/parent/docs/repos/casehub-engine.md` |
+| Using casehub-work (WorkItem, SLA, escalation) | `../parent/docs/repos/casehub-work.md` |
+| Using casehub-qhorus (COMMAND/RESPONSE/DONE/DECLINE) | `../parent/docs/repos/casehub-qhorus.md` |
+| Using casehub-ledger (Merkle audit, GDPR, trust scoring) | `../parent/docs/repos/casehub-ledger.md` |
+| Using casehub-engine (CasePlanModel, adaptive paths, bindings) | `../parent/docs/repos/casehub-engine.md` |
 | Boundary check — does this belong in foundation or here? | `PLATFORM.md` boundary rules and application tier rule |
 
 ### Persistence and migrations
 
 | Concern | Read first |
 |---------|-----------|
-| Writing a new Flyway migration | `~/claude/casehub/parent/docs/conventions/flyway-migration-rules.md` — naming, H2 MODE=PostgreSQL |
-| Assigning a migration version number | `~/claude/casehub/parent/docs/conventions/flyway-version-range-allocation.md` — V1–V999 domain, V1004+ ledger subclass joins |
-| Adding a named persistence unit or datasource | `~/claude/casehub/parent/docs/conventions/quarkus-named-datasource-schema-generation.md` |
+| Writing a new Flyway migration | `../parent/docs/conventions/flyway-migration-rules.md` — naming, H2 MODE=PostgreSQL |
+| Assigning a migration version number | `../parent/docs/conventions/flyway-version-range-allocation.md` — V1–V999 domain, V1004+ ledger subclass joins |
+| Adding a named persistence unit or datasource | `../parent/docs/conventions/quarkus-named-datasource-schema-generation.md` |
 | Extending LedgerEntry (adding a tamper-evident subclass) | `casehub-ledger.md` Consumer Pattern section — JOINED inheritance, V1004+ migration |
 
 ### Testing
 
 | Concern | Read first |
 |---------|-----------|
-| Writing a `@QuarkusTest` | `~/claude/casehub/parent/docs/conventions/quarkus-test-database.md` — H2 MODE=PostgreSQL, datasource config |
-| Naming test classes | `~/claude/casehub/parent/docs/conventions/quarkus-test-naming-convention.md` — `*Test.java` not `*IT.java` |
-| Testing SPI wiring | `~/claude/casehub/parent/docs/conventions/spi-testing-alternative-inner-classes.md` |
-| Writing integration tests | `~/claude/casehub/parent/docs/conventions/quarkus-integration-test-module-separation.md` — dedicated `integration-tests/` module |
+| Writing a `@QuarkusTest` | `../parent/docs/conventions/quarkus-test-database.md` — H2 MODE=PostgreSQL, datasource config |
+| Naming test classes | `../parent/docs/conventions/quarkus-test-naming-convention.md` — `*Test.java` not `*IT.java` |
+| Testing SPI wiring | `../parent/docs/conventions/spi-testing-alternative-inner-classes.md` |
+| Writing integration tests | `../parent/docs/conventions/quarkus-integration-test-module-separation.md` — dedicated `integration-tests/` module |
 
 ---
 
@@ -351,10 +351,10 @@ Consult `docs/conventions/` in the local parent before writing any test — the 
 
 Before designing or implementing anything, consult the local parent repo protocols in order:
 
-1. **Platform Coherence Protocol** — `~/claude/casehub/parent/docs/PLATFORM.md` — capability ownership, boundary rules, consolidation check
-2. **Agentic Harness Protocols** — `~/claude/casehub/parent/docs/protocols/casehub/HARNESS-INDEX.md` — conventions for building on top of CaseHub
+1. **Platform Coherence Protocol** — `../parent/docs/PLATFORM.md` — capability ownership, boundary rules, consolidation check
+2. **Agentic Harness Protocols** — `../parent/docs/protocols/casehub/HARNESS-INDEX.md` — conventions for building on top of CaseHub
 3. **Design phase references** — the table in this CLAUDE.md above — concern-specific docs for the current design decision
-4. **Conventions index** — `~/claude/casehub/parent/docs/conventions/INDEX.md` — check if a relevant convention exists before inventing a pattern
+4. **Conventions index** — `../parent/docs/conventions/INDEX.md` — check if a relevant convention exists before inventing a pattern
 
 The local parent folder is at `/Users/mdproctor/claude/casehub/parent/`. Always `Read` docs from there first; fall back to `WebFetch` only if the file does not exist locally.
 
