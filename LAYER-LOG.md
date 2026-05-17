@@ -178,3 +178,151 @@ public class WorkItemAmlInvestigationService implements AmlInvestigationApplicat
 7. Write a unit test: verify `WorkItemCreateRequest` fields without Quarkus
 8. Write a `@QuarkusTest`: `POST` the domain endpoint, assert the task ID is present in the response and the WorkItem exists in the DB with correct `claimDeadline` and `candidateGroups`
 9. Run: `mvn verify -pl api,app -am -Dsurefire.failIfNoSpecifiedTests=false`
+
+---
+
+## Layer 3 — + casehub-qhorus (typed COMMAND/RESPONSE/DONE/DECLINE per specialist agent)
+
+**Completed:** 2026-05-17
+**Issue:** casehubio/aml#19
+**Epic:** casehubio/aml#9 (Tutorial layers 1–7), epic branch `epic-layer3-qhorus`
+**Blog:** 2026-05-16-mdp01-broken-promise-layer-2.md — architectural investigation leading to the composer pattern
+**Spec:** workspace `specs/2026-05-17-layer3-composer-qhorus-design.md`
+**Key files:**
+- `api/src/main/java/io/casehub/aml/domain/SpecialistOutcome.java` — new sealed interface
+- `api/src/main/java/io/casehub/aml/domain/InvestigationSummary.java` — three fields now `SpecialistOutcome<T>`
+- `api/src/main/java/io/casehub/aml/investigation/SarDraftingService.java` — all three params now `SpecialistOutcome<T>`
+- `app/src/main/java/io/casehub/aml/AmlInvestigator.java` — new inner interface (investigation concern)
+- `app/src/main/java/io/casehub/aml/ComplianceReviewLifecycle.java` — WorkItem concern extracted from Layer 2
+- `app/src/main/java/io/casehub/aml/AmlInvestigationCoordinator.java` — stable outer coordinator
+- `app/src/main/java/io/casehub/aml/AmlJacksonConfig.java` — Jackson mixin for sealed interface type discriminator
+- `app/src/main/java/io/casehub/aml/agents/` — AgentBehaviour, AgentDispatchMechanism SPIs + three stub behaviours
+- `app/src/main/java/io/casehub/aml/tutorial/QhorusAmlInvestigator.java` — Layer 3 investigator
+- `app/src/main/java/io/casehub/aml/tutorial/NaiveAmlInvestigationService.java` — now implements AmlInvestigator (not outer port)
+- DELETED: `WorkItemAmlInvestigationService.java` — replaced by coordinator + ComplianceReviewLifecycle
+
+### What it shows
+
+Layer 2 had a design flaw: `WorkItemAmlInvestigationService` injected `NaiveAmlInvestigationService` by concrete type, breaking its own commit message's promise that "changing specialist implementations in Layer 3 will propagate automatically." The concrete type injection made CDI displacement impossible.
+
+Layer 3 corrects this with a **composer pattern**: `AmlInvestigationCoordinator` composes an `AmlInvestigator` (swappable via CDI) and `ComplianceReviewLifecycle` (stable WorkItem concern). `QhorusAmlInvestigator` displaces `NaiveAmlInvestigationService` at the inner `AmlInvestigator` level — Layer 2 (WorkItem creation) is transparent to the swap.
+
+Closes the "no formal obligation per specialist agent" gap: each specialist dispatch sends a COMMAND message and receives DONE/DECLINE. `OsintScreeningBehaviour` always DECLINEs ("insufficient clearance for PEP database access") — demonstrating that DECLINE is a formal scope boundary, not an error. The investigation completes and the compliance officer WorkItem is created regardless.
+
+### The gap comments addressed
+
+```java
+// LAYER 1 GAP: no attribution — who resolved this entity graph?
+// No record of which agent made this decision or when.
+// → LAYER 3: COMMAND issued per specialist; DONE/DECLINE persisted in qhorus
+
+// LAYER 1 GAP: no failure resilience — if this call times out or throws,
+// the entire investigation is lost with no trace of partial work.
+// → LAYER 3: each agent interaction is a formal commitment; FAILURE is an explicit outcome type
+```
+
+### Key wiring
+
+**`SpecialistOutcome<T>` in `api/` — pure Java, no Jackson in domain module.**
+The sealed interface lives in `api/` (zero external dependencies). Jackson type
+discriminator is added via a mixin in `app/src/main/java/io/casehub/aml/AmlJacksonConfig.java`:
+
+```java
+@Singleton
+public class AmlJacksonConfig implements ObjectMapperCustomizer {
+    @JsonTypeInfo(use = Id.NAME, property = "type")
+    @JsonSubTypes({
+        @JsonSubTypes.Type(value = SpecialistOutcome.Completed.class, name = "Completed"),
+        @JsonSubTypes.Type(value = SpecialistOutcome.Declined.class,  name = "Declined"),
+        @JsonSubTypes.Type(value = SpecialistOutcome.Failed.class,    name = "Failed")
+    })
+    interface SpecialistOutcomeMixin {}
+    @Override public void customize(ObjectMapper mapper) {
+        mapper.addMixIn(SpecialistOutcome.class, SpecialistOutcomeMixin.class);
+    }
+}
+```
+
+Without this, `SpecialistOutcome` fields in JSON responses have no `"type"` discriminator and
+REST assertions on `summary.osintScreening.type` return null.
+
+**CDI displacement — concrete type injection was the Layer 2 bug.**
+`WorkItemAmlInvestigationService` injected `NaiveAmlInvestigationService` by concrete type.
+CDI `@DefaultBean` displacement works at the interface level — injecting by concrete type
+prevents any other bean from substituting. Layer 3 fixes this by introducing `AmlInvestigator`
+as the injection type. `QhorusAmlInvestigator` (no `@DefaultBean`) displaces
+`NaiveAmlInvestigationService` (`@DefaultBean`) automatically.
+
+**Direct dispatch — not ChannelGateway.fanOut().**
+`QhorusAmlInvestigator` calls `AgentBehaviour.handle()` directly after sending the COMMAND
+message. `channelGateway.fanOut()` does NOT trigger `PushAgentDispatch.post()` as designed —
+root cause unknown (#22). The COMMAND and DONE/DECLINE messages ARE persisted to qhorus
+via `MessageService.send()`. The formal commitment lifecycle exists in the DB even without
+fan-out triggering.
+
+**`casehub.qhorus.reactive.enabled=false` removed — upstream bug resolved.**
+The property no longer maps to any config root in the current qhorus version.
+Removing it fixes the SmallRye config validation failure at test startup.
+Tracked as casehubio/qhorus#141; marked as resolved.
+
+**LedgerVerificationService excluded in tests.**
+`LedgerVerificationService` (casehub-ledger) now injects `ReactiveLedgerEntryRepository`
+which is vetoed in JDBC-only test mode. Three services excluded from CDI context via
+`quarkus.arc.exclude-types` in test `application.properties`. None are exercised by AML tests.
+
+**`@Typed` on `PushAgentDispatch` prevents CDI ambiguity.**
+`PushAgentDispatch` implements `AgentChannelBackend`. Without `@Typed`, CDI sees it as a
+candidate for `AgentChannelBackend` injection — conflicting with `QhorusChannelBackend`
+(the default backend already registered with `ChannelGateway`). Fix:
+`@Typed({AgentDispatchMechanism.class, PushAgentDispatch.class})`.
+
+**`WorkItemCreateRequest` now has 23 fields (was 19 at Layer 2, 21 mid-session).**
+The record grew by 4 fields since Layer 2. `ComplianceReviewLifecycle` passes null for
+all new fields (`templateId`, `permittedOutcomes`, `inputDataSchema`, `outputDataSchema`).
+Builder tracked in casehubio/work#168.
+
+**`IllegalStateException` maps to HTTP 409 via casehub-work's exception mapper.**
+`IllegalStateExceptionMapper` in casehub-work maps `IllegalStateException` → 409 Conflict.
+During implementation, the original poll-timeout exception was typed as `IllegalStateException`
+and produced confusing 409 responses. Changed to `RuntimeException`.
+
+### Gotchas
+
+- **Symptom:** Jackson serializes `SpecialistOutcome<T>` fields without a `"type"` discriminator — REST assertions on `summary.osintScreening.type` return null.
+  **Cause:** Sealed interfaces don't carry `@JsonTypeInfo` — Jackson doesn't know to add a type field.
+  **Fix:** Register a mixin via `ObjectMapperCustomizer` in app/ — keeps api/ pure Java.
+
+- **Symptom:** Tests return HTTP 409 (Conflict) with a 5-second delay instead of 500.
+  **Cause:** `casehub-work` ships `IllegalStateExceptionMapper` that maps `IllegalStateException` → 409. A poll-timeout throwing `IllegalStateException` triggered it.
+  **Fix:** Use `RuntimeException` for infrastructure failures that shouldn't map to HTTP 409.
+
+- **Symptom:** `@QuarkusTest` startup fails with "SmallRye config validation: casehub.qhorus.reactive.enabled does not map to any root".
+  **Cause:** The upstream qhorus bug (unconditional hibernate-reactive activation) was fixed; the config property no longer exists in the current version.
+  **Fix:** Remove `casehub.qhorus.reactive.enabled=false` from test `application.properties`.
+
+- **Symptom:** `AmbiguousResolutionException: Ambiguous dependencies for AgentChannelBackend` at CDI startup.
+  **Cause:** `PushAgentDispatch` implements `AgentChannelBackend`, making it a CDI candidate alongside `QhorusChannelBackend` (the default). CDI can't choose.
+  **Fix:** `@Typed({AgentDispatchMechanism.class, PushAgentDispatch.class})` — restricts CDI visibility to `AgentDispatchMechanism` only.
+
+- **Symptom:** `channelGateway.fanOut()` is called but `PushAgentDispatch.post()` is never invoked.
+  **Cause:** Unknown — tracked as casehubio/aml#22. Likely requires specific channel initialization sequence via qhorus internals before `registerBackend()` works.
+  **Fix (for tutorial):** Direct dispatch — `QhorusAmlInvestigator` calls `AgentBehaviour.handle()` in-process. COMMAND/DONE/DECLINE messages are still persisted via `MessageService`.
+
+### Pattern to replicate (in another domain)
+
+1. Add `casehub-qhorus` to `app/pom.xml`; qhorus named datasource is already configured
+2. Define `SpecialistOutcome<T>` in `api/` — sealed interface with Completed/Declined/Failed records
+3. Update domain summary record to use `SpecialistOutcome<T>` for all specialist result fields
+4. Update `SarDraftingService`/equivalent to accept `SpecialistOutcome<T>` — pattern-match all three variants
+5. Introduce an inner investigator interface in `app/` (e.g. `AmlInvestigator`) — separates investigation from compliance lifecycle
+6. Implement the orchestrator investigator (`QhorusXxxInvestigator`, no `@DefaultBean`):
+   - Inject `Instance<AgentBehaviour>` to find agents by capability
+   - For each specialist: `messageService.send(channelId, ORCHESTRATOR, COMMAND, ...)`, call `behaviour.handle()`, `messageService.send(channelId, capability, DONE/DECLINE, ...)`
+   - Return `SpecialistOutcome` for each specialist
+7. Implement stub `AgentBehaviour` beans (`@ApplicationScoped @DefaultBean`):
+   - Entity/pattern stubs return `Completed` with naive service results
+   - Specialised agents (OSINT, PI authorisation) DECLINE with scope reason
+8. Register `ObjectMapperCustomizer` in `app/` to add `@JsonTypeInfo` + `@JsonSubTypes` mixin for the sealed interface
+9. Exclude `LedgerVerificationService`, `LedgerComplianceReportService`, `LedgerRetentionJob` from test CDI context (add to `quarkus.arc.exclude-types` in test `application.properties`)
+10. Add `@Typed({AgentDispatchMechanism.class, YourPushDispatch.class})` to any `AgentChannelBackend` implementation to prevent CDI ambiguity with `QhorusChannelBackend`
+11. Test: assert `summary.osintScreening.type` equals `"Declined"` in `@QuarkusTest`; assert `"type": "Completed"` for other specialists
