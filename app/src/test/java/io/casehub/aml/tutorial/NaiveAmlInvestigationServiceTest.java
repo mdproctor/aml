@@ -5,12 +5,13 @@ import java.time.Instant;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.aml.domain.AmlInvestigationResult;
+import io.casehub.aml.domain.InvestigationSummary;
+import io.casehub.aml.domain.SpecialistOutcome;
 import io.casehub.aml.domain.SuspiciousTransaction;
 
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 class NaiveAmlInvestigationServiceTest {
@@ -26,32 +27,34 @@ class NaiveAmlInvestigationServiceTest {
 
     @Test
     void investigate_validTransaction_returnsCompleteSummary() {
-        AmlInvestigationResult result = service.investigate(tx("TXN-001"));
+        InvestigationSummary summary = service.investigate(tx("TXN-001"));
 
-        assertNotNull(result);
-        assertNotNull(result.summary());
-        assertNotNull(result.summary().entityResolution());
-        assertNotNull(result.summary().patternAnalysis());
-        assertNotNull(result.summary().osintScreening());
-        assertNotNull(result.summary().sarNarrative());
+        assertNotNull(summary);
+        assertNotNull(summary.entityResolution());
+        assertNotNull(summary.patternAnalysis());
+        assertNotNull(summary.osintScreening());
+        assertNotNull(summary.sarNarrative());
     }
 
     @Test
-    void investigate_noWorkItem_complianceReviewTaskIdIsNull() {
-        AmlInvestigationResult result = service.investigate(tx("TXN-001"));
-        assertNull(result.complianceReviewTaskId());
+    void investigate_allOutcomesAreCompleted() {
+        InvestigationSummary summary = service.investigate(tx("TXN-002"));
+
+        assertInstanceOf(SpecialistOutcome.Completed.class, summary.entityResolution());
+        assertInstanceOf(SpecialistOutcome.Completed.class, summary.patternAnalysis());
+        assertInstanceOf(SpecialistOutcome.Completed.class, summary.osintScreening());
     }
 
     @Test
     void investigate_preservesTransactionIdentity() {
-        SuspiciousTransaction input = tx("TXN-002");
-        assertSame(input, service.investigate(input).summary().transaction());
+        SuspiciousTransaction input = tx("TXN-003");
+        assertSame(input, service.investigate(input).transaction());
     }
 
     @Test
     void investigate_calledTwice_producesIndependentResults() {
-        AmlInvestigationResult first  = service.investigate(tx("TXN-003"));
-        AmlInvestigationResult second = service.investigate(tx("TXN-004"));
+        InvestigationSummary first  = service.investigate(tx("TXN-004"));
+        InvestigationSummary second = service.investigate(tx("TXN-005"));
 
         assertNotNull(first);
         assertNotNull(second);

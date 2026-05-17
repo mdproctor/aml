@@ -1,0 +1,63 @@
+package io.casehub.aml;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.junit.jupiter.api.Test;
+
+import io.casehub.aml.domain.AmlInvestigationResult;
+import io.casehub.aml.domain.EntityResolutionResult;
+import io.casehub.aml.domain.InvestigationSummary;
+import io.casehub.aml.domain.OsintResult;
+import io.casehub.aml.domain.PatternAnalysisResult;
+import io.casehub.aml.domain.SpecialistOutcome;
+import io.casehub.aml.domain.SuspiciousTransaction;
+import io.casehub.work.runtime.model.WorkItem;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class AmlInvestigationCoordinatorTest {
+
+    private final SuspiciousTransaction tx = new SuspiciousTransaction(
+            "TXN-COORD", "ACC-A", "ACC-B",
+            new BigDecimal("95000"), "USD",
+            Instant.parse("2024-01-01T00:00:00Z"), "Structuring");
+
+    private static WorkItem workItemWith(UUID id) {
+        WorkItem wi = new WorkItem();
+        wi.id = id;
+        return wi;
+    }
+
+    @Test
+    void investigate_delegatesToInvestigatorAndOpensReview() {
+        AtomicBoolean investigatorCalled = new AtomicBoolean(false);
+        UUID expectedId = UUID.randomUUID();
+
+        AmlInvestigator investigator = transaction -> {
+            investigatorCalled.set(true);
+            return new InvestigationSummary(
+                    transaction,
+                    new SpecialistOutcome.Completed<>(new EntityResolutionResult("E-1", "chain")),
+                    new SpecialistOutcome.Completed<>(new PatternAnalysisResult(false, "none")),
+                    new SpecialistOutcome.Completed<>(new OsintResult(false, false, "clean")),
+                    "narrative");
+        };
+
+        ComplianceReviewLifecycle compliance = new ComplianceReviewLifecycle(
+                req -> workItemWith(expectedId));
+
+        AmlInvestigationCoordinator coordinator = new AmlInvestigationCoordinator(investigator, compliance);
+        AmlInvestigationResult result = coordinator.investigate(tx);
+
+        assertTrue(investigatorCalled.get(), "Investigator should have been called");
+        assertNotNull(result);
+        assertNotNull(result.summary());
+        assertSame(tx, result.summary().transaction());
+        assertNotNull(result.complianceReviewTaskId());
+    }
+}

@@ -3,17 +3,17 @@ package io.casehub.aml.tutorial;
 import io.quarkus.arc.DefaultBean;
 import jakarta.enterprise.context.ApplicationScoped;
 
-import io.casehub.aml.AmlInvestigationApplicationService;
-import io.casehub.aml.domain.AmlInvestigationResult;
+import io.casehub.aml.AmlInvestigator;
 import io.casehub.aml.domain.EntityResolutionResult;
 import io.casehub.aml.domain.InvestigationSummary;
 import io.casehub.aml.domain.OsintResult;
 import io.casehub.aml.domain.PatternAnalysisResult;
+import io.casehub.aml.domain.SpecialistOutcome;
 import io.casehub.aml.domain.SuspiciousTransaction;
 
 @ApplicationScoped
 @DefaultBean
-public class NaiveAmlInvestigationService implements AmlInvestigationApplicationService {
+public class NaiveAmlInvestigationService implements AmlInvestigator {
 
     private final NaiveEntityResolutionService entityResolutionService = new NaiveEntityResolutionService();
     private final NaivePatternAnalysisService  patternAnalysisService  = new NaivePatternAnalysisService();
@@ -21,24 +21,33 @@ public class NaiveAmlInvestigationService implements AmlInvestigationApplication
     private final NaiveSarDraftingService      sarDraftingService      = new NaiveSarDraftingService();
 
     @Override
-    public AmlInvestigationResult investigate(SuspiciousTransaction transaction) {
+    public InvestigationSummary investigate(SuspiciousTransaction transaction) {
         // LAYER 1 GAP: no attribution — who resolved this entity graph?
         // No record of which agent made this decision or when.
-        EntityResolutionResult entity = entityResolutionService.resolve(transaction);
+        EntityResolutionResult entityResult = entityResolutionService.resolve(transaction);
 
         // LAYER 1 GAP: no failure resilience — if this call times out or throws,
         // the entire investigation is lost with no trace of partial work.
-        PatternAnalysisResult pattern = patternAnalysisService.analyze(transaction);
+        PatternAnalysisResult patternResult = patternAnalysisService.analyze(transaction);
 
         // LAYER 1 GAP: no deadline tracking — OSINT runs sequentially after pattern
         // analysis. No FinCEN 30-day SLA. No parallel execution. No formal obligation.
-        OsintResult osint = osintScreeningService.screen(transaction);
+        OsintResult osintResult = osintScreeningService.screen(transaction);
+        SpecialistOutcome<OsintResult> osintOutcome = new SpecialistOutcome.Completed<>(osintResult);
 
         // LAYER 1 GAP: no audit trail — this narrative cannot be proven to FinCEN.
         // No tamper-evident record of the reasoning chain exists.
-        String sarNarrative = sarDraftingService.draft(transaction, entity, pattern, osint);
+        String sarNarrative = sarDraftingService.draft(
+                transaction,
+                new SpecialistOutcome.Completed<>(entityResult),
+                new SpecialistOutcome.Completed<>(patternResult),
+                osintOutcome);
 
-        InvestigationSummary summary = new InvestigationSummary(transaction, entity, pattern, osint, sarNarrative);
-        return new AmlInvestigationResult(summary, null);
+        return new InvestigationSummary(
+                transaction,
+                new SpecialistOutcome.Completed<>(entityResult),
+                new SpecialistOutcome.Completed<>(patternResult),
+                osintOutcome,
+                sarNarrative);
     }
 }

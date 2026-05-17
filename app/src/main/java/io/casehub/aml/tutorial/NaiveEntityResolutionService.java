@@ -4,7 +4,7 @@ import io.casehub.aml.domain.EntityResolutionResult;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.investigation.EntityResolutionService;
 
-class NaiveEntityResolutionService implements EntityResolutionService {
+public class NaiveEntityResolutionService implements EntityResolutionService {
 
     @Override
     public EntityResolutionResult resolve(SuspiciousTransaction transaction) {

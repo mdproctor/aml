@@ -5,6 +5,7 @@ import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 
@@ -32,12 +33,28 @@ class AmlInvestigationResourceTest {
                 .post("/api/investigations")
         .then()
                 .statusCode(200)
-                .body("summary.transaction.id",   equalTo("TXN-001"))
-                .body("summary.entityResolution", notNullValue())
-                .body("summary.patternAnalysis",  notNullValue())
-                .body("summary.osintScreening",   notNullValue())
-                .body("summary.sarNarrative",     notNullValue())
-                .body("complianceReviewTaskId",   notNullValue());
+                .body("summary.transaction.id",        equalTo("TXN-001"))
+                .body("summary.entityResolution.type",  equalTo("Completed"))
+                .body("summary.patternAnalysis.type",   equalTo("Completed"))
+                .body("summary.osintScreening",         notNullValue())
+                .body("summary.sarNarrative",          notNullValue())
+                .body("complianceReviewTaskId",        notNullValue());
+    }
+
+    @Test
+    void postInvestigation_osintIsDeclined_notAnError() {
+        // Layer 3: OSINT agent DECLINEs (insufficient clearance for PEP database).
+        // The investigation completes — DECLINE is a formal scope boundary, not a failure.
+        given()
+                .contentType(ContentType.JSON)
+                .body(VALID_TX)
+        .when()
+                .post("/api/investigations")
+        .then()
+                .statusCode(200)
+                .body("summary.osintScreening.type",   equalTo("Declined"))
+                .body("summary.osintScreening.reason", containsString("clearance"))
+                .body("complianceReviewTaskId",        notNullValue());
     }
 
     @Test

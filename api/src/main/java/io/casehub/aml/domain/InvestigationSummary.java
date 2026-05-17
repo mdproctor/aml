@@ -2,7 +2,7 @@ package io.casehub.aml.domain;
 
 public record InvestigationSummary(
         SuspiciousTransaction transaction,
-        EntityResolutionResult entityResolution,
-        PatternAnalysisResult patternAnalysis,
-        OsintResult osintScreening,
+        SpecialistOutcome<EntityResolutionResult> entityResolution,
+        SpecialistOutcome<PatternAnalysisResult>  patternAnalysis,
+        SpecialistOutcome<OsintResult>            osintScreening,
         String sarNarrative) {}
