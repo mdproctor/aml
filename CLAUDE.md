@@ -343,6 +343,8 @@ For each test layer, cover: **happy path**, **robustness** (bad input, nulls, bo
 
 Consult `docs/conventions/` in the local parent before writing any test — the platform has resolved many Quarkus testing edge cases that will bite you otherwise.
 
+**Test schema note:** Flyway is currently disabled in `@QuarkusTest` (both datasources use `hibernate-orm.database.generation=drop-and-create`). Blocked by casehubio/qhorus#174 — Flyway's recursive classpath scan of `db/migration` finds V-number conflicts between casehub-work and casehub-qhorus migrations. When #174 is resolved, re-enable Flyway and remove `database.generation` from test config.
+
 ### Code review
 
 - After completing any implementation: invoke `superpowers:requesting-code-review` before committing.
