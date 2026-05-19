@@ -98,7 +98,7 @@ type: java
 
 ## What This Project Is
 
-`casehub-aml` is the **Anti-Money Laundering investigation application** built on the CaseHub platform foundation. It is the primary community tutorial for Java/Quarkus developers — demonstrating all CaseHub capabilities in a domain every Java enterprise developer recognises from their own work in banking infrastructure.
+`casehub-aml` is the **Anti-Money Laundering investigation application** built on the CaseHub platform foundation. It is a field showcase and tutorial for Java developers in financial services — built on the CaseHub agentic harness, not the harness itself. The foundation (engine, ledger, work, qhorus, connectors) is the harness; casehub-aml is the AML domain application on top.
 
 This is an **application layer**, not a framework. The foundation (casehub-engine, casehub-qhorus, casehub-ledger, casehub-work, casehub-connectors) provides coordination, accountability, audit, and compliance primitives. casehub-aml provides the financial crime investigation domain logic on top: what a suspicious transaction is, how an AML investigation proceeds, which specialists handle what, and how a SAR reaches a compliance officer.
 
@@ -355,7 +355,7 @@ Consult `docs/conventions/` in the local parent before writing any test — the 
 Before designing or implementing anything, consult the local parent repo protocols in order:
 
 1. **Platform Coherence Protocol** — `../parent/docs/PLATFORM.md` — capability ownership, boundary rules, consolidation check
-2. **Agentic Harness Protocols** — `../parent/docs/protocols/casehub/HARNESS-INDEX.md` — conventions for building on top of CaseHub
+2. **CaseHub Protocols** — `../parent/docs/protocols/casehub/HARNESS-INDEX.md` — conventions for building on top of CaseHub; workspace-local protocols at `docs/protocols/casehub/HARNESS-INDEX.md`
 3. **Design phase references** — the table in this CLAUDE.md above — concern-specific docs for the current design decision
 4. **Conventions index** — `../parent/docs/conventions/INDEX.md` — check if a relevant convention exists before inventing a pattern
 
