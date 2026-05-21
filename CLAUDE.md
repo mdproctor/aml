@@ -171,19 +171,19 @@ Read these **before designing**, not after. The concern column tells you when ea
 
 | Concern | Read first |
 |---------|-----------|
-| Writing a new Flyway migration | `../parent/docs/conventions/flyway-migration-rules.md` — naming, H2 MODE=PostgreSQL |
-| Assigning a migration version number | `../parent/docs/conventions/flyway-version-range-allocation.md` — V1–V999 domain, V1004+ ledger subclass joins |
-| Adding a named persistence unit or datasource | `../parent/docs/conventions/quarkus-named-datasource-schema-generation.md` |
+| Writing a new Flyway migration | `../parent/docs/protocols/universal/flyway-migration-rules.md` — naming, H2 MODE=PostgreSQL |
+| Assigning a migration version number | `../parent/docs/protocols/casehub/flyway-version-range-allocation.md` — V1–V999 domain, V1004+ ledger subclass joins |
+| Adding a named persistence unit or datasource | *(protocol not yet written — `quarkus-named-datasource-schema-generation`)* |
 | Extending LedgerEntry (adding a tamper-evident subclass) | `casehub-ledger.md` Consumer Pattern section — JOINED inheritance, V1004+ migration |
 
 ### Testing
 
 | Concern | Read first |
 |---------|-----------|
-| Writing a `@QuarkusTest` | `../parent/docs/conventions/quarkus-test-database.md` — H2 MODE=PostgreSQL, datasource config |
-| Naming test classes | `../parent/docs/conventions/quarkus-test-naming-convention.md` — `*Test.java` not `*IT.java` |
-| Testing SPI wiring | `../parent/docs/conventions/spi-testing-alternative-inner-classes.md` |
-| Writing integration tests | `../parent/docs/conventions/quarkus-integration-test-module-separation.md` — dedicated `integration-tests/` module |
+| Writing a `@QuarkusTest` | `../parent/docs/protocols/universal/quarkus-test-database.md` — H2 MODE=PostgreSQL, datasource config |
+| Naming test classes | *(protocol not yet written — `quarkus-test-naming-convention`)* |
+| Testing SPI wiring | *(protocol not yet written — `spi-testing-alternative-inner-classes`)* |
+| Writing integration tests | *(protocol not yet written — `quarkus-integration-test-module-separation`)* |
 
 ---
 
