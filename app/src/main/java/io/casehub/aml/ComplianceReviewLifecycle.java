@@ -33,32 +33,16 @@ public class ComplianceReviewLifecycle {
     public String openReview(SuspiciousTransaction transaction, InvestigationSummary summary) {
         String osintNote = summary.osintScreening() instanceof SpecialistOutcome.Declined<?> d
                 ? " OSINT declined: " + d.reason() + "." : "";
-        WorkItem workItem = creator.apply(new WorkItemCreateRequest(
-                "Compliance review — SAR for transaction " + transaction.id(),
-                summary.sarNarrative() + osintNote,
-                "aml-compliance",
-                null,
-                WorkItemPriority.HIGH,
-                null,
-                "compliance-officers",
-                null,
-                null,
-                "aml-system",
-                null,
-                Instant.now().plus(30, ChronoUnit.DAYS),
-                null,
-                null,
-                null,
-                null,
-                "aml:investigation/" + transaction.id(),
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
-        ));
+        WorkItem workItem = creator.apply(WorkItemCreateRequest.builder()
+                .title("Compliance review — SAR for transaction " + transaction.id())
+                .description(summary.sarNarrative() + osintNote)
+                .category("aml-compliance")
+                .priority(WorkItemPriority.HIGH)
+                .candidateGroups("compliance-officers")
+                .createdBy("aml-system")
+                .claimDeadline(Instant.now().plus(30, ChronoUnit.DAYS))
+                .callerRef("aml:investigation/" + transaction.id())
+                .build());
         return workItem.id.toString();
     }
 }

@@ -54,11 +54,11 @@ class ComplianceReviewLifecycleTest {
 
         WorkItemCreateRequest req = captured.get();
         assertNotNull(req);
-        assertEquals(WorkItemPriority.HIGH, req.priority());
-        assertEquals("compliance-officers", req.candidateGroups());
-        assertTrue(req.callerRef().contains("TXN-CLR"));
+        assertEquals(WorkItemPriority.HIGH, req.priority);
+        assertEquals("compliance-officers", req.candidateGroups);
+        assertTrue(req.callerRef.contains("TXN-CLR"));
 
-        long days = Duration.between(Instant.now(), req.claimDeadline()).toDays();
+        long days = Duration.between(Instant.now(), req.claimDeadline).toDays();
         assertTrue(days >= 29 && days <= 30, "claimDeadline should be ~30 days, was " + days);
     }
 
