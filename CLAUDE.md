@@ -343,7 +343,9 @@ For each test layer, cover: **happy path**, **robustness** (bad input, nulls, bo
 
 Consult `docs/conventions/` in the local parent before writing any test — the platform has resolved many Quarkus testing edge cases that will bite you otherwise.
 
-**Test schema note:** Flyway is currently disabled in `@QuarkusTest` (both datasources use `hibernate-orm.database.generation=drop-and-create`). Blocked by casehubio/qhorus#174 — Flyway's recursive classpath scan of `db/migration` finds V-number conflicts between casehub-work and casehub-qhorus migrations. When #174 is resolved, re-enable Flyway and remove `database.generation` from test config.
+**Test schema note:** Both datasources use Flyway in `@QuarkusTest`. Flyway locations are pinned explicitly in both `application.properties` files (test and main) to prevent future classpath additions from silently adding unexpected migrations:
+- Default datasource: `quarkus.flyway.locations=classpath:db/migration` (casehub-work migrations only)
+- Qhorus datasource: `quarkus.flyway.qhorus.locations=classpath:db/qhorus/migration,classpath:db/ledger/migration` — the qhorus PU manages ledger entities (`casehub.ledger.datasource=qhorus`), so ledger migrations must run on this datasource. This overrides the qhorus extension default (`db/qhorus/migration` only).
 
 ### Code review
 
