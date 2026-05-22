@@ -27,10 +27,21 @@ class NaiveSarDraftingServiceTest {
             new SpecialistOutcome.Completed<>(new EntityResolutionResult("E-1", "A -> B"));
     private final SpecialistOutcome<PatternAnalysisResult> completedPattern =
             new SpecialistOutcome.Completed<>(new PatternAnalysisResult(true, "structuring"));
+    private final SpecialistOutcome<OsintResult> completedOsint =
+            new SpecialistOutcome.Completed<>(new OsintResult(false, false, "clean"));
+
+    private final SpecialistOutcome<EntityResolutionResult> declinedEntity =
+            new SpecialistOutcome.Declined<>("entity-agent", "entity-resolution", "insufficient clearance");
+    private final SpecialistOutcome<EntityResolutionResult> failedEntity =
+            new SpecialistOutcome.Failed<>("entity-agent", "entity-resolution", "timeout");
+    private final SpecialistOutcome<PatternAnalysisResult> declinedPattern =
+            new SpecialistOutcome.Declined<>("pattern-agent", "pattern-analysis", "insufficient data");
+    private final SpecialistOutcome<PatternAnalysisResult> failedPattern =
+            new SpecialistOutcome.Failed<>("pattern-agent", "pattern-analysis", "connection timeout");
 
     @Test
     void draft_withCompletedOsint_includesTransactionId() {
-        SpecialistOutcome<OsintResult> osint = new SpecialistOutcome.Completed<>(new OsintResult(false, false, "clean"));
+        SpecialistOutcome<OsintResult> osint = completedOsint;
         String narrative = service.draft(tx, completedEntity, completedPattern, osint);
         assertNotNull(narrative);
         assertTrue(narrative.contains("TXN-SAR"), "Narrative should reference transaction ID");
@@ -54,5 +65,37 @@ class NaiveSarDraftingServiceTest {
         assertNotNull(narrative);
         assertTrue(narrative.contains("failed") || narrative.contains("manual"),
                 "Narrative should reference the OSINT failure: " + narrative);
+    }
+
+    @Test
+    void draft_withDeclinedEntity_includesDeclineInNarrative() {
+        String narrative = service.draft(tx, declinedEntity, completedPattern, completedOsint);
+        assertNotNull(narrative);
+        assertTrue(narrative.contains("declined") || narrative.contains("clearance"),
+                "Narrative should reference the entity decline: " + narrative);
+    }
+
+    @Test
+    void draft_withFailedEntity_includesFailureInNarrative() {
+        String narrative = service.draft(tx, failedEntity, completedPattern, completedOsint);
+        assertNotNull(narrative);
+        assertTrue(narrative.contains("failed") || narrative.contains("timeout"),
+                "Narrative should reference the entity failure: " + narrative);
+    }
+
+    @Test
+    void draft_withDeclinedPattern_includesDeclineInNarrative() {
+        String narrative = service.draft(tx, completedEntity, declinedPattern, completedOsint);
+        assertNotNull(narrative);
+        assertTrue(narrative.contains("declined") || narrative.contains("data"),
+                "Narrative should reference the pattern decline: " + narrative);
+    }
+
+    @Test
+    void draft_withFailedPattern_includesFailureInNarrative() {
+        String narrative = service.draft(tx, completedEntity, failedPattern, completedOsint);
+        assertNotNull(narrative);
+        assertTrue(narrative.contains("failed") || narrative.contains("timeout"),
+                "Narrative should reference the pattern failure: " + narrative);
     }
 }
