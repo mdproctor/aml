@@ -41,8 +41,7 @@ class NaiveSarDraftingServiceTest {
 
     @Test
     void draft_withCompletedOsint_includesTransactionId() {
-        SpecialistOutcome<OsintResult> osint = completedOsint;
-        String narrative = service.draft(tx, completedEntity, completedPattern, osint);
+        String narrative = service.draft(tx, completedEntity, completedPattern, completedOsint);
         assertNotNull(narrative);
         assertTrue(narrative.contains("TXN-SAR"), "Narrative should reference transaction ID");
     }
