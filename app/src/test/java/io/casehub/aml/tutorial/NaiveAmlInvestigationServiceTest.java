@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NaiveAmlInvestigationServiceTest {
 
@@ -33,7 +34,8 @@ class NaiveAmlInvestigationServiceTest {
         assertNotNull(summary.entityResolution());
         assertNotNull(summary.patternAnalysis());
         assertNotNull(summary.osintScreening());
-        assertNotNull(summary.sarNarrative());
+        assertTrue(summary.sarNarrative().contains("TXN-001"),
+                "Narrative should reference transaction ID: " + summary.sarNarrative());
     }
 
     @Test
