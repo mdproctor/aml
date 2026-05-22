@@ -171,8 +171,8 @@ Read these **before designing**, not after. The concern column tells you when ea
 
 | Concern | Read first |
 |---------|-----------|
-| Writing a new Flyway migration | `../parent/docs/protocols/universal/flyway-migration-rules.md` — naming, H2 MODE=PostgreSQL |
-| Assigning a migration version number | `../parent/docs/protocols/casehub/flyway-version-range-allocation.md` — V1–V999 domain, V1004+ ledger subclass joins |
+| Writing a new Flyway migration | `../garden/docs/protocols/universal/flyway-migration-rules.md` — naming, H2 MODE=PostgreSQL |
+| Assigning a migration version number | `../garden/docs/protocols/casehub/flyway-version-range-allocation.md` — V1–V999 domain, V1004+ ledger subclass joins |
 | Adding a named persistence unit or datasource | *(protocol not yet written — `quarkus-named-datasource-schema-generation`)* |
 | Extending LedgerEntry (adding a tamper-evident subclass) | `casehub-ledger.md` Consumer Pattern section — JOINED inheritance, V1004+ migration |
 
@@ -180,7 +180,7 @@ Read these **before designing**, not after. The concern column tells you when ea
 
 | Concern | Read first |
 |---------|-----------|
-| Writing a `@QuarkusTest` | `../parent/docs/protocols/universal/quarkus-test-database.md` — H2 MODE=PostgreSQL, datasource config |
+| Writing a `@QuarkusTest` | `../garden/docs/protocols/universal/quarkus-test-database.md` — H2 MODE=PostgreSQL, datasource config |
 | Naming test classes | *(protocol not yet written — `quarkus-test-naming-convention`)* |
 | Testing SPI wiring | *(protocol not yet written — `spi-testing-alternative-inner-classes`)* |
 | Writing integration tests | *(protocol not yet written — `quarkus-integration-test-module-separation`)* |
@@ -357,7 +357,7 @@ Consult `docs/conventions/` in the local parent before writing any test — the 
 Before designing or implementing anything, consult the local parent repo protocols in order:
 
 1. **Platform Coherence Protocol** — `../parent/docs/PLATFORM.md` — capability ownership, boundary rules, consolidation check
-2. **CaseHub Protocols** — `../parent/docs/protocols/casehub/HARNESS-INDEX.md` — conventions for building on top of CaseHub; workspace-local protocols at `docs/protocols/casehub/HARNESS-INDEX.md`
+2. **CaseHub Protocols** — `../garden/docs/protocols/casehub/HARNESS-INDEX.md` — conventions for building on top of CaseHub; workspace-local protocols at `docs/protocols/casehub/HARNESS-INDEX.md`
 3. **Design phase references** — the table in this CLAUDE.md above — concern-specific docs for the current design decision
 4. **Conventions index** — `../parent/docs/conventions/INDEX.md` — check if a relevant convention exists before inventing a pattern
 
