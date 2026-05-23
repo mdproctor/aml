@@ -1,0 +1,96 @@
+package io.casehub.aml.ledger;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+import jakarta.inject.Inject;
+
+import org.junit.jupiter.api.Test;
+
+import io.casehub.aml.AmlInvestigationApplicationService;
+import io.casehub.aml.domain.AmlInvestigationResult;
+import io.casehub.aml.domain.SuspiciousTransaction;
+import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.quarkus.test.junit.QuarkusTest;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Layer 4: verifies that AML domain-level ledger entries (CASE_OPENED,
+ * COMPLIANCE_REVIEW_OPENED) are written for each investigation, and that
+ * the HTTP-visible result includes a ledger entry reference for independent verification.
+ *
+ * <p>Note: {@code @TestTransaction} is intentionally omitted. Rolling back after each test
+ * would prevent {@code ledgerRepo.findBySubjectId()} from seeing the entries written during
+ * the investigation (they would be in the rolled-back outer transaction). Tests use unique
+ * transaction IDs to avoid cross-test interference.
+ */
+@QuarkusTest
+class AmlLedgerChainTest {
+
+    @Inject
+    AmlInvestigationApplicationService service;
+
+    @Inject
+    LedgerEntryRepository ledgerRepo;
+
+    @Test
+    void investigate_returnsNonNullLedgerCaseEntryId() {
+        AmlInvestigationResult result = service.investigate(sampleTx("TXN-L4-001"));
+        assertNotNull(result.ledgerCaseEntryId(), "ledgerCaseEntryId must be set");
+    }
+
+    @Test
+    void investigate_returnsCaseId() {
+        AmlInvestigationResult result = service.investigate(sampleTx("TXN-L4-002"));
+        assertNotNull(result.caseId(), "caseId must be set");
+    }
+
+    @Test
+    void investigate_caseOpenedEntryExistsInLedger() {
+        AmlInvestigationResult result = service.investigate(sampleTx("TXN-L4-003"));
+        var entry = ledgerRepo.findEntryById(result.ledgerCaseEntryId());
+        assertTrue(entry.isPresent(), "CASE_OPENED entry must be findable by its UUID");
+        assertEquals(result.caseId(), ((AmlInvestigationLedgerEntry) entry.get()).subjectId,
+                "entry subjectId must equal the case UUID");
+    }
+
+    @Test
+    void investigate_caseOpenedEntry_hasCorrectEventType() {
+        AmlInvestigationResult result = service.investigate(sampleTx("TXN-L4-004"));
+        var entry = ledgerRepo.findEntryById(result.ledgerCaseEntryId())
+                .orElseThrow(() -> new AssertionError("CASE_OPENED entry not found"));
+        assertEquals("CASE_OPENED", ((AmlInvestigationLedgerEntry) entry).eventType);
+    }
+
+    @Test
+    void investigate_atLeastTwoAmlEntriesExistPerCase() {
+        UUID caseId = service.investigate(sampleTx("TXN-L4-005")).caseId();
+        List<LedgerEntry> entries = ledgerRepo.findBySubjectId(caseId);
+        assertTrue(entries.size() >= 2,
+                "Expected at least CASE_OPENED and COMPLIANCE_REVIEW_OPENED, got " + entries.size());
+    }
+
+    @Test
+    void investigate_complianceReviewEntry_hasCorrectEventType() {
+        UUID caseId = service.investigate(sampleTx("TXN-L4-006")).caseId();
+        List<LedgerEntry> entries = ledgerRepo.findBySubjectId(caseId);
+        boolean hasReviewEntry = entries.stream()
+                .filter(e -> e instanceof AmlInvestigationLedgerEntry)
+                .map(e -> (AmlInvestigationLedgerEntry) e)
+                .anyMatch(e -> "COMPLIANCE_REVIEW_OPENED".equals(e.eventType));
+        assertTrue(hasReviewEntry, "COMPLIANCE_REVIEW_OPENED entry must be written after review is opened");
+    }
+
+    private SuspiciousTransaction sampleTx(final String id) {
+        return new SuspiciousTransaction(
+                id, "ACC-A", "ACC-B",
+                new BigDecimal("75000"), "USD",
+                Instant.now(), "Structuring");
+    }
+}

@@ -174,7 +174,7 @@ Read these **before designing**, not after. The concern column tells you when ea
 | Writing a new Flyway migration | `../garden/docs/protocols/universal/flyway-migration-rules.md` — naming, H2 MODE=PostgreSQL |
 | Assigning a migration version number | `../garden/docs/protocols/casehub/flyway-version-range-allocation.md` — V1–V999 domain, V1004+ ledger subclass joins |
 | Adding a named persistence unit or datasource | *(protocol not yet written — `quarkus-named-datasource-schema-generation`)* |
-| Extending LedgerEntry (adding a tamper-evident subclass) | `casehub-ledger.md` Consumer Pattern section — JOINED inheritance, V1004+ migration |
+| Extending LedgerEntry (adding a tamper-evident subclass) | `casehub-ledger.md` Consumer Pattern section — JOINED inheritance, V2001+ migration (V2000 = qhorus join table; consumer joins start V2001) |
 
 ### Testing
 

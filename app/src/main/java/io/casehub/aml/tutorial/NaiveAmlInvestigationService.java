@@ -21,7 +21,8 @@ public class NaiveAmlInvestigationService implements AmlInvestigator {
     private final NaiveSarDraftingService      sarDraftingService      = new NaiveSarDraftingService();
 
     @Override
-    public InvestigationSummary investigate(SuspiciousTransaction transaction) {
+    public InvestigationSummary investigate(SuspiciousTransaction transaction, java.util.UUID caseId) {
+        // LAYER 4 GAP: caseId is not used here — Layer 1 has no tamper-evident audit trail.
         // LAYER 1 GAP: no attribution — who resolved this entity graph?
         // No record of which agent made this decision or when.
         EntityResolutionResult entityResult = entityResolutionService.resolve(transaction);

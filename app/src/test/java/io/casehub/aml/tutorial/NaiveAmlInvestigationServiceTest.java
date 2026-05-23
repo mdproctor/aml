@@ -19,16 +19,16 @@ class NaiveAmlInvestigationServiceTest {
 
     private final NaiveAmlInvestigationService service = new NaiveAmlInvestigationService();
 
-    private SuspiciousTransaction tx(String id) {
+    private SuspiciousTransaction tx(final String id) {
         return new SuspiciousTransaction(
                 id, "ACC-A", "ACC-B",
-                new BigDecimal("100000"), "USD",
-                Instant.parse("2024-03-15T10:00:00Z"), "Structuring");
+                new java.math.BigDecimal("100000"), "USD",
+                java.time.Instant.parse("2024-03-15T10:00:00Z"), "Structuring");
     }
 
     @Test
     void investigate_validTransaction_returnsCompleteSummary() {
-        InvestigationSummary summary = service.investigate(tx("TXN-001"));
+        InvestigationSummary summary = service.investigate(tx("TXN-001"), null);
 
         assertNotNull(summary);
         assertNotNull(summary.entityResolution());
@@ -40,7 +40,7 @@ class NaiveAmlInvestigationServiceTest {
 
     @Test
     void investigate_allOutcomesAreCompleted() {
-        InvestigationSummary summary = service.investigate(tx("TXN-002"));
+        InvestigationSummary summary = service.investigate(tx("TXN-002"), null);
 
         assertInstanceOf(SpecialistOutcome.Completed.class, summary.entityResolution());
         assertInstanceOf(SpecialistOutcome.Completed.class, summary.patternAnalysis());
@@ -50,13 +50,13 @@ class NaiveAmlInvestigationServiceTest {
     @Test
     void investigate_preservesTransactionIdentity() {
         SuspiciousTransaction input = tx("TXN-003");
-        assertSame(input, service.investigate(input).transaction());
+        assertSame(input, service.investigate(input, null).transaction());
     }
 
     @Test
     void investigate_calledTwice_producesIndependentResults() {
-        InvestigationSummary first  = service.investigate(tx("TXN-004"));
-        InvestigationSummary second = service.investigate(tx("TXN-005"));
+        InvestigationSummary first  = service.investigate(tx("TXN-004"), null);
+        InvestigationSummary second = service.investigate(tx("TXN-005"), null);
 
         assertNotNull(first);
         assertNotNull(second);
