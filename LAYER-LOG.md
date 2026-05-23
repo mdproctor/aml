@@ -326,3 +326,50 @@ and produced confusing 409 responses. Changed to `RuntimeException`.
 9. Exclude `LedgerVerificationService`, `LedgerComplianceReportService`, `LedgerRetentionJob` from test CDI context (add to `quarkus.arc.exclude-types` in test `application.properties`)
 10. Add `@Typed({AgentDispatchMechanism.class, YourPushDispatch.class})` to any `AgentChannelBackend` implementation to prevent CDI ambiguity with `QhorusChannelBackend`
 11. Test: assert `summary.osintScreening.type` equals `"Declined"` in `@QuarkusTest`; assert `"type": "Completed"` for other specialists
+
+---
+
+## Layer 4 — + casehub-ledger (FinCEN audit trail with AML domain entries)
+
+**Issue:** casehubio/aml#30  
+**Spec:** `docs/specs/2026-05-22-message-dispatch-builder-design.md` (qhorus side)  
+**Branch closed:** 2026-05-23
+
+### What changed
+
+**New entities and services:**
+- `app/src/main/java/io/casehub/aml/ledger/AmlInvestigationLedgerEntry.java` — JPA entity, JOINED inheritance from `LedgerEntry`, `@DiscriminatorValue("AML_INVESTIGATION")`. Fields: `transactionId` (context reference), `eventType` (CASE_OPENED | COMPLIANCE_REVIEW_OPENED)
+- `app/src/main/java/io/casehub/aml/ledger/AmlLedgerService.java` — writes CASE_OPENED and COMPLIANCE_REVIEW_OPENED entries. Populates all 8 required base fields. Both entries carry `subjectId = caseId`.
+- `app/src/main/resources/db/aml-ledger/migration/V2001__aml_investigation_ledger_entry.sql` — Flyway V2001, `aml_investigation_ledger_entry` join table.
+
+**Interface change:**
+- `AmlInvestigator.investigate(SuspiciousTransaction, UUID caseId)` — `caseId` added as second param. All implementations updated. `NaiveAmlInvestigationService` receives and ignores it (Layer 1 gap comment added).
+
+**Result change:**
+- `AmlInvestigationResult` gains two new fields: `caseId` (UUID of the investigation case) and `ledgerCaseEntryId` (UUID of the CASE_OPENED entry). Backward-compat 2-arg constructor retained for Layer 1/2.
+
+**qhorus migration:**
+- `QhorusAmlInvestigator` migrated from `messageService.send()` to `messageService.dispatch(MessageDispatch.builder()...)` per qhorus#184. Each dispatch carries `subjectId=caseId` (links qhorus MessageLedgerEntry to the AML domain chain) and `inReplyTo=commandResult.messageId()` (correct protocol, was missing before).
+- `PushAgentDispatch` migrated to `dispatch()`. Resolves `inReplyTo` via correlationId lookup. Cannot propagate `subjectId` until qhorus#190 (OutboundMessage missing field).
+
+**configuration:**
+- Both `application.properties` files: `io.casehub.aml.ledger` added to `quarkus.hibernate-orm.qhorus.packages`; `classpath:db/aml-ledger/migration` added to `quarkus.flyway.qhorus.locations`
+- `casehub-platform` added as test dependency for `MockPreferenceProvider` CDI bean (required since work#218)
+
+### Gotchas
+
+- **Symptom:** `@TestTransaction` in `AmlLedgerChainTest` causes "Unable to acquire JDBC Connection" errors. **Cause:** The outer test transaction prevents a second connection being acquired from the pool (H2 in-memory has limited pool). `LedgerWriteService.record()` uses `@Transactional(REQUIRED)` — the issue is that `@TestTransaction` wraps everything and subsequent ledger queries don't see the entries (rolled back). **Fix:** Remove `@TestTransaction`. Use unique transaction IDs per test for isolation.
+
+- **Symptom:** `UnsatisfiedResolutionException: Unsatisfied dependency for type PreferenceProvider`. **Cause:** Updated qhorus/work snapshot requires `casehub-platform` CDI beans (specifically `MockPreferenceProvider`) to be indexed. **Fix:** Add `casehub-platform` as test dependency + `quarkus.index-dependency.casehub-platform.*` to test `application.properties`.
+
+- **Symptom:** qhorus tests pass but `MESSAGE_LEDGER_ENTRY` table not found in AML tests. **Cause:** qhorus tests use `hibernate-orm.database.generation=drop-and-create` (bypasses Flyway); AML tests use `generation=none` (Flyway only). The V2000 migration in the installed qhorus jar was stale. **Fix:** `mvn install` qhorus from source to pick up the correct migration.
+
+### Pattern to replicate (in another domain)
+
+1. Generate a `UUID caseId` in the coordinator at investigation start
+2. Create a `XxxLedgerEntry extends LedgerEntry` entity in `app/src/main/java/.../ledger/` — set `@DiscriminatorValue`, `@Table(name = "xxx_ledger_entry")`
+3. Create a `XxxLedgerService` with `write*()` methods — populate all 8 base fields (id, subjectId, sequenceNumber, entryType=EVENT, actorId, actorType, actorRole, occurredAt) + your domain fields
+4. Add Flyway migration `V2001__xxx_ledger_entry.sql` in `db/xxx-ledger/migration/` (V2001 = first consumer join; V2000 = qhorus join)
+5. Update `application.properties` (both main and test): add the package to `quarkus.hibernate-orm.qhorus.packages`; add the migration path to `quarkus.flyway.qhorus.locations`
+6. Pass `caseId` through all `messageService.dispatch()` calls as `subjectId`
+7. Tests: no `@TestTransaction` when the tested code uses `@Transactional(REQUIRED)` for the ledger write
