@@ -1,5 +1,8 @@
 package io.casehub.aml;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
@@ -8,6 +11,7 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 class AmlInvestigationResourceTest {
@@ -26,7 +30,7 @@ class AmlInvestigationResourceTest {
 
     @Test
     void postInvestigation_validTransaction_returns200WithSummaryAndWorkItem() {
-        given()
+        String taskId = given()
                 .contentType(ContentType.JSON)
                 .body(VALID_TX)
         .when()
@@ -38,7 +42,23 @@ class AmlInvestigationResourceTest {
                 .body("summary.patternAnalysis.type",   equalTo("Completed"))
                 .body("summary.osintScreening",         notNullValue())
                 .body("summary.sarNarrative",          notNullValue())
-                .body("complianceReviewTaskId",        notNullValue());
+                .body("complianceReviewTaskId",        notNullValue())
+        .extract().path("complianceReviewTaskId");
+
+        Instant claimDeadline = Instant.parse(
+                given()
+                .when()
+                        .get("/workitems/" + taskId)
+                .then()
+                        .statusCode(200)
+                        .body("candidateGroups", equalTo("compliance-officers"))
+                        .body("claimDeadline", notNullValue())
+                .extract().path("claimDeadline"));
+
+        Instant now = Instant.now();
+        assertTrue(claimDeadline.isAfter(now), "claimDeadline must be in the future");
+        assertTrue(claimDeadline.isBefore(now.plus(31, ChronoUnit.DAYS)),
+                "claimDeadline must be within the 30-day FinCEN SLA window");
     }
 
     @Test
