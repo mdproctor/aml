@@ -44,7 +44,7 @@ class AmlInvestigationCoordinatorTest {
             investigatorCalled.set(true);
             return new InvestigationSummary(
                     transaction,
-                    new SpecialistOutcome.Completed<>(new EntityResolutionResult("E-1", "chain")),
+                    new SpecialistOutcome.Completed<>(new EntityResolutionResult("E-1", "chain", "CORPORATE", 0.35)),
                     new SpecialistOutcome.Completed<>(new PatternAnalysisResult(false, "none")),
                     new SpecialistOutcome.Completed<>(new OsintResult(false, false, "clean")),
                     "narrative");
@@ -73,7 +73,7 @@ class AmlInvestigationCoordinatorTest {
 
         AmlInvestigator investigator = (transaction, caseId) -> new InvestigationSummary(
                 transaction,
-                new SpecialistOutcome.Completed<>(new EntityResolutionResult("E-1", "chain")),
+                new SpecialistOutcome.Completed<>(new EntityResolutionResult("E-1", "chain", "CORPORATE", 0.35)),
                 new SpecialistOutcome.Completed<>(new PatternAnalysisResult(false, "none")),
                 new SpecialistOutcome.Completed<>(new OsintResult(false, false, "clean")),
                 "narrative");

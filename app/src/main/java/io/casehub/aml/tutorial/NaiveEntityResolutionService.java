@@ -8,6 +8,6 @@ public class NaiveEntityResolutionService implements EntityResolutionService {
 
     @Override
     public EntityResolutionResult resolve(SuspiciousTransaction transaction) {
-        return new EntityResolutionResult("", "");
+        return new EntityResolutionResult("entity-stub", "direct-owner", "CORPORATE", 0.35);
     }
 }

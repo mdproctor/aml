@@ -75,6 +75,48 @@
     </dependency>
 
     <!-- ================================================================ -->
+    <!-- Layer 5: adaptive investigation path (casehub-engine)            -->
+    <!-- ================================================================ -->
+    <!-- Versions explicit until parent#65 adds these to BOM dependencyManagement -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-engine</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-engine-scheduler-quartz</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
+
+    <!-- JQEvaluator required by engine CDI beans (GE-20260523-86ed13) -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-platform-expression</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
+
+    <!-- MockPreferenceProvider @DefaultBean required at production augmentation time.
+         Must be runtime (not test) scope because quarkus:build validates CDI without
+         the test classpath. Scope rule: PLATFORM.md §casehub-platform-api. -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-platform</artifactId>
+      <version>${casehub.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- In-memory engine persistence SPIs (CaseInstanceRepository, EventLogRepository,
+         CaseMetaModelRepository) — activated at compile scope so the in-memory impls
+         are available at augmentation time without requiring PostgreSQL. -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-engine-persistence-memory</artifactId>
+      <version>${casehub.version}</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- ================================================================ -->
     <!-- Test                                                              -->
     <!-- ================================================================ -->
     <dependency>
@@ -94,8 +136,13 @@
     </dependency>
     <dependency>
       <groupId>io.casehub</groupId>
-      <artifactId>casehub-platform</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <artifactId>casehub-engine-testing</artifactId>
+      <version>${casehub.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
       <scope>test</scope>
     </dependency>
 

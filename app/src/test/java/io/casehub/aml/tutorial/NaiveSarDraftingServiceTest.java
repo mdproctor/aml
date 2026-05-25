@@ -24,7 +24,7 @@ class NaiveSarDraftingServiceTest {
             Instant.parse("2024-01-01T00:00:00Z"), "Test");
 
     private final SpecialistOutcome<EntityResolutionResult> completedEntity =
-            new SpecialistOutcome.Completed<>(new EntityResolutionResult("E-1", "A -> B"));
+            new SpecialistOutcome.Completed<>(new EntityResolutionResult("E-1", "A -> B", "CORPORATE", 0.35));
     private final SpecialistOutcome<PatternAnalysisResult> completedPattern =
             new SpecialistOutcome.Completed<>(new PatternAnalysisResult(true, "structuring"));
     private final SpecialistOutcome<OsintResult> completedOsint =
@@ -34,6 +34,7 @@ class NaiveSarDraftingServiceTest {
             new SpecialistOutcome.Declined<>("entity-agent", "entity-resolution", "insufficient clearance");
     private final SpecialistOutcome<EntityResolutionResult> failedEntity =
             new SpecialistOutcome.Failed<>("entity-agent", "entity-resolution", "timeout");
+
     private final SpecialistOutcome<PatternAnalysisResult> declinedPattern =
             new SpecialistOutcome.Declined<>("pattern-agent", "pattern-analysis", "insufficient data");
     private final SpecialistOutcome<PatternAnalysisResult> failedPattern =

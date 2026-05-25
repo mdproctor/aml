@@ -1,0 +1,69 @@
+package io.casehub.aml.engine;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+import java.util.Set;
+
+import io.casehub.api.model.evaluator.JQExpressionEvaluator;
+
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.Test;
+
+@QuarkusTest
+class AmlInvestigationCaseHubTest {
+
+    @Inject
+    AmlInvestigationCaseHub caseHub;
+
+    @Test
+    void definitionLoads() {
+        final var def = caseHub.getDefinition();
+        assertNotNull(def);
+        assertEquals("casehub-aml", def.getNamespace());
+        assertEquals("aml-investigation", def.getName());
+    }
+
+    @Test
+    void hasFiveCapabilities() {
+        final var names = caseHub.getDefinition().getCapabilities()
+                .stream().map(c -> c.getName()).toList();
+        assertEquals(5, names.size());
+        assertTrue(names.containsAll(List.of(
+                "entity-resolution", "pattern-analysis", "osint-screening",
+                "senior-analyst-review", "sar-drafting")));
+    }
+
+    @Test
+    void hasFiveBindings() {
+        final var names = caseHub.getDefinition().getBindings()
+                .stream().map(b -> b.getName()).toList();
+        assertEquals(5, names.size());
+        assertTrue(names.containsAll(List.of(
+                "entity-resolution", "pattern-analysis", "osint-screening",
+                "senior-analyst-required", "sar-drafting")));
+    }
+
+    @Test
+    void hasInvestigationCompleteGoal() {
+        final var goals = caseHub.getDefinition().getGoals();
+        assertEquals(1, goals.size());
+        assertEquals("investigation-complete", goals.get(0).getName());
+        assertTrue(goals.get(0).getCondition() instanceof JQExpressionEvaluator jq
+                        && jq.expression().contains("complianceTaskId"),
+                "Goal condition should check complianceTaskId");
+    }
+
+    @Test
+    void hasFiveWorkers() {
+        final var workers = caseHub.getDefinition().getWorkers();
+        assertEquals(5, workers.size(), "Exactly 5 workers expected — size catches double-augmentation");
+        final var names = Set.copyOf(workers.stream().map(w -> w.getName()).toList());
+        assertEquals(Set.of(
+                "entity-resolution-agent", "pattern-analysis-agent", "osint-screening-agent",
+                "senior-analyst-agent", "sar-drafting-agent"), names);
+    }
+}

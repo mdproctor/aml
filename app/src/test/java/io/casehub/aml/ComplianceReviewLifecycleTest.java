@@ -31,7 +31,7 @@ class ComplianceReviewLifecycleTest {
 
     private final InvestigationSummary summary = new InvestigationSummary(
             tx,
-            new SpecialistOutcome.Completed<>(new EntityResolutionResult("E-1", "chain")),
+            new SpecialistOutcome.Completed<>(new EntityResolutionResult("E-1", "chain", "CORPORATE", 0.35)),
             new SpecialistOutcome.Completed<>(new PatternAnalysisResult(true, "structuring")),
             new SpecialistOutcome.Declined<>("agent", "osint-screening", "clearance"),
             "narrative");

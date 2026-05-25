@@ -1,0 +1,90 @@
+dsl: "0.1"
+version: "1.0.0"
+name: aml-investigation
+namespace: casehub-aml
+title: AML Investigation — adaptive specialist coordination
+
+spec:
+
+  ## ─── Capabilities ───────────────────────────────────────────────────────────
+  capabilities:
+    - name: entity-resolution
+      description: "Resolve beneficial ownership chain from flagged transaction"
+      inputSchema: "{ transaction: .transaction }"
+      outputSchema: "{ entityResolution: . }"
+
+    - name: pattern-analysis
+      description: "Detect layering, structuring, smurfing patterns"
+      inputSchema: "{ transaction: .transaction, entityGraph: .entityResolution.ownershipChain }"
+      outputSchema: "{ patternAnalysis: . }"
+
+    - name: osint-screening
+      description: "Sanctions lists, PEP databases, adverse media screening"
+      inputSchema: "{ transaction: .transaction }"
+      outputSchema: "{ osintScreening: . }"
+
+    - name: senior-analyst-review
+      description: "Senior analyst investigation for PEP entities and high-risk cases"
+      inputSchema: "{ transaction: .transaction, entityResolution: .entityResolution }"
+      outputSchema: "{ seniorAnalystReview: . }"
+
+    - name: sar-drafting
+      description: "Synthesise specialist findings into SAR narrative and open compliance review"
+      inputSchema: "{ transaction: .transaction, entityResolution: .entityResolution, patternAnalysis: .patternAnalysis, osintScreening: .osintScreening }"
+      outputSchema: "{ sarNarrative: .sarNarrative, complianceTaskId: .complianceTaskId }"
+
+  ## ─── Goals ──────────────────────────────────────────────────────────────────
+  goals:
+    - name: investigation-complete
+      kind: success
+      condition: ".complianceTaskId != null"
+
+  ## ─── Completion ─────────────────────────────────────────────────────────────
+  completion:
+    success:
+      allOf:
+        - investigation-complete
+
+  ## ─── Bindings ────────────────────────────────────────────────────────────────
+  bindings:
+
+    ## Fires first — entity resolution has no prior-context prerequisite
+    - name: entity-resolution
+      on: { contextChange: {} }
+      when: ".transaction != null and .entityResolution == null"
+      capability: entity-resolution
+
+    ## Fires after entity resolution; runs in parallel with osint-screening
+    - name: pattern-analysis
+      on: { contextChange: {} }
+      when: ".entityResolution != null and .patternAnalysis == null"
+      capability: pattern-analysis
+
+    ## Fires after entity resolution; runs in parallel with pattern-analysis
+    ## OSINT always declines in Layer 5 stubs — osintScreening.declined=true is
+    ## written as a completed result so sar-drafting condition is satisfied
+    - name: osint-screening
+      on: { contextChange: {} }
+      when: ".entityResolution != null and .osintScreening == null"
+      capability: osint-screening
+
+    ## Adaptive path — fires only when entity is PEP or risk score exceeds threshold.
+    ## Runs in parallel with pattern-analysis and osint-screening on PEP transactions.
+    - name: senior-analyst-required
+      on: { contextChange: {} }
+      when: >-
+        .entityResolution != null and
+        (.entityResolution.entityType == "PEP" or .entityResolution.riskScore > 0.8) and
+        .seniorAnalystReview == null
+      capability: senior-analyst-review
+
+    ## Fires once all specialist findings are present (entity + pattern + osint).
+    ## The SAR-drafting worker creates the compliance WorkItem and writes complianceTaskId.
+    - name: sar-drafting
+      on: { contextChange: {} }
+      when: >-
+        .entityResolution != null and
+        .patternAnalysis != null and
+        .osintScreening != null and
+        .sarNarrative == null
+      capability: sar-drafting
