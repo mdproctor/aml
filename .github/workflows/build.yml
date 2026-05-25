@@ -6,6 +6,8 @@ on:
   pull_request:
     types: [ opened, synchronize, reopened, closed ]
     branches: [ main ]
+  repository_dispatch:
+    types: [ upstream-published ]
   workflow_dispatch:
 
 jobs:
