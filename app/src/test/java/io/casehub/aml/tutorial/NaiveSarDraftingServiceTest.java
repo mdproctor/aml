@@ -40,6 +40,11 @@ class NaiveSarDraftingServiceTest {
     private final SpecialistOutcome<PatternAnalysisResult> failedPattern =
             new SpecialistOutcome.Failed<>("pattern-agent", "pattern-analysis", "connection timeout");
 
+    private final SpecialistOutcome<OsintResult> declinedOsint =
+            new SpecialistOutcome.Declined<>("osint-agent", "osint-screening", "insufficient clearance for PEP database access");
+    private final SpecialistOutcome<OsintResult> failedOsint =
+            new SpecialistOutcome.Failed<>("osint-agent", "osint-screening", "connection timeout");
+
     @Test
     void draft_withCompletedOsint_includesTransactionId() {
         String narrative = service.draft(tx, completedEntity, completedPattern, completedOsint);
@@ -49,9 +54,7 @@ class NaiveSarDraftingServiceTest {
 
     @Test
     void draft_withDeclinedOsint_includesDeclineInNarrative() {
-        SpecialistOutcome<OsintResult> osint = new SpecialistOutcome.Declined<>(
-                "osint-agent", "osint-screening", "insufficient clearance for PEP database access");
-        String narrative = service.draft(tx, completedEntity, completedPattern, osint);
+        String narrative = service.draft(tx, completedEntity, completedPattern, declinedOsint);
         assertNotNull(narrative);
         assertTrue(narrative.contains("declined") || narrative.contains("clearance"),
                 "Narrative should reference the OSINT decline: " + narrative);
@@ -59,9 +62,7 @@ class NaiveSarDraftingServiceTest {
 
     @Test
     void draft_withFailedOsint_includesFailureInNarrative() {
-        SpecialistOutcome<OsintResult> osint = new SpecialistOutcome.Failed<>(
-                "osint-agent", "osint-screening", "connection timeout");
-        String narrative = service.draft(tx, completedEntity, completedPattern, osint);
+        String narrative = service.draft(tx, completedEntity, completedPattern, failedOsint);
         assertNotNull(narrative);
         assertTrue(narrative.contains("failed") || narrative.contains("manual"),
                 "Narrative should reference the OSINT failure: " + narrative);
