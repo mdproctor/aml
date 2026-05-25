@@ -373,3 +373,98 @@ and produced confusing 409 responses. Changed to `RuntimeException`.
 5. Update `application.properties` (both main and test): add the package to `quarkus.hibernate-orm.qhorus.packages`; add the migration path to `quarkus.flyway.qhorus.locations`
 6. Pass `caseId` through all `messageService.dispatch()` calls as `subjectId`
 7. Tests: no `@TestTransaction` when the tested code uses `@Transactional(REQUIRED)` for the ledger write
+
+---
+
+## Layer 5 — + casehub-engine (adaptive investigation paths)
+
+**Issue:** casehubio/aml#31
+**Spec:** `docs/specs/2026-05-24-layer5-engine-design.md`
+**Completed:** 2026-05-25
+
+### What changed
+
+**New package `io.casehub.aml.engine`:**
+- `AmlInvestigationCaseHub extends YamlCaseHub` — loads `aml/aml-investigation.yaml`, augments with 5 in-process worker functions via double-checked locking over `getDefinition()`. Workers are lambdas that capture CDI proxies (`ComplianceReviewLifecycle`, `ObjectMapper`) and delegate to existing stub behaviours.
+- `AmlEngineCoordinator` — starts the engine case, writes `CASE_OPENED` ledger entry using the engine-returned case UUID (both identifiers are now the same), returns the UUID.
+- `AmlLayer5Resource` — `POST /api/layer5/investigations` returning `Layer5InvestigationResponse { UUID caseId, String status }`.
+- `Layer5InvestigationResponse` — response record.
+
+**YAML case definition `app/src/main/resources/aml/aml-investigation.yaml`:**
+5 capabilities, 5 `contextChange` bindings:
+- `entity-resolution` — fires first (no prior context required)
+- `pattern-analysis` — fires after entity (parallel with OSINT)
+- `osint-screening` — fires after entity (parallel with pattern)
+- `senior-analyst-required` — fires only when `entityType == "PEP"` or `riskScore > 0.8`
+- `sar-drafting` — fires when entity + pattern + osint are all non-null; calls `ComplianceReviewLifecycle.openReview()` internally
+
+1 goal: `investigation-complete` when `.complianceTaskId != null`.
+
+**Domain model change:**
+- `EntityResolutionResult` gains `entityType` (String) and `riskScore` (double). All callers updated in the same PR. The entity-resolution worker uses `flagReason.contains("PEP")` heuristic to set these fields for tutorial purposes.
+
+**Dependencies added to `app/pom.xml`:**
+- `casehub-engine`, `casehub-engine-scheduler-quartz`, `casehub-platform-expression`, `casehub-engine-persistence-memory` (compile), `casehub-engine-testing` (test), `awaitility` (test)
+- `casehub-platform` scope changed from `test` to `runtime` — required for production augmentation (`MockPreferenceProvider @DefaultBean` must be visible to the `quarkus:build` goal)
+- Versions explicit until parent#65 adds these to BOM dependencyManagement
+
+### What it shows
+
+Layer 4 had a fixed sequential pipeline hardcoded in Java. Layer 5 replaces it entirely with engine binding evaluation. The engine evaluates ALL matching binding conditions simultaneously on every context update:
+- **PEP routing** — `senior-analyst-required` fires automatically when the entity-resolution output contains `entityType == "PEP"`. No conditional code in the coordinator.
+- **Parallel execution** — `pattern-analysis` and `osint-screening` both have identical preconditions (entity non-null, own result null); the engine fires both simultaneously on the same context change.
+- **DECLINE as a first-class outcome** — OSINT always declines, writes `{declined: true, ...}` to context (satisfies the `osintScreening != null` condition), and sar-drafting proceeds without modification.
+
+### The gap comments addressed
+
+```java
+// LAYER 1 GAP: no deadline tracking — OSINT runs sequentially after pattern
+// analysis. No FinCEN 30-day SLA. No parallel execution. No formal obligation.
+// → LAYER 5: engine fires pattern-analysis and osint-screening in parallel;
+//             sar-drafting binding waits for both before proceeding
+```
+
+### Key wiring
+
+**Worker functions are lambdas in `AmlInvestigationCaseHub`.** Workers are added to the case definition programmatically in `augment()`, which is called once inside a `synchronized(this)` block. The YAML `workers:` section is empty — YAML supplies bindings and capabilities; Java supplies the worker functions. `cap()` helper creates `Capability` objects with passthrough schemas (`.`) because name-matching is all that's needed for binding dispatch; the actual schemas are on the YAML capabilities.
+
+**Engine case UUID is the shared stable identifier.** `AmlEngineCoordinator` starts the case first, receives the engine-generated UUID, then writes the `CASE_OPENED` ledger entry using that UUID. This ensures the engine event log, AML ledger entries, and compliance officer WorkItem all share one identifier.
+
+**GE-20260523-4ca5e7 — Quartz/casehub-work cron format clash.** `casehub-engine-scheduler-quartz` pulls in `quarkus-quartz`. `casehub-work` ships `@Scheduled` beans with 5-field Unix cron; Quartz requires 6-field. Fix in test `application.properties`: `quarkus.scheduler.start-mode=forced`, `quarkus.quartz.store-type=ram`, and `quarkus.arc.exclude-types` for the four casehub-work scheduler beans.
+
+**GE-20260523-86ed13 — engine requires casehub-platform and casehub-platform-expression.** Without `casehub-platform-expression` on the classpath, `JQEvaluator` CDI injection fails and engine beans don't start. Added as compile dep.
+
+**GE-20260428-9311f8 — JpaWorkloadProvider conflicts with engine's internal WorkloadProvider.** In tests: exclude `JpaWorkloadProvider`. In production: exclude `CasehubWorkloadProvider`. Both in `quarkus.arc.exclude-types`.
+
+**Event log metadata key for assertion.** `WORKER_SCHEDULED` events carry `workerName` in metadata. `WORKER_EXECUTION_COMPLETED` events carry `inputDataHash` and `contextChanges` — NOT `workerName`. Integration tests poll `WORKER_SCHEDULED` events, not `WORKER_EXECUTION_COMPLETED`, to detect which workers fired.
+
+### Gotchas
+
+- **Symptom:** `(RECIPIENT_FAILURE,8191) CaseDefinition not found for case: <uuid>` — `SchedulerService.registerScheduledTriggers()` calls `getCaseDefinition()` which returns null.
+  **Cause:** `engine-testing` jar not indexed — `TestCaseMetaModelRepository @Priority(1)` not discovered. Without it, `InMemoryCaseMetaModelRepository @Alternative @ApplicationScoped` (no priority) is the only option. In the test run before retry, registration completes, but between retry attempts Quarkus restarts and a timing issue causes the failure on retry.
+  **Fix:** Add `quarkus.index-dependency.engine-testing.*` to test `application.properties`. This activates `TestCaseMetaModelRepository @Priority(1)`, `TestCaseInstanceRepository @Priority(1)`, and `TestEventLogRepository @Priority(1)`.
+
+- **Symptom:** Awaitility condition never fires even though workers complete in < 1 second (visible in debug logs).
+  **Cause:** `WORKER_EXECUTION_COMPLETED` events don't have `workerName` in metadata — only `inputDataHash` and `contextChanges`. Query filter for `workerName` always returns empty set.
+  **Fix:** Poll `WORKER_SCHEDULED` events instead. These always carry `workerName`. A worker being scheduled proves its binding condition was satisfied (all prerequisite workers completed and wrote to context).
+
+- **Symptom:** `casehub-engine` artifacts missing from parent BOM `dependencyManagement`, causing Maven error `'dependencies.dependency.version' is missing`.
+  **Fix:** Use explicit `${casehub.version}` in `app/pom.xml` until parent#65 is resolved.
+
+### Pattern to replicate (in another domain)
+
+1. Create `resources/domain/xxx-case.yaml` — define capabilities, bindings (all `contextChange` + JQ `when:` conditions), goals, completion
+2. Create `XxxCaseHub extends YamlCaseHub` in a new `engine/` package:
+   - `@ApplicationScoped`, `volatile CaseDefinition augmentedDefinition`, double-checked locking
+   - Inject CDI beans needed by worker lambdas
+   - `augment()` — called once inside `synchronized(this)`; calls `yaml.getWorkers().addAll(workers)`
+   - Each worker: `Worker.builder().name(...).capabilities(List.of(cap(name))).function(input -> {...}).build()`
+3. Create `XxxEngineCoordinator`:
+   - Call `caseHub.startCase(initialContext).toCompletableFuture().get(5, SECONDS)` first
+   - Write ledger `CASE_OPENED` entry with the engine-returned UUID
+   - Return the UUID
+4. Add `engine-testing` index-dependency in test `application.properties`
+5. Add GE-20260523-4ca5e7 fix (Quartz/cron exclusions) to test `application.properties`
+6. Change `casehub-platform` from `test` to `runtime` scope in `app/pom.xml`
+7. Integration tests: poll `WORKER_SCHEDULED` events (not `WORKER_EXECUTION_COMPLETED`) — `WORKER_SCHEDULED` metadata carries `workerName`
+8. Assert adaptive paths: for each decision point, start a case with context that triggers the branch, Awaitility-poll for the expected worker to be scheduled
