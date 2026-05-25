@@ -120,7 +120,7 @@ WorkItem workItem = workItemService.create(new WorkItemCreateRequest(
 quarkus.hibernate-orm.packages=io.casehub.work.runtime.model,io.casehub.work.runtime.filter
 ```
 
-**`WorkItemCreateRequest` is a 19-field positional record.** No builder yet (tracked in casehubio/work#168). Pass `null` for unused fields. The key fields: `title`, `category`, `candidateGroups`, `claimDeadline`, `callerRef`.
+**`WorkItemCreateRequest` uses a fluent builder** (casehubio/work#168 shipped). Set only the fields you need: `title`, `category`, `candidateGroups`, `claimDeadline`, `callerRef`. Positional constructor approach is gone — the record field count grew past 24, making null-passing unmaintainable.
 
 **CDI displacement pattern.** `WorkItemAmlInvestigationService` is `@ApplicationScoped` without `@DefaultBean` — it displaces `NaiveAmlInvestigationService` at the CDI level. Both classes exist in the build; the one without `@DefaultBean` wins.
 
@@ -276,10 +276,7 @@ candidate for `AgentChannelBackend` injection — conflicting with `QhorusChanne
 (the default backend already registered with `ChannelGateway`). Fix:
 `@Typed({AgentDispatchMechanism.class, PushAgentDispatch.class})`.
 
-**`WorkItemCreateRequest` now has 23 fields (was 19 at Layer 2, 21 mid-session).**
-The record grew by 4 fields since Layer 2. `ComplianceReviewLifecycle` passes null for
-all new fields (`templateId`, `permittedOutcomes`, `inputDataSchema`, `outputDataSchema`).
-Builder tracked in casehubio/work#168.
+**`WorkItemCreateRequest` field count grew past 24 since Layer 2.** `ComplianceReviewLifecycle` now uses the fluent builder (casehubio/work#168 shipped) — sets only the fields AML needs and is immune to future field additions. No null-passing required.
 
 **`IllegalStateException` maps to HTTP 409 via casehub-work's exception mapper.**
 `IllegalStateExceptionMapper` in casehub-work maps `IllegalStateException` → 409 Conflict.
