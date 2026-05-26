@@ -1,10 +1,10 @@
-package io.casehub.aml.tutorial;
+package io.casehub.aml;
 
 import io.casehub.aml.domain.OsintResult;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.investigation.OsintScreeningService;
 
-public class NaiveOsintScreeningService implements OsintScreeningService {
+public class DefaultOsintScreeningService implements OsintScreeningService {
 
     @Override
     public OsintResult screen(SuspiciousTransaction transaction) {

@@ -5,7 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import io.casehub.aml.domain.PatternAnalysisResult;
 import io.casehub.aml.domain.SpecialistOutcome;
-import io.casehub.aml.tutorial.NaivePatternAnalysisService;
+import io.casehub.aml.DefaultPatternAnalysisService;
 import io.casehub.qhorus.runtime.message.Message;
 
 @ApplicationScoped
@@ -14,7 +14,7 @@ public class PatternAnalysisBehaviour implements AgentBehaviour {
 
     private static final String CAPABILITY = "pattern-analysis";
 
-    private final NaivePatternAnalysisService service = new NaivePatternAnalysisService();
+    private final DefaultPatternAnalysisService service = new DefaultPatternAnalysisService();
 
     @Override
     public String capability() {

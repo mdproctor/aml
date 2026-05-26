@@ -6,48 +6,42 @@ material needed to reproduce the layer in a different domain harness.
 
 ---
 
-## Layer 1 — Naive Java (no CaseHub)
+## Layer 1 — Domain baseline (no CaseHub foundation)
 
 **Completed:** 2026-05-10
 **Issue:** casehubio/aml#12
+**Navigation:** `git log --grep="#12" --oneline`
 **Key files:**
 - `api/src/main/java/io/casehub/aml/domain/` — pure domain records: `SuspiciousTransaction`, `InvestigationSummary`, `AmlInvestigationResult`, `EntityResolutionResult`, `PatternAnalysisResult`, `OsintResult`
 - `api/src/main/java/io/casehub/aml/investigation/` — specialist service interfaces: `EntityResolutionService`, `PatternAnalysisService`, `OsintScreeningService`, `SarDraftingService`
-- `app/src/main/java/io/casehub/aml/tutorial/NaiveAmlInvestigationService.java` — the anti-pattern baseline
-- `app/src/main/java/io/casehub/aml/tutorial/Naive*.java` — stub implementations of each specialist service
+- `app/src/main/java/io/casehub/aml/DefaultAmlInvestigationService.java` — `@DefaultBean` baseline implementation
+- `app/src/main/java/io/casehub/aml/Default*.java` — default implementations of each specialist service
 - `app/src/main/java/io/casehub/aml/AmlInvestigationApplicationService.java` — use-case port interface
 - `app/src/main/java/io/casehub/aml/AmlInvestigationResource.java` — REST entry point: `POST /api/investigations`
 
 ### What it shows
 
-Direct service calls to specialist services with no accountability, no formal obligation, no SLA, and no audit trail. This is the baseline that every subsequent layer improves. The gap comments in `NaiveAmlInvestigationService` are the teaching mechanism — each one names the specific FinCEN/regulatory requirement that is not met.
+Direct service calls to specialist services with no accountability, no formal obligation, no SLA, and no audit trail. This is the baseline that every subsequent layer improves. The accountability gaps are documented in the table below — each one names the specific FinCEN/regulatory requirement not yet met.
 
-### The gap comments
+### Accountability gaps
 
-```java
-// LAYER 1 GAP: no attribution — who resolved this entity graph?
-// No record of which agent made this decision or when.
-
-// LAYER 1 GAP: no failure resilience — if this call times out or throws,
-// the entire investigation is lost with no trace of partial work.
-
-// LAYER 1 GAP: no deadline tracking — OSINT runs sequentially after pattern
-// analysis. No FinCEN 30-day SLA. No parallel execution. No formal obligation.
-
-// LAYER 1 GAP: no audit trail — this narrative cannot be proven to FinCEN.
-// No tamper-evident record of the reasoning chain exists.
-```
+| Gap | What breaks | Closed by |
+|-----|-------------|-----------|
+| No attribution | Who resolved this entity graph? No record of which agent made this decision or when. | Layer 3 (casehub-qhorus COMMAND/RESPONSE) |
+| No failure resilience | If a service call times out, the entire investigation is lost with no trace of partial work. | Layer 3 (formal FAILURE outcome type) |
+| No deadline tracking | OSINT runs sequentially. No FinCEN 30-day SLA. No parallel execution. No formal obligation. | Layer 2 (casehub-work claimDeadline) + Layer 5 (engine parallel binding) |
+| No audit trail | The SAR narrative cannot be proven to FinCEN. No tamper-evident record of the reasoning chain. | Layer 4 (casehub-ledger Merkle chain) |
 
 ### Key wiring
 
 **Hexagonal architecture from day one.** `api/` is a pure Java module — no JPA, no Quarkus, no framework dependencies. Domain records and service interfaces live here. `app/` owns use-case orchestration and all framework wiring. This split is mandatory (platform protocol PP-20260512-9b8847).
 
-**`@DefaultBean` on the naive service.** `NaiveAmlInvestigationService` carries `@DefaultBean` so that each subsequent layer can add a `@ApplicationScoped` implementation that takes priority via CDI displacement — without touching the naive code. This is how layers coexist: each new service displaces the previous one at the CDI level.
+**`@DefaultBean` on the baseline service.** `DefaultAmlInvestigationService` carries `@DefaultBean` so that each subsequent layer can add a `@ApplicationScoped` implementation that takes priority via CDI displacement — without touching the baseline code. This is how layers coexist: each new service displaces the previous one at the CDI level.
 
 ```java
 @ApplicationScoped
 @DefaultBean  // displaced by any @ApplicationScoped impl in the same deployment
-public class NaiveAmlInvestigationService implements AmlInvestigationApplicationService {
+public class DefaultAmlInvestigationService implements AmlInvestigator {
 ```
 
 **`AmlInvestigationApplicationService`** is the use-case port interface in `app/` (not `api/`) — it takes domain types from `api/` but lives in `app/` because it references the orchestration concern, not pure domain. This placement follows the hexagonal rule.
@@ -63,10 +57,10 @@ public class NaiveAmlInvestigationService implements AmlInvestigationApplication
 3. Define specialist service interfaces in `api/src/main/java/{package}/investigation/` (or equivalent) — one interface per agent concern
 4. Create `app/` Maven module — depends on `api/`; owns all Quarkus/CDI wiring
 5. Define the use-case port interface in `app/` — takes domain types, returns domain types
-6. Implement the naive service with `@ApplicationScoped @DefaultBean` — direct method calls, no CaseHub
+6. Implement the default baseline service with `@ApplicationScoped @DefaultBean` — direct method calls, no CaseHub
 7. Add gap comments for every regulatory/compliance requirement not yet met — these are the teaching mechanism
 8. Expose `POST /api/{domain-noun}` via a REST resource that injects the port interface
-9. Write unit tests for the naive service (no Quarkus needed — plain `new`)
+9. Write unit tests for the baseline service (no Quarkus needed — plain `new`)
 
 ---
 
@@ -74,6 +68,7 @@ public class NaiveAmlInvestigationService implements AmlInvestigationApplication
 
 **Completed:** 2026-05-13
 **Issue:** casehubio/aml#15
+**Navigation:** `git log --grep="#15" --oneline`
 **Key files:**
 - `api/src/main/java/io/casehub/aml/domain/AmlInvestigationResult.java` — extended to carry `complianceReviewTaskId`
 - `app/src/main/java/io/casehub/aml/tutorial/WorkItemAmlInvestigationService.java` — Layer 2 implementation
@@ -83,7 +78,7 @@ public class NaiveAmlInvestigationService implements AmlInvestigationApplication
 
 ### What it shows
 
-Adds `casehub-work` to create a formal compliance officer `WorkItem` with a 30-day `claimDeadline` — the FinCEN SAR filing SLA. Closes the "no deadline tracking" gap from Layer 1. The naive investigation still runs (delegated to `NaiveAmlInvestigationService`); the WorkItem is the new accountability layer on top.
+Adds `casehub-work` to create a formal compliance officer `WorkItem` with a 30-day `claimDeadline` — the FinCEN SAR filing SLA. Closes the "no deadline tracking" gap from Layer 1. The baseline investigation still runs (delegated to `DefaultAmlInvestigationService`); the WorkItem is the new accountability layer on top.
 
 `AmlInvestigationResult` now carries a `complianceReviewTaskId` — the caller can use this to track the compliance review independently of the investigation.
 
@@ -122,12 +117,12 @@ quarkus.hibernate-orm.packages=io.casehub.work.runtime.model,io.casehub.work.run
 
 **`WorkItemCreateRequest` uses a fluent builder** (casehubio/work#168 shipped). Set only the fields you need: `title`, `category`, `candidateGroups`, `claimDeadline`, `callerRef`. Positional constructor approach is gone — the record field count grew past 24, making null-passing unmaintainable.
 
-**CDI displacement pattern.** `WorkItemAmlInvestigationService` is `@ApplicationScoped` without `@DefaultBean` — it displaces `NaiveAmlInvestigationService` at the CDI level. Both classes exist in the build; the one without `@DefaultBean` wins.
+**CDI displacement pattern.** `WorkItemAmlInvestigationService` is `@ApplicationScoped` without `@DefaultBean` — it displaces `DefaultAmlInvestigationService` at the CDI level. Both classes exist in the build; the one without `@DefaultBean` wins.
 
 ```java
-@ApplicationScoped  // no @DefaultBean — displaces NaiveAmlInvestigationService
+@ApplicationScoped  // no @DefaultBean — displaces DefaultAmlInvestigationService
 public class WorkItemAmlInvestigationService implements AmlInvestigationApplicationService {
-    @Inject NaiveAmlInvestigationService naiveInvestigation;  // delegate for the investigation itself
+    @Inject DefaultAmlInvestigationService defaultInvestigation;  // delegate for the investigation itself
     @Inject WorkItemService workItemService;
 ```
 
@@ -155,9 +150,9 @@ public class WorkItemAmlInvestigationService implements AmlInvestigationApplicat
   quarkus.datasource.qhorus.reactive=false
   ```
 
-- **Symptom:** CDI ambiguity error or wrong service injected when both `NaiveAmlInvestigationService` and `WorkItemAmlInvestigationService` are present.
-  **Cause:** Both implement `AmlInvestigationApplicationService`. Without `@DefaultBean` on the naive service, CDI sees two equal candidates and fails.
-  **Fix:** `@DefaultBean` on the naive service makes it the fallback; any `@ApplicationScoped` without `@DefaultBean` takes priority. This is how layer coexistence works — intentional and reliable, but only if the naive service carries `@DefaultBean`.
+- **Symptom:** CDI ambiguity error or wrong service injected when both `DefaultAmlInvestigationService` and `WorkItemAmlInvestigationService` are present.
+  **Cause:** Both implement `AmlInvestigationApplicationService`. Without `@DefaultBean` on the default service, CDI sees two equal candidates and fails.
+  **Fix:** `@DefaultBean` on the default baseline service makes it the fallback; any `@ApplicationScoped` without `@DefaultBean` takes priority. This is how layer coexistence works — intentional and reliable, but only if the default service carries `@DefaultBean`.
 
 ### Pattern to replicate (in another domain)
 
@@ -170,7 +165,7 @@ public class WorkItemAmlInvestigationService implements AmlInvestigationApplicat
 4. Add Flyway/reactive workarounds to test `application.properties` if qhorus is on the classpath (copy from AML — tracked as upstream bugs)
 5. Extend your result type to carry a `taskId` field
 6. Implement a new `@ApplicationScoped` service (no `@DefaultBean`) that:
-   - Delegates the domain work to the naive service
+   - Delegates the domain work to the default baseline service
    - Calls `WorkItemService.create()` with your domain's SLA as `claimDeadline`
    - Sets `candidateGroups` to your domain's human reviewer group
    - Sets `callerRef` to a URI identifying the domain entity (e.g. `aml:investigation/{id}`)
@@ -185,6 +180,7 @@ public class WorkItemAmlInvestigationService implements AmlInvestigationApplicat
 
 **Completed:** 2026-05-17
 **Issue:** casehubio/aml#19
+**Navigation:** `git log --grep="#19" --oneline`
 **Epic:** casehubio/aml#9 (Tutorial layers 1–7), epic branch `epic-layer3-qhorus`
 **Blog:** 2026-05-16-mdp01-broken-promise-layer-2.md — architectural investigation leading to the composer pattern
 **Spec:** workspace `specs/2026-05-17-layer3-composer-qhorus-design.md`
@@ -198,14 +194,14 @@ public class WorkItemAmlInvestigationService implements AmlInvestigationApplicat
 - `app/src/main/java/io/casehub/aml/AmlJacksonConfig.java` — Jackson mixin for sealed interface type discriminator
 - `app/src/main/java/io/casehub/aml/agents/` — AgentBehaviour, AgentDispatchMechanism SPIs + three stub behaviours
 - `app/src/main/java/io/casehub/aml/tutorial/QhorusAmlInvestigator.java` — Layer 3 investigator
-- `app/src/main/java/io/casehub/aml/tutorial/NaiveAmlInvestigationService.java` — now implements AmlInvestigator (not outer port)
+- `app/src/main/java/io/casehub/aml/DefaultAmlInvestigationService.java` — now implements AmlInvestigator (not outer port); moved from tutorial/ package
 - DELETED: `WorkItemAmlInvestigationService.java` — replaced by coordinator + ComplianceReviewLifecycle
 
 ### What it shows
 
-Layer 2 had a design flaw: `WorkItemAmlInvestigationService` injected `NaiveAmlInvestigationService` by concrete type, breaking its own commit message's promise that "changing specialist implementations in Layer 3 will propagate automatically." The concrete type injection made CDI displacement impossible.
+Layer 2 had a design flaw: `WorkItemAmlInvestigationService` injected `DefaultAmlInvestigationService` by concrete type, breaking its own commit message's promise that "changing specialist implementations in Layer 3 will propagate automatically." The concrete type injection made CDI displacement impossible.
 
-Layer 3 corrects this with a **composer pattern**: `AmlInvestigationCoordinator` composes an `AmlInvestigator` (swappable via CDI) and `ComplianceReviewLifecycle` (stable WorkItem concern). `QhorusAmlInvestigator` displaces `NaiveAmlInvestigationService` at the inner `AmlInvestigator` level — Layer 2 (WorkItem creation) is transparent to the swap.
+Layer 3 corrects this with a **composer pattern**: `AmlInvestigationCoordinator` composes an `AmlInvestigator` (swappable via CDI) and `ComplianceReviewLifecycle` (stable WorkItem concern). `QhorusAmlInvestigator` displaces `DefaultAmlInvestigationService` at the inner `AmlInvestigator` level — Layer 2 (WorkItem creation) is transparent to the swap.
 
 Closes the "no formal obligation per specialist agent" gap: each specialist dispatch sends a COMMAND message and receives DONE/DECLINE. `OsintScreeningBehaviour` always DECLINEs ("insufficient clearance for PEP database access") — demonstrating that DECLINE is a formal scope boundary, not an error. The investigation completes and the compliance officer WorkItem is created regardless.
 
@@ -247,11 +243,11 @@ Without this, `SpecialistOutcome` fields in JSON responses have no `"type"` disc
 REST assertions on `summary.osintScreening.type` return null.
 
 **CDI displacement — concrete type injection was the Layer 2 bug.**
-`WorkItemAmlInvestigationService` injected `NaiveAmlInvestigationService` by concrete type.
+`WorkItemAmlInvestigationService` injected `DefaultAmlInvestigationService` by concrete type.
 CDI `@DefaultBean` displacement works at the interface level — injecting by concrete type
 prevents any other bean from substituting. Layer 3 fixes this by introducing `AmlInvestigator`
 as the injection type. `QhorusAmlInvestigator` (no `@DefaultBean`) displaces
-`NaiveAmlInvestigationService` (`@DefaultBean`) automatically.
+`DefaultAmlInvestigationService` (`@DefaultBean`) automatically.
 
 **Direct dispatch — not ChannelGateway.fanOut().**
 `QhorusAmlInvestigator` calls `AgentBehaviour.handle()` directly after sending the COMMAND
@@ -317,7 +313,7 @@ and produced confusing 409 responses. Changed to `RuntimeException`.
    - For each specialist: `messageService.send(channelId, ORCHESTRATOR, COMMAND, ...)`, call `behaviour.handle()`, `messageService.send(channelId, capability, DONE/DECLINE, ...)`
    - Return `SpecialistOutcome` for each specialist
 7. Implement stub `AgentBehaviour` beans (`@ApplicationScoped @DefaultBean`):
-   - Entity/pattern stubs return `Completed` with naive service results
+   - Entity/pattern stubs return `Completed` with default service results
    - Specialised agents (OSINT, PI authorisation) DECLINE with scope reason
 8. Register `ObjectMapperCustomizer` in `app/` to add `@JsonTypeInfo` + `@JsonSubTypes` mixin for the sealed interface
 9. Exclude `LedgerVerificationService`, `LedgerComplianceReportService`, `LedgerRetentionJob` from test CDI context (add to `quarkus.arc.exclude-types` in test `application.properties`)
@@ -328,7 +324,8 @@ and produced confusing 409 responses. Changed to `RuntimeException`.
 
 ## Layer 4 — + casehub-ledger (FinCEN audit trail with AML domain entries)
 
-**Issue:** casehubio/aml#30  
+**Issue:** casehubio/aml#30
+**Navigation:** `git log --grep="#30" --oneline`  
 **Spec:** `docs/specs/2026-05-22-message-dispatch-builder-design.md` (qhorus side)  
 **Branch closed:** 2026-05-23
 
@@ -340,7 +337,7 @@ and produced confusing 409 responses. Changed to `RuntimeException`.
 - `app/src/main/resources/db/aml-ledger/migration/V2001__aml_investigation_ledger_entry.sql` — Flyway V2001, `aml_investigation_ledger_entry` join table.
 
 **Interface change:**
-- `AmlInvestigator.investigate(SuspiciousTransaction, UUID caseId)` — `caseId` added as second param. All implementations updated. `NaiveAmlInvestigationService` receives and ignores it (Layer 1 gap comment added).
+- `AmlInvestigator.investigate(SuspiciousTransaction, UUID caseId)` — `caseId` added as second param. All implementations updated. `DefaultAmlInvestigationService` receives and ignores it (no foundation module to use it in Layer 1).
 
 **Result change:**
 - `AmlInvestigationResult` gains two new fields: `caseId` (UUID of the investigation case) and `ledgerCaseEntryId` (UUID of the CASE_OPENED entry). Backward-compat 2-arg constructor retained for Layer 1/2.
@@ -376,6 +373,7 @@ and produced confusing 409 responses. Changed to `RuntimeException`.
 ## Layer 5 — + casehub-engine (adaptive investigation paths)
 
 **Issue:** casehubio/aml#31
+**Navigation:** `git log --grep="#31" --oneline`
 **Spec:** `docs/specs/2026-05-24-layer5-engine-design.md`
 **Completed:** 2026-05-25
 

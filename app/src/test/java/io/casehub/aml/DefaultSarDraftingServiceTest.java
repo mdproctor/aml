@@ -1,4 +1,4 @@
-package io.casehub.aml.tutorial;
+package io.casehub.aml;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -14,9 +14,9 @@ import io.casehub.aml.domain.SuspiciousTransaction;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class NaiveSarDraftingServiceTest {
+class DefaultSarDraftingServiceTest {
 
-    private final NaiveSarDraftingService service = new NaiveSarDraftingService();
+    private final DefaultSarDraftingService service = new DefaultSarDraftingService();
 
     private final SuspiciousTransaction tx = new SuspiciousTransaction(
             "TXN-SAR", "ACC-A", "ACC-B",

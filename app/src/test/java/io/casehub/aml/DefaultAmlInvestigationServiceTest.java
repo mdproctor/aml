@@ -1,7 +1,4 @@
-package io.casehub.aml.tutorial;
-
-import java.math.BigDecimal;
-import java.time.Instant;
+package io.casehub.aml;
 
 import org.junit.jupiter.api.Test;
 
@@ -15,9 +12,9 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class NaiveAmlInvestigationServiceTest {
+class DefaultAmlInvestigationServiceTest {
 
-    private final NaiveAmlInvestigationService service = new NaiveAmlInvestigationService();
+    private final DefaultAmlInvestigationService service = new DefaultAmlInvestigationService();
 
     private SuspiciousTransaction tx(final String id) {
         return new SuspiciousTransaction(

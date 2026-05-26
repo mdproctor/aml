@@ -1,10 +1,10 @@
-package io.casehub.aml.tutorial;
+package io.casehub.aml;
 
 import io.casehub.aml.domain.PatternAnalysisResult;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.investigation.PatternAnalysisService;
 
-public class NaivePatternAnalysisService implements PatternAnalysisService {
+public class DefaultPatternAnalysisService implements PatternAnalysisService {
 
     @Override
     public PatternAnalysisResult analyze(SuspiciousTransaction transaction) {

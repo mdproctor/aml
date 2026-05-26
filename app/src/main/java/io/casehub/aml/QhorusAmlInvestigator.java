@@ -1,4 +1,4 @@
-package io.casehub.aml.tutorial;
+package io.casehub.aml;
 
 import java.util.UUID;
 
@@ -6,7 +6,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 
-import io.casehub.aml.AmlInvestigator;
 import io.casehub.aml.agents.AgentBehaviour;
 import io.casehub.aml.domain.EntityResolutionResult;
 import io.casehub.aml.domain.InvestigationSummary;
@@ -23,7 +22,7 @@ import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.MessageService;
 
 /**
- * Layer 3+4: replaces NaiveAmlInvestigator.
+ * Layer 3+4: replaces DefaultAmlInvestigationService.
  *
  * <p>Layer 3: dispatches typed COMMANDs to specialist agents via casehub-qhorus channels.
  * Each COMMAND creates a formal Commitment. DECLINE from OSINT is a formal scope boundary.
@@ -37,7 +36,7 @@ public class QhorusAmlInvestigator implements AmlInvestigator {
 
     private static final String ORCHESTRATOR = "aml-orchestrator";
 
-    private final NaiveSarDraftingService sarDraftingService = new NaiveSarDraftingService();
+    private final DefaultSarDraftingService sarDraftingService = new DefaultSarDraftingService();
 
     @Inject
     MessageService messageService;

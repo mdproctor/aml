@@ -1,4 +1,4 @@
-package io.casehub.aml.tutorial;
+package io.casehub.aml;
 
 import io.casehub.aml.domain.EntityResolutionResult;
 import io.casehub.aml.domain.OsintResult;
@@ -7,7 +7,7 @@ import io.casehub.aml.domain.SpecialistOutcome;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.investigation.SarDraftingService;
 
-class NaiveSarDraftingService implements SarDraftingService {
+class DefaultSarDraftingService implements SarDraftingService {
 
     @Override
     public String draft(SuspiciousTransaction transaction,
