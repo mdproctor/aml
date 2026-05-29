@@ -58,12 +58,14 @@ class AmlInvestigationCaseHubTest {
     }
 
     @Test
-    void hasFiveWorkers() {
+    void hasSevenWorkers() {
         final var workers = caseHub.getDefinition().getWorkers();
-        assertEquals(5, workers.size(), "Exactly 5 workers expected — size catches double-augmentation");
+        assertEquals(7, workers.size(), "Exactly 7 workers expected — size catches double-augmentation");
         final var names = Set.copyOf(workers.stream().map(w -> w.getName()).toList());
         assertEquals(Set.of(
-                "entity-resolution-agent", "pattern-analysis-agent", "osint-screening-agent",
-                "senior-analyst-agent", "sar-drafting-agent"), names);
+                "entity-resolution-agent", "pattern-analysis-agent",
+                "osint-screening-agent", "osint-screening-agent-senior",
+                "senior-analyst-agent",
+                "sar-drafting-agent-junior", "sar-drafting-agent-senior"), names);
     }
 }

@@ -59,9 +59,11 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
         yaml.getWorkers().addAll(List.of(
                 entityResolutionWorker(),
                 patternAnalysisWorker(),
-                osintScreeningWorker(),
+                osintScreeningWorker(),           // junior — declines on PEP clearance
+                osintScreeningWorkerSenior(),     // senior — full clearance, no decline
                 seniorAnalystWorker(),
-                sarDraftingWorker()
+                sarDraftingWorkerJunior(),        // minimal narrative
+                sarDraftingWorkerSenior()         // full narrative
         ));
         return yaml;
     }
@@ -123,6 +125,24 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
                 .build();
     }
 
+    /**
+     * Senior OSINT worker — full clearance, never declines. Demonstrates trust-based
+     * routing: complex or PEP cases are routed to this worker rather than the junior.
+     */
+    private Worker osintScreeningWorkerSenior() {
+        return Worker.builder()
+                .name("osint-screening-agent-senior")
+                .capabilities(List.of(cap("osint-screening")))
+                .function((final Map<String, Object> input) -> Map.of(
+                        "declined", false,
+                        "reason", "full-clearance",
+                        "pepHit", false,
+                        "sanctionsHit", false,
+                        "screeningLevel", "ENHANCED"
+                ))
+                .build();
+    }
+
     private Worker seniorAnalystWorker() {
         return Worker.builder()
                 .name("senior-analyst-agent")
@@ -137,25 +157,52 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
     }
 
     /**
-     * Drafts the SAR narrative from specialist findings and opens the compliance officer
-     * WorkItem (Layer 2 — 30-day FinCEN SLA). Runs on a Quartz worker thread; JPA calls
-     * via ComplianceReviewLifecycle are safe here.
+     * Junior SAR drafting worker — minimal narrative, suitable for routine cases.
+     * Opens the compliance officer WorkItem (Layer 2 — 30-day FinCEN SLA).
+     * Runs on a Quartz worker thread; JPA calls via ComplianceReviewLifecycle are safe here.
      */
-    private Worker sarDraftingWorker() {
+    private Worker sarDraftingWorkerJunior() {
         return Worker.builder()
-                .name("sar-drafting-agent")
+                .name("sar-drafting-agent-junior")
                 .capabilities(List.of(cap("sar-drafting")))
                 .function((final Map<String, Object> input) -> {
                     @SuppressWarnings("unchecked")
-                    final Map<String, Object> txMap =
-                            (Map<String, Object>) input.get("transaction");
+                    final Map<String, Object> txMap = (Map<String, Object>) input.get("transaction");
+                    final SuspiciousTransaction tx =
+                            objectMapper.convertValue(txMap, SuspiciousTransaction.class);
+                    @SuppressWarnings("unchecked")
+                    final Map<String, Object> osintMap =
+                            (Map<String, Object>) input.get("osintScreening");
+                    final boolean osintDeclined = osintMap != null
+                            && Boolean.TRUE.equals(osintMap.get("declined"));
+                    final String sarNarrative = "SAR filed for transaction " + tx.id()
+                            + ". Amount: " + tx.amount() + " " + tx.currency()
+                            + (osintDeclined ? " OSINT screening declined." : "");
+                    final String complianceTaskId =
+                            complianceReviewLifecycle.openReview(tx, buildSummary(input, sarNarrative));
+                    return Map.of("sarNarrative", sarNarrative, "complianceTaskId", complianceTaskId);
+                })
+                .build();
+    }
+
+    /**
+     * Senior SAR drafting worker — full narrative including entity type and flag reason.
+     * Used for complex or PEP cases routed via trust-weighted selection.
+     * Opens the compliance officer WorkItem (Layer 2 — 30-day FinCEN SLA).
+     */
+    private Worker sarDraftingWorkerSenior() {
+        return Worker.builder()
+                .name("sar-drafting-agent-senior")
+                .capabilities(List.of(cap("sar-drafting")))
+                .function((final Map<String, Object> input) -> {
+                    @SuppressWarnings("unchecked")
+                    final Map<String, Object> txMap = (Map<String, Object>) input.get("transaction");
                     @SuppressWarnings("unchecked")
                     final Map<String, Object> entityMap =
                             (Map<String, Object>) input.get("entityResolution");
                     @SuppressWarnings("unchecked")
                     final Map<String, Object> osintMap =
                             (Map<String, Object>) input.get("osintScreening");
-
                     final SuspiciousTransaction tx =
                             objectMapper.convertValue(txMap, SuspiciousTransaction.class);
                     final String entityType = entityMap != null
@@ -164,33 +211,42 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
                     final boolean osintDeclined = osintMap != null
                             && Boolean.TRUE.equals(osintMap.get("declined"));
                     final String sarNarrative = buildNarrative(tx, entityType, osintDeclined);
-
-                    final SpecialistOutcome<EntityResolutionResult> entityOutcome = entityMap != null
-                            ? new SpecialistOutcome.Completed<>(
-                                    objectMapper.convertValue(entityMap, EntityResolutionResult.class))
-                            : new SpecialistOutcome.Declined<>(
-                                    "sar-agent", "entity-resolution", "missing from context");
-                    final SpecialistOutcome<PatternAnalysisResult> patternOutcome =
-                            new SpecialistOutcome.Completed<>(
-                                    new PatternAnalysisResult(false, "engine-driven investigation"));
-                    final SpecialistOutcome<OsintResult> osintOutcome = osintDeclined
-                            ? new SpecialistOutcome.Declined<>(
-                                    "osint-agent", "osint-screening",
-                                    "insufficient clearance for PEP database access")
-                            : new SpecialistOutcome.Completed<>(
-                                    new OsintResult(false, false, "no matches"));
-
-                    final InvestigationSummary summary = new InvestigationSummary(
-                            tx, entityOutcome, patternOutcome, osintOutcome, sarNarrative);
                     final String complianceTaskId =
-                            complianceReviewLifecycle.openReview(tx, summary);
-
-                    return Map.of(
-                            "sarNarrative", sarNarrative,
-                            "complianceTaskId", complianceTaskId
-                    );
+                            complianceReviewLifecycle.openReview(tx, buildSummary(input, sarNarrative));
+                    return Map.of("sarNarrative", sarNarrative, "complianceTaskId", complianceTaskId);
                 })
                 .build();
+    }
+
+    /**
+     * Builds the {@link InvestigationSummary} passed to
+     * {@link ComplianceReviewLifecycle#openReview}. Shared by both SAR drafting workers
+     * to avoid duplication.
+     */
+    private InvestigationSummary buildSummary(
+            final Map<String, Object> input, final String sarNarrative) {
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> txMap = (Map<String, Object>) input.get("transaction");
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> entityMap = (Map<String, Object>) input.get("entityResolution");
+        @SuppressWarnings("unchecked")
+        final Map<String, Object> osintMap = (Map<String, Object>) input.get("osintScreening");
+        final SuspiciousTransaction tx = objectMapper.convertValue(txMap, SuspiciousTransaction.class);
+        final boolean osintDeclined = osintMap != null && Boolean.TRUE.equals(osintMap.get("declined"));
+        final SpecialistOutcome<EntityResolutionResult> entityOutcome = entityMap != null
+                ? new SpecialistOutcome.Completed<>(
+                        objectMapper.convertValue(entityMap, EntityResolutionResult.class))
+                : new SpecialistOutcome.Declined<>(
+                        "sar-agent", "entity-resolution", "missing from context");
+        final SpecialistOutcome<PatternAnalysisResult> patternOutcome =
+                new SpecialistOutcome.Completed<>(
+                        new PatternAnalysisResult(false, "engine-driven investigation"));
+        final SpecialistOutcome<OsintResult> osintOutcome = osintDeclined
+                ? new SpecialistOutcome.Declined<>(
+                        "osint-agent", "osint-screening",
+                        "insufficient clearance for PEP database access")
+                : new SpecialistOutcome.Completed<>(new OsintResult(false, false, "no matches"));
+        return new InvestigationSummary(tx, entityOutcome, patternOutcome, osintOutcome, sarNarrative);
     }
 
     private static String buildNarrative(
