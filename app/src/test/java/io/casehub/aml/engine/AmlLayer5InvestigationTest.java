@@ -84,7 +84,7 @@ class AmlLayer5InvestigationTest {
             return workers.contains("entity-resolution-agent")
                     && workers.contains("pattern-analysis-agent")
                     && workers.contains("osint-screening-agent")
-                    && workers.contains("sar-drafting-agent");
+                    && (workers.contains("sar-drafting-agent-senior") || workers.contains("sar-drafting-agent-junior"));
         });
     }
 
@@ -108,7 +108,7 @@ class AmlLayer5InvestigationTest {
         await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL).until(() -> {
             final var current = scheduledWorkerNames(caseId);
             workers.set(current);
-            return current.contains("sar-drafting-agent");
+            return current.contains("sar-drafting-agent-senior") || current.contains("sar-drafting-agent-junior");
         });
 
         assertTrue(!workers.get().contains("senior-analyst-agent"),
@@ -139,6 +139,6 @@ class AmlLayer5InvestigationTest {
                 "Structuring below reporting threshold");
 
         await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL).until(() ->
-                scheduledWorkerNames(caseId).contains("sar-drafting-agent"));
+                scheduledWorkerNames(caseId).stream().anyMatch(w -> w.startsWith("sar-drafting-agent")));
     }
 }
