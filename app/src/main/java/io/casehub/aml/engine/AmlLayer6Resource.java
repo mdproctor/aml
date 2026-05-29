@@ -33,6 +33,17 @@ public class AmlLayer6Resource {
         return Response.accepted(Map.of("caseId", caseId)).build();
     }
 
+    /**
+     * Returns the investigation status and routing decisions for a completed case.
+     *
+     * <p>The {@code trustScore} in each {@link WorkerRoutingDecision} reflects the score in the
+     * {@link TrustScoreCache} at response time, not the score used at routing time. The cache
+     * is updated when {@code TrustScoreJob} fires (nightly in production) or when a
+     * {@link io.casehub.ledger.runtime.service.routing.TrustScoreFullPayload} event is received.
+     * After recording a SAR outcome, the score will drift once the next scoring cycle runs.
+     * This is intentional for the tutorial — it shows "current trust level" rather than
+     * "trust level that drove this routing decision."
+     */
     @GET
     @Path("/{caseId}")
     public Layer6InvestigationResponse getInvestigation(@PathParam("caseId") UUID caseId) {

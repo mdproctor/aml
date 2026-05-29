@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * writes the attestation back.
  */
 @QuarkusTest
-class AmlLayer6InvestigationIT {
+class AmlLayer6InvestigationTest {
 
     @PersistenceContext(unitName = "qhorus")
     EntityManager em;
