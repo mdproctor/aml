@@ -96,6 +96,13 @@
       <version>${casehub.version}</version>
     </dependency>
 
+    <!-- Layer 6: trust-weighted routing + WorkerDecisionEntry per worker execution -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-engine-ledger</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
+
     <!-- MockPreferenceProvider @DefaultBean required at production augmentation time.
          Must be runtime (not test) scope because quarkus:build validates CDI without
          the test classpath. Scope rule: PLATFORM.md §casehub-platform-api. -->
