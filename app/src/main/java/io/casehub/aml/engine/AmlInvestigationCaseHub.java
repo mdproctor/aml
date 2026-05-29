@@ -179,7 +179,7 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
                             + ". Amount: " + tx.amount() + " " + tx.currency()
                             + (osintDeclined ? " OSINT screening declined." : "");
                     final String complianceTaskId =
-                            complianceReviewLifecycle.openReview(tx, buildSummary(input, sarNarrative));
+                            complianceReviewLifecycle.openReview(tx, buildSummary(input, tx, sarNarrative));
                     return Map.of("sarNarrative", sarNarrative, "complianceTaskId", complianceTaskId);
                 })
                 .build();
@@ -212,7 +212,7 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
                             && Boolean.TRUE.equals(osintMap.get("declined"));
                     final String sarNarrative = buildNarrative(tx, entityType, osintDeclined);
                     final String complianceTaskId =
-                            complianceReviewLifecycle.openReview(tx, buildSummary(input, sarNarrative));
+                            complianceReviewLifecycle.openReview(tx, buildSummary(input, tx, sarNarrative));
                     return Map.of("sarNarrative", sarNarrative, "complianceTaskId", complianceTaskId);
                 })
                 .build();
@@ -221,17 +221,17 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
     /**
      * Builds the {@link InvestigationSummary} passed to
      * {@link ComplianceReviewLifecycle#openReview}. Shared by both SAR drafting workers
-     * to avoid duplication.
+     * to avoid duplication. {@code tx} is passed in pre-deserialized to avoid a second
+     * {@code objectMapper.convertValue} call when the worker already holds the object.
      */
     private InvestigationSummary buildSummary(
-            final Map<String, Object> input, final String sarNarrative) {
-        @SuppressWarnings("unchecked")
-        final Map<String, Object> txMap = (Map<String, Object>) input.get("transaction");
+            final Map<String, Object> input,
+            final SuspiciousTransaction tx,
+            final String sarNarrative) {
         @SuppressWarnings("unchecked")
         final Map<String, Object> entityMap = (Map<String, Object>) input.get("entityResolution");
         @SuppressWarnings("unchecked")
         final Map<String, Object> osintMap = (Map<String, Object>) input.get("osintScreening");
-        final SuspiciousTransaction tx = objectMapper.convertValue(txMap, SuspiciousTransaction.class);
         final boolean osintDeclined = osintMap != null && Boolean.TRUE.equals(osintMap.get("declined"));
         final SpecialistOutcome<EntityResolutionResult> entityOutcome = entityMap != null
                 ? new SpecialistOutcome.Completed<>(
