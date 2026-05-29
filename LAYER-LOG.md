@@ -4,10 +4,33 @@ Structured record of what was built at each layer, optimised for LLM consumption
 Correlates with blog entries in `blog/` and git history. Each entry is the raw
 material needed to reproduce the layer in a different domain harness.
 
+**Build approach:** Layer ordering here is for teaching, not building. The recommended
+pattern is vertical slice first — the thinnest working path through all layers — then
+deepen each layer to production completeness. See `../parent/docs/AGENTIC-HARNESS-GUIDE.md`
+§Build Order. Layers 1–3 in this repo were built before this guidance existed; future
+layer work follows vertical slice first.
+
+---
+
+## Vertical Slice Index
+
+A vertical slice is the thinnest working path through all relevant layers that produces a testable result.
+
+| Slice | Layers | Deliverable | Status |
+|-------|--------|-------------|--------|
+| S1 | 1 + 2 + 3 | Transaction flagged → typed specialist dispatch (COMMAND/DONE/DECLINE) → compliance WorkItem created with 30-day FinCEN SLA | ✅ complete |
+| S2 | + 4 | S1 + tamper-evident ledger audit trail; `causedByEntryId` links each finding to the commitment that produced it | ✅ complete |
+| S3 | + 5 | S2 + adaptive investigation path: PEP routing, parallel OSINT/pattern, DECLINE as formal scope boundary | ✅ complete |
+| S4 | + 6 | S3 + trust-weighted agent selection from SAR outcome attestations; cold-start Beta seeding | ✅ complete |
+| S5 | 7 | Comparison table vs IBM AMLSim and industry whitepapers | 🔲 pending |
+
+**Ordering rationale:** S1→S2 is soft — ledger can record any entry type without qhorus, but auditing typed COMMAND/DONE/DECLINE events (Layer 3) makes the audit trail meaningful rather than sparse. S2→S4 is hard — trust scoring reads attestation data written by ledger; S4 cannot exist without S2. S3→S4 is hard — trust routing selects among engine-dispatched workers; S4 cannot exist without S3.
+
 ---
 
 ## Layer 1 — Domain baseline (no CaseHub foundation)
 
+**Participates in:** S1, S2, S3, S4
 **Completed:** 2026-05-10
 **Issue:** casehubio/aml#12
 **Navigation:** `git log --grep="#12" --oneline`
@@ -66,6 +89,7 @@ public class DefaultAmlInvestigationService implements AmlInvestigator {
 
 ## Layer 2 — + casehub-work (compliance officer WorkItem with 30-day FinCEN SLA)
 
+**Participates in:** S1, S2, S3, S4
 **Completed:** 2026-05-13
 **Issue:** casehubio/aml#15
 **Navigation:** `git log --grep="#15" --oneline`
@@ -178,6 +202,7 @@ public class WorkItemAmlInvestigationService implements AmlInvestigationApplicat
 
 ## Layer 3 — + casehub-qhorus (typed COMMAND/RESPONSE/DONE/DECLINE per specialist agent)
 
+**Participates in:** S1, S2, S3, S4
 **Completed:** 2026-05-17
 **Issue:** casehubio/aml#19
 **Navigation:** `git log --grep="#19" --oneline`
@@ -324,10 +349,11 @@ and produced confusing 409 responses. Changed to `RuntimeException`.
 
 ## Layer 4 — + casehub-ledger (FinCEN audit trail with AML domain entries)
 
+**Participates in:** S2, S3, S4
 **Issue:** casehubio/aml#30
 **Navigation:** `git log --grep="#30" --oneline`  
 **Spec:** `docs/specs/2026-05-22-message-dispatch-builder-design.md` (qhorus side)  
-**Branch closed:** 2026-05-23
+**Completed:** 2026-05-23
 
 ### What changed
 
@@ -372,6 +398,7 @@ and produced confusing 409 responses. Changed to `RuntimeException`.
 
 ## Layer 5 — + casehub-engine (adaptive investigation paths)
 
+**Participates in:** S3, S4
 **Issue:** casehubio/aml#31
 **Navigation:** `git log --grep="#31" --oneline`
 **Spec:** `docs/specs/2026-05-24-layer5-engine-design.md`
@@ -463,3 +490,16 @@ Layer 4 had a fixed sequential pipeline hardcoded in Java. Layer 5 replaces it e
 6. Change `casehub-platform` from `test` to `runtime` scope in `app/pom.xml`
 7. Integration tests: poll `WORKER_SCHEDULED` events (not `WORKER_EXECUTION_COMPLETED`) — `WORKER_SCHEDULED` metadata carries `workerName`
 8. Assert adaptive paths: for each decision point, start a case with context that triggers the branch, Awaitility-poll for the expected worker to be scheduled
+
+---
+
+## Layer 6 — + trust-weighted routing (experienced agents on complex cases)
+
+**Participates in:** S4
+**Issue:** casehubio/aml#38
+**Navigation:** `git log --grep="#38" --oneline`
+**Blog:** `blog/2026-05-29-mdp01-trust-loop-complete.md`
+**Spec:** `docs/specs/2026-05-29-layer6-trust-routing-design.md`
+**Completed:** 2026-05-29
+
+*Full layer entry to be added — see casehubio/aml#40.*
