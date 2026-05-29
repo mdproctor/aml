@@ -1,0 +1,68 @@
+package io.casehub.aml.trust;
+
+import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
+import io.casehub.ledger.routing.TrustScoreCache;
+import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
+import io.casehub.platform.api.identity.ActorType;
+import io.quarkus.runtime.Startup;
+import jakarta.annotation.PostConstruct;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import java.time.Instant;
+import java.util.List;
+
+@Startup
+@ApplicationScoped
+public class AmlTrustScoreSeeder {
+
+    private record WorkerSeed(String workerId, String capabilityTag, int alpha, int beta) {}
+
+    private static final List<WorkerSeed> SEEDS = List.of(
+            new WorkerSeed("sar-drafting-agent-senior",    "sar-drafting",          9, 1),
+            new WorkerSeed("sar-drafting-agent-junior",    "sar-drafting",          2, 8),
+            new WorkerSeed("osint-screening-agent-senior", "osint-screening",       9, 2),
+            new WorkerSeed("osint-screening-agent",        "osint-screening",       3, 7),
+            new WorkerSeed("entity-resolution-agent",      "entity-resolution",     8, 2),
+            new WorkerSeed("pattern-analysis-agent",       "pattern-analysis",      8, 2),
+            new WorkerSeed("senior-analyst-agent",         "senior-analyst-review", 8, 2)
+    );
+
+    private final ActorTrustScoreRepository trustRepo;
+    private final TrustScoreCache trustScoreCache;
+
+    @Inject
+    public AmlTrustScoreSeeder(
+            final ActorTrustScoreRepository trustRepo,
+            final TrustScoreCache trustScoreCache) {
+        this.trustRepo = trustRepo;
+        this.trustScoreCache = trustScoreCache;
+    }
+
+    @PostConstruct
+    @Transactional
+    void seed() {
+        for (final WorkerSeed ws : SEEDS) {
+            if (trustRepo.findCapabilityScore(ws.workerId(), ws.capabilityTag()).isEmpty()) {
+                final int obs = ws.alpha() + ws.beta();
+                final double trustScore = (double) ws.alpha() / obs;
+                trustRepo.upsert(
+                        ws.workerId(),
+                        ScoreType.CAPABILITY,
+                        ws.capabilityTag(),
+                        null,
+                        ActorType.SYSTEM,
+                        trustScore,
+                        obs,
+                        0,
+                        ws.alpha(),
+                        ws.beta(),
+                        ws.alpha(),
+                        ws.beta(),
+                        Instant.now());
+            }
+        }
+        // Force cache reload with seeded scores regardless of @Startup initialization order.
+        trustScoreCache.hydrate();
+    }
+}
