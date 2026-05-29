@@ -236,7 +236,7 @@ Layer 2: + casehub-work — compliance officer WorkItem with 30-day FinCEN SLA �
 Layer 3: + casehub-qhorus — typed COMMAND/RESPONSE/DONE/DECLINE per specialist ✅
 Layer 4: + casehub-ledger — FinCEN audit trail, Merkle chain, GDPR Art.17 erasure ✅
 Layer 5: + casehub-engine — adaptive path (PEP routing, parallel checks) ✅
-Layer 6: trust routing — experienced agents on complex cases, auto-updated from SAR outcomes
+Layer 6: trust routing — experienced agents on complex cases, auto-updated from SAR outcomes ✅
 Layer 7: comparison table vs IBM AMLSim and industry whitepapers
 ```
 
