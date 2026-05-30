@@ -1,14 +1,16 @@
-# AML Agentic Harness — Layer Log
+# casehub-aml Agentic Harness — Layer Log
 
-Structured record of what was built at each layer, optimised for LLM consumption.
-Correlates with blog entries in `blog/` and git history. Each entry is the raw
-material needed to reproduce the layer in a different domain harness.
+Architecture record of what was built at each integration layer. Entries are ordered for
+reading comprehension, not chronology. Each entry is complete when the layer closes.
 
-**Build approach:** Layer ordering here is for teaching, not building. The recommended
-pattern is vertical slice first — the thinnest working path through all layers — then
-deepen each layer to production completeness. See `../parent/docs/AGENTIC-HARNESS-GUIDE.md`
-§Build Order. Layers 1–3 in this repo were built before this guidance existed; future
-layer work follows vertical slice first.
+**Migration note:** This file will migrate to `ARC42STORIES.MD §9.4` Layer Entries when
+that document is bootstrapped. Format: `../parent/docs/arc42stories-spec.md` and
+`../parent/docs/arc42stories-casehub-profile.md`.
+
+**Vertical slices:** The recommended build approach is vertical slice first — the thinnest
+working path through all layers — then deepen each layer to production completeness. See
+`../parent/docs/AGENTIC-HARNESS-GUIDE.md` §Build Order. Layers 1–3 were built before this
+guidance existed; later layers follow vertical slice first.
 
 ---
 
@@ -22,7 +24,7 @@ A vertical slice is the thinnest working path through all relevant layers that p
 | S2 | + 4 | S1 + tamper-evident ledger audit trail; `causedByEntryId` links each finding to the commitment that produced it | ✅ complete |
 | S3 | + 5 | S2 + adaptive investigation path: PEP routing, parallel OSINT/pattern, DECLINE as formal scope boundary | ✅ complete |
 | S4 | + 6 | S3 + trust-weighted agent selection from SAR outcome attestations; cold-start Beta seeding | ✅ complete |
-| S5 | 7 | Comparison table vs IBM AMLSim and industry whitepapers | 🔲 pending |
+| S5 | 7 | Compliance evidence — accountability properties mapped against FinCEN/FATF requirements | 🔲 pending |
 
 **Ordering rationale:** S1→S2 is soft — ledger can record any entry type without qhorus, but auditing typed COMMAND/DONE/DECLINE events (Layer 3) makes the audit trail meaningful rather than sparse. S2→S4 is hard — trust scoring reads attestation data written by ledger; S4 cannot exist without S2. S3→S4 is hard — trust routing selects among engine-dispatched workers; S4 cannot exist without S3.
 
@@ -42,9 +44,11 @@ A vertical slice is the thinnest working path through all relevant layers that p
 - `app/src/main/java/io/casehub/aml/AmlInvestigationApplicationService.java` — use-case port interface
 - `app/src/main/java/io/casehub/aml/AmlInvestigationResource.java` — REST entry point: `POST /api/investigations`
 
-### What it shows
+### What it adds
 
-Direct service calls to specialist services with no accountability, no formal obligation, no SLA, and no audit trail. This is the baseline that every subsequent layer improves. The accountability gaps are documented in the table below — each one names the specific FinCEN/regulatory requirement not yet met.
+Hexagonal architecture foundation with AML domain vocabulary and no CaseHub foundation modules. Domain records and service interfaces in `api/`; baseline implementation with `@DefaultBean` in `app/`. A REST API for AML investigations — without SLA enforcement, commitment tracking, or tamper-evident audit.
+
+The accountability gaps are structural: no record of which agent made a recommendation, no SLA on the compliance review, no formal obligation tracking per specialist, no escalation when deadlines pass.
 
 ### Accountability gaps
 
@@ -100,34 +104,16 @@ public class DefaultAmlInvestigationService implements AmlInvestigator {
 - `app/src/test/java/io/casehub/aml/AmlInvestigationResourceTest.java` — `@QuarkusTest`
 - `app/src/test/resources/application.properties` — qhorus workarounds (see Gotchas)
 
-### What it shows
+### What it adds
 
-Adds `casehub-work` to create a formal compliance officer `WorkItem` with a 30-day `claimDeadline` — the FinCEN SAR filing SLA. Closes the "no deadline tracking" gap from Layer 1. The baseline investigation still runs (delegated to `DefaultAmlInvestigationService`); the WorkItem is the new accountability layer on top.
+casehub-work WorkItem created for the compliance officer review with a 30-day FinCEN `claimDeadline`. The baseline investigation delegates to `DefaultAmlInvestigationService`; the WorkItem is the formal accountability layer above it. `AmlInvestigationResult` gains `complianceReviewTaskId`.
 
-`AmlInvestigationResult` now carries a `complianceReviewTaskId` — the caller can use this to track the compliance review independently of the investigation.
+### Accountability gaps closed
 
-### The gap comments addressed
-
-```java
-// LAYER 1 GAP: no deadline tracking — OSINT runs sequentially after pattern
-// analysis. No FinCEN 30-day SLA. No parallel execution. No formal obligation.
-```
-
-Replaced by Layer 2 implementation:
-
-```java
-// LAYER 2: create a compliance officer WorkItem with the FinCEN 30-day claim SLA.
-// The compliance officer has 30 days from investigation completion to review and file.
-WorkItem workItem = workItemService.create(new WorkItemCreateRequest(
-        "Compliance review — SAR for transaction " + transaction.id(),
-        ...
-        "compliance-officers",           // candidateGroups
-        Instant.now().plus(30, ChronoUnit.DAYS),  // claimDeadline
-        ...
-        "aml:investigation/" + transaction.id(),  // callerRef
-        ...
-));
-```
+| Gap | What breaks without it | Closed by |
+|-----|----------------------|-----------|
+| No compliance SLA | Compliance review can sit indefinitely; officer has no formal deadline | WorkItem with 30-day `claimDeadline`; `candidateGroups=compliance-officers` |
+| No escalation path | Missed SLA sits silently — no notification or auto-escalation to head of compliance | casehub-work SLA breach policy (auto-escalation wired in later layers) |
 
 ### Key wiring
 
@@ -222,25 +208,18 @@ public class WorkItemAmlInvestigationService implements AmlInvestigationApplicat
 - `app/src/main/java/io/casehub/aml/DefaultAmlInvestigationService.java` — now implements AmlInvestigator (not outer port); moved from tutorial/ package
 - DELETED: `WorkItemAmlInvestigationService.java` — replaced by coordinator + ComplianceReviewLifecycle
 
-### What it shows
+### What it adds
 
-Layer 2 had a design flaw: `WorkItemAmlInvestigationService` injected `DefaultAmlInvestigationService` by concrete type, breaking its own commit message's promise that "changing specialist implementations in Layer 3 will propagate automatically." The concrete type injection made CDI displacement impossible.
+casehub-qhorus typed messaging per specialist agent: each dispatch sends a COMMAND, receives DONE or DECLINE. `DECLINE` is a formal scope boundary — `OsintScreeningBehaviour` declines for PEP database access (outside clearance); the investigation completes regardless.
 
-Layer 3 corrects this with a **composer pattern**: `AmlInvestigationCoordinator` composes an `AmlInvestigator` (swappable via CDI) and `ComplianceReviewLifecycle` (stable WorkItem concern). `QhorusAmlInvestigator` displaces `DefaultAmlInvestigationService` at the inner `AmlInvestigator` level — Layer 2 (WorkItem creation) is transparent to the swap.
+Corrects the Layer 2 design: concrete type injection replaced with the **composer pattern** — `AmlInvestigationCoordinator` composes `AmlInvestigator` (CDI-swappable) and `ComplianceReviewLifecycle` (stable WorkItem concern). `QhorusAmlInvestigator` (no `@DefaultBean`) displaces `DefaultAmlInvestigationService` at the inner investigator interface.
 
-Closes the "no formal obligation per specialist agent" gap: each specialist dispatch sends a COMMAND message and receives DONE/DECLINE. `OsintScreeningBehaviour` always DECLINEs ("insufficient clearance for PEP database access") — demonstrating that DECLINE is a formal scope boundary, not an error. The investigation completes and the compliance officer WorkItem is created regardless.
+### Accountability gaps closed
 
-### The gap comments addressed
-
-```java
-// LAYER 1 GAP: no attribution — who resolved this entity graph?
-// No record of which agent made this decision or when.
-// → LAYER 3: COMMAND issued per specialist; DONE/DECLINE persisted in qhorus
-
-// LAYER 1 GAP: no failure resilience — if this call times out or throws,
-// the entire investigation is lost with no trace of partial work.
-// → LAYER 3: each agent interaction is a formal commitment; FAILURE is an explicit outcome type
-```
+| Gap | What breaks without it | Closed by |
+|-----|----------------------|-----------|
+| No attribution | No record of which agent made a specialist decision or when | COMMAND per specialist; DONE/DECLINE persisted in qhorus `MessageLedgerEntry` |
+| No failure resilience | Service timeout loses all partial investigation work with no trace | Each agent interaction is a formal Commitment; FAILURE is an explicit outcome type |
 
 ### Key wiring
 
@@ -430,21 +409,19 @@ and produced confusing 409 responses. Changed to `RuntimeException`.
 - `casehub-platform` scope changed from `test` to `runtime` — required for production augmentation (`MockPreferenceProvider @DefaultBean` must be visible to the `quarkus:build` goal)
 - Versions explicit until parent#65 adds these to BOM dependencyManagement
 
-### What it shows
+### What it adds
 
-Layer 4 had a fixed sequential pipeline hardcoded in Java. Layer 5 replaces it entirely with engine binding evaluation. The engine evaluates ALL matching binding conditions simultaneously on every context update:
-- **PEP routing** — `senior-analyst-required` fires automatically when the entity-resolution output contains `entityType == "PEP"`. No conditional code in the coordinator.
-- **Parallel execution** — `pattern-analysis` and `osint-screening` both have identical preconditions (entity non-null, own result null); the engine fires both simultaneously on the same context change.
-- **DECLINE as a first-class outcome** — OSINT always declines, writes `{declined: true, ...}` to context (satisfies the `osintScreening != null` condition), and sar-drafting proceeds without modification.
+casehub-engine binding evaluation replaces the fixed sequential pipeline. The engine evaluates ALL matching binding conditions simultaneously on every context update:
+- **PEP routing** — `senior-analyst-required` fires automatically when entity-resolution output contains `entityType == "PEP"`. No conditional code in the coordinator.
+- **Parallel execution** — `pattern-analysis` and `osint-screening` share identical preconditions; the engine fires both simultaneously on the same context change.
+- **DECLINE as a first-class outcome** — OSINT decline writes `{declined: true, ...}` to context (satisfies the `osintScreening != null` condition); sar-drafting proceeds without modification.
 
-### The gap comments addressed
+### Accountability gaps closed
 
-```java
-// LAYER 1 GAP: no deadline tracking — OSINT runs sequentially after pattern
-// analysis. No FinCEN 30-day SLA. No parallel execution. No formal obligation.
-// → LAYER 5: engine fires pattern-analysis and osint-screening in parallel;
-//             sar-drafting binding waits for both before proceeding
-```
+| Gap | What breaks without it | Closed by |
+|-----|----------------------|-----------|
+| Sequential specialist pipeline | OSINT blocked behind pattern analysis; investigation time doubles on complex cases | Engine fires `pattern-analysis` and `osint-screening` in parallel on identical binding conditions |
+| Hardcoded routing | PEP cases routed to standard analysts — no differentiation based on entity type | `senior-analyst-required` binding fires when `entityType == "PEP"` — no coordinator code needed |
 
 ### Key wiring
 
@@ -529,27 +506,18 @@ Layer 4 had a fixed sequential pipeline hardcoded in Java. Layer 5 replaces it e
 **Dependencies (`app/pom.xml`):**
 - `casehub-engine-ledger` — provides `WorkerDecisionEntry`, `CaseLedgerEntry`, `ActorTrustScoreRepository`, `TrustScoreCache`, `LedgerAttestation`
 
-### What it shows
+### What it adds
 
-Layer 5 ended with blind worker selection: the engine knew the capability required but had no basis for preferring one agent over another. Layer 6 makes selection trust-weighted. `AmlTrustRoutingPolicyProvider` supplies per-capability routing thresholds to the engine's `TrustWeightedAgentStrategy`. Workers with capability scores below threshold are excluded; above-threshold workers compete by score. The senior SAR drafter (Beta(9,1) = 90% mean) immediately outscores the junior (Beta(2,8) = 20% mean, below threshold).
+Trust-weighted agent selection: `AmlTrustRoutingPolicyProvider` supplies per-capability routing thresholds to the engine's `TrustWeightedAgentStrategy`. Workers below threshold are excluded; above-threshold workers compete by score. The senior SAR drafter (Beta(9,1) = 90% mean) immediately outscores the junior (Beta(2,8) = 20% mean, below threshold).
 
-SAR outcomes close the feedback loop: POST `/{caseId}/outcome` writes a `LedgerAttestation` against the `sar-drafting` `WorkerDecisionEntry` for the case. The next `TrustScoreJob` cycle recomputes the agent's `investigation-accuracy` trust score from all attestations. The tutorial makes this loop visible: the GET response exposes which worker was selected per capability and its current trust score from `TrustScoreCache`.
+SAR outcomes close the feedback loop: `POST /{caseId}/outcome` writes a `LedgerAttestation` against the `sar-drafting` `WorkerDecisionEntry`. The next `TrustScoreJob` cycle recomputes the agent's `investigation-accuracy` score from all attestations. `GET /{caseId}` exposes which worker was selected per capability and its current trust score from `TrustScoreCache`.
 
-### The gap comments addressed
+### Accountability gaps closed
 
-```java
-// LAYER 5 GAP: blind worker selection — any available worker is picked
-// regardless of track record. Complex PEP cases and high-stakes SAR drafting
-// may route to inexperienced agents with no history of successful outcomes.
-```
-
-Replaced by Layer 6 routing:
-
-```java
-// LAYER 6: TrustWeightedAgentStrategy reads AmlTrustRoutingPolicyProvider thresholds.
-// Workers below threshold are excluded. Above-threshold workers compete by capability score.
-// SAR outcomes feed back via LedgerAttestation → TrustScoreJob → updated cache.
-```
+| Gap | What breaks without it | Closed by |
+|-----|----------------------|-----------|
+| Blind worker selection | Complex PEP cases and high-stakes SAR drafting routed to any available agent regardless of track record | `TrustWeightedAgentStrategy` reads `AmlTrustRoutingPolicyProvider` thresholds; workers below threshold excluded |
+| No outcome feedback | Agent quality is unobservable; poor agents accumulate work | SAR verdict writes `LedgerAttestation`; `TrustScoreJob` recomputes `investigation-accuracy` from all attestations |
 
 ### Key wiring
 
@@ -613,3 +581,16 @@ public class AmlTrustRoutingPolicyProvider implements TrustRoutingPolicyProvider
 8. Implement `XxxOutcomeFeedbackService` — find `WorkerDecisionEntry` by caseId + capability; persist `LedgerAttestation` with `trustDimension`, `dimensionScore`, `verdict` (SOUND/FLAGGED); silently skip if no entry found — callers must not be blocked by missing history
 9. Expose GET `/{caseId}` returning routing decisions per capability with current trust scores from `TrustScoreCache.getCapabilityScore(workerId, capabilityTag)` — note scores reflect the cache at response time, not at routing time
 10. Tests: assert a seeded above-threshold worker is selected (GET → routingDecisions non-empty); POST an outcome; invoke `TrustScoreJob.runComputation()` directly; assert the score in `TrustScoreCache` has shifted
+
+---
+
+## Layer 7 — Compliance evidence
+
+**Participates in:** S5
+**Status:** Pending
+**Issue:** casehubio/aml#43
+**Navigation:** `git log --grep="#43" --oneline` (fill in at layer close)
+
+### What it adds
+
+Structured mapping of casehub-aml accountability properties against FinCEN/FATF compliance requirements. Documents which architectural decisions in Layers 1–6 close which regulatory obligations — tamper-evident audit chain, human sign-off SLA, GDPR erasure, trust-weighted routing — and contrasts the structural properties that formal accountability layers provide against alternatives that leave these requirements unaddressed.

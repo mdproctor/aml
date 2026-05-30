@@ -96,27 +96,35 @@ type: java
 
 ---
 
+## Agentic Harness Goals
+
+**Read first:** `../parent/docs/AGENTIC-HARNESS-GUIDE.md`
+
+**Goal:** Production-grade AML investigation harness demonstrating that financial crime investigation, SAR filing, and FinCEN/FATF regulatory compliance are structurally better served by a formal accountability layer than by best-effort agentic coordination.
+
+**Architecture record:** `LAYER-LOG.md` tracks integration layer entries. A layer is not complete until its entry is written. Arc42Stories migration planned — layer entries will move to `ARC42STORIES.MD §9.4` when the document is bootstrapped. See `../parent/docs/arc42stories-spec.md` and `../parent/docs/arc42stories-casehub-profile.md`.
+
+---
+
 ## What This Project Is
 
-`casehub-aml` is the **Anti-Money Laundering investigation application** built on the CaseHub platform foundation. It is a field showcase and tutorial for Java developers in financial services — built on the CaseHub agentic harness, not the harness itself. The foundation (engine, ledger, work, qhorus, connectors) is the harness; casehub-aml is the AML domain application on top.
+`casehub-aml` is the **Anti-Money Laundering investigation application** built on the CaseHub platform foundation.
 
 This is an **application layer**, not a framework. The foundation (casehub-engine, casehub-qhorus, casehub-ledger, casehub-work, casehub-connectors) provides coordination, accountability, audit, and compliance primitives. casehub-aml provides the financial crime investigation domain logic on top: what a suspicious transaction is, how an AML investigation proceeds, which specialists handle what, and how a SAR reaches a compliance officer.
 
 ### Why AML
 
-Java dominates banking and financial services infrastructure. Enterprise Java developers at any major financial institution have built or integrated transaction monitoring, case management, and compliance reporting systems. They recognise the failure modes first-hand: audit trails that cannot reconstruct the decision chain, human escalation that fires too late, and SAR filings where nobody can say which agent made the call.
+Java dominates banking and financial services infrastructure. Enterprise Java developers at major financial institutions have built or integrated transaction monitoring, case management, and compliance reporting systems. They recognise the failure modes first-hand: audit trails that cannot reconstruct the decision chain, human escalation that fires too late, and SAR filings where nobody can say which agent made the call.
 
-The specific compliance gap current agentic AML systems cannot close — scored 44/50 in the use-case analysis at `docs/use-case-analysis.md` in casehub-parent:
+### Accountability Properties Delivered
 
-| FinCEN/FATF requirement | Current agentic AML | casehub-aml |
+| FinCEN/FATF requirement | Without casehub-aml | With casehub-aml |
 |---|---|---|
 | Auditable evidence chains — who recommended what and why | Append-only logs inconsistent; no decision attribution | Commitment per agent task; `causedByEntryId` chains the full investigation |
 | Human sign-off on SAR filing with 30-day SLA | Ad-hoc escalation; no formal deadline | WorkItem with `claimDeadline`; auto-escalation to head of compliance |
 | GDPR on transaction data and PII | Not addressed | `LedgerErasureService` + `DecisionContextSanitiser` |
 | Tamper-evident investigation record | No cryptographic audit | Merkle inclusion proofs; independently verifiable |
 | Trust-weighted routing — experienced analysts on complex cases | No trust model | Bayesian Beta from SAR outcome attestations |
-
-**Comparison baseline:** IBM AMLSim (open source, simulation only), AnChain/Sardine industry whitepapers, FinCEN 2024 guidance.
 
 ---
 
@@ -131,7 +139,6 @@ This is an application, not a framework. If the capability requires knowledge of
 | Document | What it covers |
 |----------|---------------|
 | `../parent/docs/use-case-analysis.md` | Use case scoring, AML selection rationale (§8.2), compliance gap analysis |
-| `../parent/docs/tutorial-strategy.md` | AML tutorial layers 1–7 (§6), layer-by-layer teaching strategy, LangChain4j framing |
 | `../parent/docs/repos/casehub-aml.md` | AML domain ownership — entities, capability tags, trust dimensions, epics |
 
 ---
@@ -149,13 +156,12 @@ Read these **before designing**, not after. The concern column tells you when ea
 | Naming capability tags or trust dimensions | `casehub-aml.md` §What It Owns — existing tag and dimension names |
 | Mapping entities to FinCEN/FATF requirements | `use-case-analysis.md §8.2` — compliance gap table, which requirement drives each entity |
 
-### Tutorial layer design
+### Layer design
 
 | Concern | Read first |
 |---------|-----------|
-| Deciding which layer a feature belongs in | `tutorial-strategy.md §6` — layer-by-layer teaching strategy and what each layer must NOT include |
-| Understanding the teaching objective of a layer | `tutorial-strategy.md §6.<N>` — each layer's specific teaching goal and contrast setup |
-| Writing the gap comments in naive/pre-CaseHub code | The compliance gap table in this CLAUDE.md — four gap types with FinCEN framing |
+| Deciding which layer a feature belongs in | Foundation Layers section below |
+| Documenting a completed layer | LAYER-LOG.md — write the entry before closing the issue |
 
 ### Foundation integration
 
@@ -228,16 +234,31 @@ Key bindings:
 - `osint-agent-declined` handles DECLINE (agent outside clearance — immediately re-route, agent is healthy)
 - `pattern-agent-failed` handles FAILURE — try backup, escalate if backup also fails
 
-### Tutorial Structure (layer-by-layer, from tutorial-strategy.md §6)
+### Foundation Layers
+
+Each layer corresponds to a foundation module integration step. LAYER-LOG.md tracks completion — a layer is not complete until its entry is written. Layers map to arc42stories §9.4 Layer Entries.
 
 ```
-Layer 1: naive Java — direct service calls, no accountability, no audit ✅
-Layer 2: + casehub-work — compliance officer WorkItem with 30-day FinCEN SLA ✅
-Layer 3: + casehub-qhorus — typed COMMAND/RESPONSE/DONE/DECLINE per specialist ✅
-Layer 4: + casehub-ledger — FinCEN audit trail, Merkle chain, GDPR Art.17 erasure ✅
-Layer 5: + casehub-engine — adaptive path (PEP routing, parallel checks) ✅
-Layer 6: trust routing — experienced agents on complex cases, auto-updated from SAR outcomes ✅
-Layer 7: comparison table vs IBM AMLSim and industry whitepapers
+Layer 1: Domain baseline — hexagonal architecture, @DefaultBean displacement pattern,
+         REST API for AML investigations. ✅
+
+Layer 2: + casehub-work — compliance officer WorkItem with 30-day FinCEN claimDeadline;
+         CDI displacement pattern. ✅
+
+Layer 3: + casehub-qhorus — typed COMMAND/RESPONSE/DONE/DECLINE per specialist agent;
+         composer pattern, SpecialistOutcome sealed interface. ✅
+
+Layer 4: + casehub-ledger — FinCEN audit trail, Merkle chain, GDPR Art.17 erasure;
+         AmlInvestigationLedgerEntry, causedByEntryId chain. ✅
+
+Layer 5: + casehub-engine — adaptive investigation paths (PEP routing, parallel checks);
+         YAML bindings, AmlInvestigationCaseHub. ✅
+
+Layer 6: Trust routing — trust-weighted agent selection from SAR outcome attestations;
+         AmlTrustRoutingPolicyProvider, SarOutcomeFeedbackService. ✅
+
+Layer 7: Compliance evidence — accountability properties mapped against FinCEN/FATF
+         requirements. See LAYER-LOG.md §Layer 7.
 ```
 
 ### Foundation Gates
