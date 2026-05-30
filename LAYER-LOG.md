@@ -502,4 +502,114 @@ Layer 4 had a fixed sequential pipeline hardcoded in Java. Layer 5 replaces it e
 **Spec:** `docs/specs/2026-05-29-layer6-trust-routing-design.md`
 **Completed:** 2026-05-29
 
-*Full layer entry to be added — see casehubio/aml#40.*
+### What changed
+
+**New domain types in `api/`:**
+- `api/src/main/java/io/casehub/aml/domain/SarVerdict.java` — enum: `UPHELD`, `WITHDRAWN`, `FLAGGED`
+- `api/src/main/java/io/casehub/aml/domain/SarOutcome.java` — record: `verdict`, `reason`, `investigationAccuracyScore`; compact constructor validates score in `[0.0, 1.0]` and asserts non-null fields
+
+**New package `io.casehub.aml.routing`:**
+- `AmlTrustRoutingPolicyProvider` — implements `TrustRoutingPolicyProvider` SPI; `TrustRoutingPolicy(threshold, minObs, borderlineMargin, blendFactor, qualityFloors)` per capability: `entity-resolution` (0.70, 10, 0.10, 0.60), `pattern-analysis` (0.65, 10, 0.10, 0.60), `osint-screening` (0.70, 10, 0.10, 0.65), `sar-drafting` (0.75, 10, 0.10, 0.70, `investigation-accuracy` quality floor 0.65), `senior-analyst-review` (0.80, 10, 0.10, 0.70); resolves overrides from `PreferenceProvider` first, falls back to hardcoded map
+
+**New package `io.casehub.aml.trust`:**
+- `AmlTrustScoreSeeder` — seeds 7 workers with Beta(α,β) at `@Observes @Priority(20) StartupEvent`; idempotency-guarded (skips if capability score already exists); seeds: `sar-drafting-agent-senior` Beta(9,1), `sar-drafting-agent-junior` Beta(2,8), `osint-screening-agent-senior` Beta(9,2), `osint-screening-agent` Beta(3,7), `entity-resolution-agent` Beta(8,2), `pattern-analysis-agent` Beta(8,2), `senior-analyst-agent` Beta(8,2); calls `trustScoreCache.hydrate()` after seeding
+- `SarOutcomeFeedbackService` — writes `LedgerAttestation` on the `sar-drafting` `WorkerDecisionEntry` for the case; `UPHELD → AttestationVerdict.SOUND`, `WITHDRAWN/FLAGGED → FLAGGED`; silently skips if no matching entry found
+- `AmlWorkerDecisionRepository` — JPQL queries on `WorkerDecisionEntry` via the `qhorus` persistence unit: find latest by caseId + capability (by `sequenceNumber DESC`), find all by caseId
+
+**In `io.casehub.aml.engine`:**
+- `AmlEngineCoordinator` — unchanged from Layer 5; reused by `AmlLayer6Resource` to start investigations
+- `AmlLayer6Resource` — `POST /api/layer6/investigations` (202 with caseId), `GET /api/layer6/investigations/{caseId}` (routing decisions + current trust scores), `POST /api/layer6/investigations/{caseId}/outcome` (204)
+- `Layer6InvestigationResponse` — `record(UUID caseId, String status, List<WorkerRoutingDecision> routingDecisions)`
+- `WorkerRoutingDecision` — `record(String capabilityTag, String selectedWorker, Double trustScore)` with `@JsonInclude(NON_NULL)` — trust score is null in Phase 0 (no history yet)
+
+**Flyway — local re-numbered engine-ledger migrations:**
+- `app/src/main/resources/db/engine-ledger/migration/V2002__case_ledger_entry.sql` — local copy of engine-ledger V2000 (`case_ledger_entry` join table), re-numbered to avoid collision with qhorus V2000
+- `app/src/main/resources/db/engine-ledger/migration/V2003__worker_decision_entry.sql` — local copy of engine-ledger V2001 (`worker_decision_entry` join table), re-numbered; both paths added to `quarkus.flyway.qhorus.locations`
+
+**Dependencies (`app/pom.xml`):**
+- `casehub-engine-ledger` — provides `WorkerDecisionEntry`, `CaseLedgerEntry`, `ActorTrustScoreRepository`, `TrustScoreCache`, `LedgerAttestation`
+
+### What it shows
+
+Layer 5 ended with blind worker selection: the engine knew the capability required but had no basis for preferring one agent over another. Layer 6 makes selection trust-weighted. `AmlTrustRoutingPolicyProvider` supplies per-capability routing thresholds to the engine's `TrustWeightedAgentStrategy`. Workers with capability scores below threshold are excluded; above-threshold workers compete by score. The senior SAR drafter (Beta(9,1) = 90% mean) immediately outscores the junior (Beta(2,8) = 20% mean, below threshold).
+
+SAR outcomes close the feedback loop: POST `/{caseId}/outcome` writes a `LedgerAttestation` against the `sar-drafting` `WorkerDecisionEntry` for the case. The next `TrustScoreJob` cycle recomputes the agent's `investigation-accuracy` trust score from all attestations. The tutorial makes this loop visible: the GET response exposes which worker was selected per capability and its current trust score from `TrustScoreCache`.
+
+### The gap comments addressed
+
+```java
+// LAYER 5 GAP: blind worker selection — any available worker is picked
+// regardless of track record. Complex PEP cases and high-stakes SAR drafting
+// may route to inexperienced agents with no history of successful outcomes.
+```
+
+Replaced by Layer 6 routing:
+
+```java
+// LAYER 6: TrustWeightedAgentStrategy reads AmlTrustRoutingPolicyProvider thresholds.
+// Workers below threshold are excluded. Above-threshold workers compete by capability score.
+// SAR outcomes feed back via LedgerAttestation → TrustScoreJob → updated cache.
+```
+
+### Key wiring
+
+**`AmlTrustRoutingPolicyProvider` implements the engine SPI directly.** The SPI is `TrustRoutingPolicyProvider` in `casehub-engine-api`. The provider falls back to hardcoded thresholds when `PreferenceProvider` returns null (always the case in tutorial mode — `MockPreferenceProvider @DefaultBean` returns null for every key).
+
+```java
+@ApplicationScoped
+public class AmlTrustRoutingPolicyProvider implements TrustRoutingPolicyProvider {
+    private static final Map<String, TrustRoutingPolicy> POLICIES = Map.of(
+            "sar-drafting",      new TrustRoutingPolicy(0.75, 10, 0.10, 0.70,
+                                     Map.of("investigation-accuracy", 0.65)),
+            "osint-screening",   new TrustRoutingPolicy(0.70, 10, 0.10, 0.65, Map.of()),
+            ...
+    );
+
+    @Override
+    public TrustRoutingPolicy forCapability(final String capabilityName) {
+        // resolve from PreferenceProvider first; fall back to hardcoded policies
+        return POLICIES.getOrDefault(capabilityName, TrustRoutingPolicy.DEFAULT);
+    }
+}
+```
+
+**`@Observes @Priority(20) StartupEvent` — not `@Startup @PostConstruct`.** The seeder must fire after the engine's `DefaultCaseDefinitionRegistry` (priority=10) to avoid case definition lookup failures when the first investigation starts immediately after startup. `@Startup @PostConstruct` has no ordering guarantee against CDI startup beans; `@Priority(20)` on `StartupEvent` is explicit.
+
+**Direct `upsert()` for seeding — not `TrustBootstrapSource`.** The `TrustBootstrapSource` SPI appears designed for seeding but is never called on a fresh deployment (see Gotchas). Direct `ActorTrustScoreRepository.upsert()` is the correct API for known initial values.
+
+**`trustScoreCache.hydrate()` after seeding.** Without explicit hydration, `TrustScoreCache @Startup` may initialize before the seeder writes rows, leaving the cache empty. Calling `hydrate()` after the `upsert()` loop guarantees a consistent post-seed state regardless of CDI startup ordering.
+
+**`LedgerAttestation` wired to `sar-drafting` `WorkerDecisionEntry`.** `SarOutcomeFeedbackService` finds the entry by caseId + capability, then persists a `LedgerAttestation` using the qhorus `EntityManager` (`@PersistenceContext(unitName = "qhorus")`). The `trustDimension = "investigation-accuracy"` field links the attestation to the correct dimension for `TrustScoreJob` recomputation.
+
+**Flyway V2002/V2003 — local re-numbered copies of engine-ledger migrations.** Engine-ledger ships V2000/V2001 at `classpath:db/migration/` — the generic path Flyway scans for qhorus migrations. Qhorus defines its own V2000. Adding `casehub-engine-ledger` without a separate migration path causes `FlywayException: Found more than one migration with version 2000`. Local copies at V2002/V2003 under `classpath:db/engine-ledger/migration/` resolve this. SQL files carry a comment explaining the re-numbering. Tracked as engine#395.
+
+### Gotchas
+
+- **Symptom:** `TrustBootstrapSource` implementation is registered but no trust scores are ever seeded — application starts with an empty cache on every deployment.
+  **Cause:** `TrustScoreJob.runComputation()` calls `bootstrapService.bootstrapIfNew(byActor.keySet())` where `byActor` groups existing `LedgerEntry` records by `actorId`. On a fresh deployment with zero ledger entries, `byActor` is empty and the bootstrap SPI is never called. `TrustBootstrapSource` is designed for cross-deployment federation (importing prior actor history from another deployment), not for seeding known initial values.
+  **Fix:** Use `ActorTrustScoreRepository.upsert()` directly in a startup observer; follow with `trustScoreCache.hydrate()`. (GE-20260529-d7b6f8)
+
+- **Symptom:** `FlywayException: Found more than one migration with version 2000` at startup after adding `casehub-engine-ledger`.
+  **Cause:** Engine-ledger ships V2000 and V2001 at `classpath:db/migration/` — the same path Flyway scans for qhorus migrations. Qhorus also defines V2000. Two V2000s in one Flyway run is a hard failure.
+  **Fix:** Create local re-numbered copies at `classpath:db/engine-ledger/migration/V2002__case_ledger_entry.sql` and `V2003__worker_decision_entry.sql`. Add the path to `quarkus.flyway.qhorus.locations` in both `application.properties` files. Tracked as engine#395.
+
+- **Symptom:** Layer 5 tests regress after adding `casehub-engine-ledger`: `CaseDefinition not found for case: {UUID}` thrown inside the engine's `SchedulerService`.
+  **Cause:** `CaseLedgerEntryRepository @ApplicationScoped extends JpaLedgerEntryRepository @Alternative`. In CDI, a non-alternative `@ApplicationScoped` bean beats a `selected-alternatives` config entry, corrupting `DefaultCaseDefinitionRegistry`'s case definition lookup map.
+  **Fix:** Add `CaseLedgerEntryRepository` to `quarkus.arc.exclude-types` in test `application.properties`. Tracked as engine#396 — the CDI configuration error is in engine-ledger and the fix belongs there.
+
+- **Symptom:** First investigation request immediately after startup fails with `CaseDefinition not found` even though all CDI beans started cleanly.
+  **Cause:** `@Startup @PostConstruct` seeder runs before `DefaultCaseDefinitionRegistry` finishes registering case definitions — no ordering guarantee between `@Startup` beans.
+  **Fix:** Use `@Observes @Priority(20) StartupEvent`. CDI fires `StartupEvent` observers in ascending priority order; the engine's registry completes at priority=10. Priority=20 guarantees the seeder runs after.
+
+### Pattern to replicate (in another domain)
+
+1. Define a verdict enum and outcome record in `api/` — `record XxxOutcome(XxxVerdict verdict, String reason, double dimensionScore)`; compact constructor validates score in `[0.0, 1.0]` and null-checks non-null fields
+2. Implement `TrustRoutingPolicyProvider` SPI in a `routing/` package — map capability names to `TrustRoutingPolicy` instances with per-capability thresholds, quality floors, and blend factors; fall back to `TrustRoutingPolicy.DEFAULT` for unknown capabilities; resolve overrides from `PreferenceProvider` first
+3. Add `casehub-engine-ledger` to `app/pom.xml`
+4. Create local re-numbered Flyway copies for engine-ledger tables at a non-colliding path; add the path to `quarkus.flyway.qhorus.locations` in both `application.properties` files; leave a comment in the SQL explaining the re-numbering
+5. Add `CaseLedgerEntryRepository` to `quarkus.arc.exclude-types` in test `application.properties` — pending engine#396
+6. Implement the trust score seeder with `@Observes @Priority(20) StartupEvent`; guard each `upsert()` with `if (trustRepo.findCapabilityScore(workerId, cap).isEmpty())` — this makes the seeder idempotent and safe to run on redeployments without overwriting live trust scores; call `trustScoreCache.hydrate()` after the loop; do not use `TrustBootstrapSource` for known initial values (it never fires on a fresh deployment)
+7. Implement `XxxWorkerDecisionRepository` with JPQL queries on `WorkerDecisionEntry` via `@PersistenceContext(unitName = "qhorus")`
+8. Implement `XxxOutcomeFeedbackService` — find `WorkerDecisionEntry` by caseId + capability; persist `LedgerAttestation` with `trustDimension`, `dimensionScore`, `verdict` (SOUND/FLAGGED); silently skip if no entry found — callers must not be blocked by missing history
+9. Expose GET `/{caseId}` returning routing decisions per capability with current trust scores from `TrustScoreCache.getCapabilityScore(workerId, capabilityTag)` — note scores reflect the cache at response time, not at routing time
+10. Tests: assert a seeded above-threshold worker is selected (GET → routingDecisions non-empty); POST an outcome; invoke `TrustScoreJob.runComputation()` directly; assert the score in `TrustScoreCache` has shifted
