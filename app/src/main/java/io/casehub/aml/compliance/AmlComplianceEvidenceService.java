@@ -1,7 +1,6 @@
 package io.casehub.aml.compliance;
 
 import io.casehub.aml.ledger.AmlInvestigationLedgerEntry;
-import io.casehub.aml.routing.AmlTrustRoutingPolicyProvider;
 import io.casehub.aml.trust.AmlTrustAttestationRepository;
 import io.casehub.aml.trust.AmlTrustRoutingAttestation;
 import io.casehub.aml.trust.AmlWorkerDecisionRepository;
@@ -35,7 +34,6 @@ public class AmlComplianceEvidenceService {
     private final LedgerVerificationService verificationService;
     private final AmlTrustAttestationRepository attestationRepo;
     private final AmlWorkerDecisionRepository workerDecisionRepo;
-    private final AmlTrustRoutingPolicyProvider policyProvider;
     private final EntityManager em;
 
     @Inject
@@ -44,13 +42,11 @@ public class AmlComplianceEvidenceService {
             LedgerVerificationService verificationService,
             AmlTrustAttestationRepository attestationRepo,
             AmlWorkerDecisionRepository workerDecisionRepo,
-            AmlTrustRoutingPolicyProvider policyProvider,
             EntityManager em) {
         this.ledgerRepo = ledgerRepo;
         this.verificationService = verificationService;
         this.attestationRepo = attestationRepo;
         this.workerDecisionRepo = workerDecisionRepo;
-        this.policyProvider = policyProvider;
         this.em = em;
     }
 
@@ -58,22 +54,21 @@ public class AmlComplianceEvidenceService {
      * Returns compliance evidence for the given case, or empty if no AML ledger entries exist.
      */
     public Optional<ComplianceEvidence> findEvidence(UUID caseId) {
-        List<LedgerEntry> allEntries = ledgerRepo.findBySubjectId(caseId);
-        List<AmlInvestigationLedgerEntry> amlEntries = filterAmlEntries(allEntries);
-        if (amlEntries.isEmpty()) {
-            return Optional.empty();
-        }
-        return Optional.of(assembleEvidence(caseId));
+        List<AmlInvestigationLedgerEntry> amlEntries =
+                filterAmlEntries(ledgerRepo.findBySubjectId(caseId));
+        if (amlEntries.isEmpty()) return Optional.empty();
+        return Optional.of(build(caseId, amlEntries));
     }
 
     /**
      * Assembles full compliance evidence for the given case.
-     * Package-private for direct unit test access.
+     * Package-private for direct unit test access (bypasses the double-query in findEvidence).
      */
     ComplianceEvidence assembleEvidence(UUID caseId) {
-        List<LedgerEntry> allEntries = ledgerRepo.findBySubjectId(caseId);
-        List<AmlInvestigationLedgerEntry> amlEntries = filterAmlEntries(allEntries);
+        return build(caseId, filterAmlEntries(ledgerRepo.findBySubjectId(caseId)));
+    }
 
+    private ComplianceEvidence build(UUID caseId, List<AmlInvestigationLedgerEntry> amlEntries) {
         return new ComplianceEvidence(
                 caseId,
                 Instant.now(),
@@ -81,7 +76,7 @@ public class AmlComplianceEvidenceService {
                 buildSla(amlEntries),
                 buildTrustRouting(caseId),
                 buildGdprErasure(),
-                null // signature — not yet implemented
+                null // signature — reserved for future offline signing
         );
     }
 
@@ -200,13 +195,15 @@ public class AmlComplianceEvidenceService {
 
         RequirementStatus status;
         if (claimDeadline == null) {
-            status = RequirementStatus.PARTIAL;
+            status = RequirementStatus.PARTIAL;     // WorkItem found but deadline unset
         } else if (completedAt == null && Instant.now().isAfter(claimDeadline)) {
-            status = RequirementStatus.BREACHED;
+            status = RequirementStatus.BREACHED;    // deadline passed, officer hasn't acted
         } else if (completedAt != null && !slaMet) {
-            status = RequirementStatus.BREACHED;
+            status = RequirementStatus.BREACHED;    // completed after deadline
+        } else if (completedAt == null) {
+            status = RequirementStatus.PARTIAL;     // within deadline, officer hasn't acted yet
         } else {
-            status = RequirementStatus.CLOSED;
+            status = RequirementStatus.CLOSED;      // completed before deadline
         }
 
         return new SlaRequirement(

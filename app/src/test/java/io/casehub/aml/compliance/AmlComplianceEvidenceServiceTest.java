@@ -1,7 +1,6 @@
 package io.casehub.aml.compliance;
 
 import io.casehub.aml.ledger.AmlInvestigationLedgerEntry;
-import io.casehub.aml.routing.AmlTrustRoutingPolicyProvider;
 import io.casehub.aml.trust.AmlTrustAttestationRepository;
 import io.casehub.aml.trust.AmlTrustRoutingAttestation;
 import io.casehub.aml.trust.AmlWorkerDecisionRepository;
@@ -33,7 +32,6 @@ class AmlComplianceEvidenceServiceTest {
     @Mock LedgerVerificationService verificationService;
     @Mock AmlTrustAttestationRepository attestationRepo;
     @Mock AmlWorkerDecisionRepository workerDecisionRepo;
-    @Mock AmlTrustRoutingPolicyProvider policyProvider;
     @Mock EntityManager em;
 
     AmlComplianceEvidenceService service;
@@ -49,8 +47,7 @@ class AmlComplianceEvidenceServiceTest {
         MockitoAnnotations.openMocks(this);
         service = new AmlComplianceEvidenceService(
             ledgerRepo, verificationService, attestationRepo,
-            workerDecisionRepo, policyProvider, em);
-        when(policyProvider.capabilities()).thenReturn(Set.of("entity-resolution", "sar-drafting"));
+            workerDecisionRepo, em);
     }
 
     @Test
@@ -81,11 +78,10 @@ class AmlComplianceEvidenceServiceTest {
         assertEquals(2, evidence.auditChain().events().size());
         assertNull(evidence.auditChain().events().get(0).causedByEntryId());
         assertEquals(caseOpenedId, evidence.auditChain().events().get(1).causedByEntryId());
-        assertEquals(RequirementStatus.CLOSED, evidence.sla().status());
-        // WorkItem is still open (completedAt=null) but deadline is 30 days away — slaMet is false,
-        // status is CLOSED (within the SLA window, not breached)
+        // WorkItem open (completedAt=null) with deadline 30 days away — officer hasn't acted yet.
+        // slaMet=false (not completed), status=PARTIAL (mechanism present, evidence incomplete).
         assertFalse(evidence.sla().slaMet());
-        assertEquals(RequirementStatus.CLOSED, evidence.sla().status());
+        assertEquals(RequirementStatus.PARTIAL, evidence.sla().status());
         assertNotNull(evidence.sla().workItemId());
         assertEquals(RequirementStatus.CLOSED, evidence.trustRouting().status());
         assertEquals(2, evidence.trustRouting().decisions().size());
