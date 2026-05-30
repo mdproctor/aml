@@ -49,7 +49,7 @@ class AmlLayer7ResourceTest {
                 given().when().get("/api/layer6/investigations/" + caseId)
                     .then().extract().path("status")));
 
-        given().when().get("/api/layer7/evidence/{caseId}", caseId)
+        given().when().get("/api/investigations/{caseId}/compliance-evidence", caseId)
             .then().statusCode(200)
             .body("caseId", equalTo(caseId))
             .body("generatedAt", notNullValue())
@@ -76,7 +76,7 @@ class AmlLayer7ResourceTest {
     @Test
     void getComplianceEvidence_unknownCase_returns404() {
         given().when()
-            .get("/api/layer7/evidence/{caseId}", UUID.randomUUID())
+            .get("/api/investigations/{caseId}/compliance-evidence", UUID.randomUUID())
             .then().statusCode(404);
     }
 

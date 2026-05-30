@@ -44,7 +44,7 @@ class AmlLayer7ErasureTest {
 
         // Erase -- tokenisation enabled in test config
         given().contentType(ContentType.JSON).when()
-            .post("/api/layer7/actors/{actorId}/erasure", "aml-orchestrator")
+            .post("/api/actors/{actorId}/erasure", "aml-orchestrator")
             .then().statusCode(200)
             .body("rawActorId", equalTo("aml-orchestrator"))
             .body("mappingFound", is(true))
@@ -54,7 +54,7 @@ class AmlLayer7ErasureTest {
     @Test
     void eraseActor_unknownActor_returnsMappingFalse() {
         given().contentType(ContentType.JSON).when()
-            .post("/api/layer7/actors/{actorId}/erasure", "actor-that-does-not-exist")
+            .post("/api/actors/{actorId}/erasure", "actor-that-does-not-exist")
             .then().statusCode(200)
             .body("mappingFound", is(false))
             .body("affectedEntryCount", equalTo(0));

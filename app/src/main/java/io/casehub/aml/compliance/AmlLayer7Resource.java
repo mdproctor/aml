@@ -18,12 +18,7 @@ import java.util.UUID;
  *   <li>POST actor erasure -- pseudonymizes an actor's identity in ledger entries,
  *       preserving audit structure while satisfying GDPR Art. 17.</li>
  * </ul>
- *
- * <p>The compliance evidence endpoint sits under {@code /api/layer7/evidence} to avoid
- * a JAX-RS routing conflict with {@link io.casehub.aml.AmlInvestigationResource} on
- * {@code /api/investigations}. The erasure endpoint sits under {@code /api/layer7/actors}.
  */
-@Path("/api/layer7")
 @ApplicationScoped
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -36,7 +31,7 @@ public class AmlLayer7Resource {
     LedgerErasureService erasureService;
 
     @GET
-    @Path("/evidence/{caseId}")
+    @Path("/api/investigations/{caseId}/compliance-evidence")
     public Response getComplianceEvidence(@PathParam("caseId") UUID caseId) {
         return evidenceService.findEvidence(caseId)
             .map(e -> Response.ok(e).build())
@@ -44,7 +39,7 @@ public class AmlLayer7Resource {
     }
 
     @POST
-    @Path("/actors/{actorId}/erasure")
+    @Path("/api/actors/{actorId}/erasure")
     public LedgerErasureService.ErasureResult eraseActor(
             @PathParam("actorId") String actorId) {
         return erasureService.erase(actorId);
