@@ -1,0 +1,32 @@
+package io.casehub.aml.trust;
+
+import io.casehub.ledger.runtime.model.LedgerEntry;
+import jakarta.persistence.*;
+import java.util.UUID;
+
+/**
+ * Layer 7: captures trust score at routing time per capability.
+ * Written by AmlTrustRoutingObserver on each WorkerDecisionEvent.
+ * trustScoreAtRouting is nullable — null means TrustScoreCache had no entry at routing time.
+ * Workaround for casehubio/engine#403 (WorkerDecisionEntry missing these fields).
+ */
+@Entity
+@Table(name = "aml_trust_routing_attestation")
+@DiscriminatorValue("AML_TRUST_ROUTING")
+public class AmlTrustRoutingAttestation extends LedgerEntry {
+
+    @Column(name = "capability_tag", nullable = false, length = 100)
+    public String capabilityTag;
+
+    @Column(name = "selected_worker_id", nullable = false)
+    public String selectedWorkerId;
+
+    @Column(name = "trust_score_at_routing")
+    public Double trustScoreAtRouting;
+
+    @Column(name = "threshold_applied", nullable = false)
+    public double thresholdApplied;
+
+    @Column(name = "investigation_case_id", nullable = false)
+    public UUID investigationCaseId;
+}
