@@ -9,6 +9,7 @@ import io.casehub.platform.api.preferences.SettingsScope;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
+import java.util.Set;
 
 @ApplicationScoped
 public class AmlTrustRoutingPolicyProvider implements TrustRoutingPolicyProvider {
@@ -51,5 +52,10 @@ public class AmlTrustRoutingPolicyProvider implements TrustRoutingPolicyProvider
                     pref.qualityFloors());
         }
         return POLICIES.getOrDefault(capabilityName, TrustRoutingPolicy.DEFAULT);
+    }
+
+    /** Returns the capability tags for which explicit routing policies are configured. */
+    public Set<String> capabilities() {
+        return POLICIES.keySet();
     }
 }
