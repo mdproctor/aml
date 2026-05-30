@@ -82,7 +82,10 @@ class AmlComplianceEvidenceServiceTest {
         assertNull(evidence.auditChain().events().get(0).causedByEntryId());
         assertEquals(caseOpenedId, evidence.auditChain().events().get(1).causedByEntryId());
         assertEquals(RequirementStatus.CLOSED, evidence.sla().status());
-        assertTrue(evidence.sla().slaMet() || !evidence.sla().slaMet()); // just check it compiles
+        // WorkItem is still open (completedAt=null) but deadline is 30 days away — slaMet is false,
+        // status is CLOSED (within the SLA window, not breached)
+        assertFalse(evidence.sla().slaMet());
+        assertEquals(RequirementStatus.CLOSED, evidence.sla().status());
         assertNotNull(evidence.sla().workItemId());
         assertEquals(RequirementStatus.CLOSED, evidence.trustRouting().status());
         assertEquals(2, evidence.trustRouting().decisions().size());
