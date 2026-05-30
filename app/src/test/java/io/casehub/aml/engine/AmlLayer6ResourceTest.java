@@ -53,6 +53,16 @@ class AmlLayer6ResourceTest {
     }
 
     @Test
+    void post_outcome_with_invalid_score_returns_400_with_domain_message() {
+        // investigationAccuracyScore=1.5 violates SarOutcome compact constructor invariant
+        given().contentType(ContentType.JSON)
+                .body("{\"verdict\":\"UPHELD\",\"reason\":\"test\",\"investigationAccuracyScore\":1.5}")
+                .when().post("/api/layer6/investigations/" + UUID.randomUUID() + "/outcome")
+                .then().statusCode(400)
+                .body("error", containsString("investigationAccuracyScore"));
+    }
+
+    @Test
     void post_outcome_returns_204() {
         final String caseIdStr = given().contentType(ContentType.JSON).body(TRANSACTION)
                 .when().post("/api/layer6/investigations")
