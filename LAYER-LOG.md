@@ -500,8 +500,8 @@ casehub-engine binding evaluation replaces the fixed sequential pipeline. The en
 - `WorkerRoutingDecision` — `record(String capabilityTag, String selectedWorker, Double trustScore)` with `@JsonInclude(NON_NULL)` — trust score is null in Phase 0 (no history yet)
 
 **Flyway — local re-numbered engine-ledger migrations:**
-- `app/src/main/resources/db/engine-ledger/migration/V2002__case_ledger_entry.sql` — local copy of engine-ledger V2000 (`case_ledger_entry` join table), re-numbered to avoid collision with qhorus V2000
-- `app/src/main/resources/db/engine-ledger/migration/V2003__worker_decision_entry.sql` — local copy of engine-ledger V2001 (`worker_decision_entry` join table), re-numbered; both paths added to `quarkus.flyway.qhorus.locations`
+- `app/src/main/resources/db/aml-engine-ledger/migration/V2002__case_ledger_entry.sql` — local copy of engine-ledger V2000 (`case_ledger_entry` join table), re-numbered to avoid collision with qhorus V2000 (Layer 7: renamed from `db/engine-ledger/` to `db/aml-engine-ledger/` to avoid Flyway classpath collision with the upstream jar)
+- `app/src/main/resources/db/aml-engine-ledger/migration/V2003__worker_decision_entry.sql` — local copy of engine-ledger V2001 (`worker_decision_entry` join table), re-numbered; both paths added to `quarkus.flyway.qhorus.locations`
 
 **Dependencies (`app/pom.xml`):**
 - `casehub-engine-ledger` — provides `WorkerDecisionEntry`, `CaseLedgerEntry`, `ActorTrustScoreRepository`, `TrustScoreCache`, `LedgerAttestation`
@@ -549,7 +549,7 @@ public class AmlTrustRoutingPolicyProvider implements TrustRoutingPolicyProvider
 
 **`LedgerAttestation` wired to `sar-drafting` `WorkerDecisionEntry`.** `SarOutcomeFeedbackService` finds the entry by caseId + capability, then persists a `LedgerAttestation` using the qhorus `EntityManager` (`@PersistenceContext(unitName = "qhorus")`). The `trustDimension = "investigation-accuracy"` field links the attestation to the correct dimension for `TrustScoreJob` recomputation.
 
-**Flyway V2002/V2003 — local re-numbered copies of engine-ledger migrations.** Engine-ledger ships V2000/V2001 at `classpath:db/migration/` — the generic path Flyway scans for qhorus migrations. Qhorus defines its own V2000. Adding `casehub-engine-ledger` without a separate migration path causes `FlywayException: Found more than one migration with version 2000`. Local copies at V2002/V2003 under `classpath:db/engine-ledger/migration/` resolve this. SQL files carry a comment explaining the re-numbering. Tracked as engine#395.
+**Flyway V2002/V2003 — local re-numbered copies of engine-ledger migrations.** Engine-ledger ships V2000/V2001 at `classpath:db/migration/` — the generic path Flyway scans for qhorus migrations. Qhorus defines its own V2000. Adding `casehub-engine-ledger` without a separate migration path causes `FlywayException: Found more than one migration with version 2000`. Local copies at V2002/V2003 under `classpath:db/aml-engine-ledger/migration/` resolve this (renamed from `db/engine-ledger/` in Layer 7 to avoid a second Flyway classpath collision with the upstream jar). SQL files carry a comment explaining the re-numbering. Tracked as engine#395.
 
 ### Gotchas
 
