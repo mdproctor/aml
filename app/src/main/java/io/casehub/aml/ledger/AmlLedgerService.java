@@ -57,8 +57,22 @@ public class AmlLedgerService {
 
     /**
      * Write a COMPLIANCE_REVIEW_OPENED entry after the SAR review WorkItem is created.
+     *
+     * <p>Sets {@code causedByEntryId} by querying for the {@code CASE_OPENED} entry for the
+     * same caseId. This derivation happens inside the method so it works for both:
+     * <ol>
+     * <li>The synchronous Layer 3 path (AmlInvestigationCoordinator)</li>
+     * <li>The async Layer 5 path — the sar-drafting worker lambda runs on a Quartz thread
+     *     well after {@code startInvestigation()} returns, making parameter threading impractical</li>
+     * </ol>
      */
     public void writeComplianceReviewOpened(final UUID caseId, final String taskId) {
+        final UUID caseOpenedEntryId = repository.findBySubjectId(caseId).stream()
+                .filter(e -> e instanceof AmlInvestigationLedgerEntry ale
+                             && "CASE_OPENED".equals(ale.eventType))
+                .map(e -> e.id)
+                .findFirst()
+                .orElse(null);
         final int sequenceNumber = nextSequenceNumber(caseId);
         final AmlInvestigationLedgerEntry entry = new AmlInvestigationLedgerEntry();
         entry.id = UUID.randomUUID();
@@ -71,6 +85,7 @@ public class AmlLedgerService {
         entry.occurredAt = Instant.now();
         entry.transactionId = taskId;
         entry.eventType = "COMPLIANCE_REVIEW_OPENED";
+        entry.causedByEntryId = caseOpenedEntryId;
         repository.save(entry);
     }
 
