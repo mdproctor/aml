@@ -43,6 +43,7 @@ Before any git operation, run `git rev-parse --show-toplevel` to confirm which r
 - Source code commits → project repo
 - Methodology artifacts → workspace
 
+**Pre-push hook (`core.hooksPath = .githooks`):** The project repo has a hook that blocks all pushes containing commits — including empty ones. `chore: branch closed` stamps on branches with an existing remote upstream require `--no-verify`. Branches new to remote that are already merged into main are unaffected (the hook's range yields 0 commits). See garden entry GE-20260531-2f51fd for root cause detail.
 
 ## Rules
 
