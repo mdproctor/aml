@@ -74,7 +74,9 @@ public class AmlLayer6Resource {
     @Path("/{caseId}/outcome")
     public Response recordOutcome(
             @PathParam("caseId") UUID caseId,
-            final SarOutcome outcome) {
+            final SarOutcomeRequest request) {
+        final SarOutcome outcome = new SarOutcome(
+                request.verdict(), request.reason(), request.investigationAccuracyScore());
         feedbackService.recordOutcome(caseId, outcome);
         return Response.noContent().build();
     }

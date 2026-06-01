@@ -10,15 +10,14 @@ import jakarta.ws.rs.ext.Provider;
 /**
  * Maps {@link JsonMappingException} to HTTP 400 Bad Request.
  *
- * <p>Handles domain validation errors thrown during Jackson deserialization — specifically
- * when a record compact constructor throws {@link IllegalArgumentException} (e.g.
- * {@code SarOutcome.investigationAccuracyScore} out of range). Jackson wraps these as
- * {@code ValueInstantiationException extends JsonMappingException}, so an
- * {@code ExceptionMapper<IllegalArgumentException>} alone cannot catch them.
+ * <p>Handles domain validation errors that reach resource methods wrapped in
+ * {@code JsonMappingException} — for example, from Jackson filters or interceptors.
+ * Note: deserialization errors thrown directly by message body readers are caught by
+ * the JAX-RS runtime before exception mappers run (JAX-RS spec §4.2.4); those must
+ * be handled by moving validation into the resource method body instead.
  *
  * <p>When the cause is {@link IllegalArgumentException}, the domain error message is
- * surfaced in the response body. For other mapping failures (unknown field, type mismatch),
- * a generic 400 is returned without exposing Jackson internals.
+ * surfaced in the response body. For other mapping failures, a generic 400 is returned.
  */
 @Provider
 @ApplicationScoped
