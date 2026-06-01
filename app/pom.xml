@@ -103,6 +103,14 @@
       <version>${casehub.version}</version>
     </dependency>
 
+    <!-- YAML-backed PreferenceProvider — displaces MockPreferenceProvider @DefaultBean
+         automatically when on the classpath. Reads casehub.platform.config.files. -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-platform-config</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
+
     <!-- MockPreferenceProvider @DefaultBean required at production augmentation time.
          Must be runtime (not test) scope because quarkus:build validates CDI without
          the test classpath. Scope rule: PLATFORM.md §casehub-platform-api. -->

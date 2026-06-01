@@ -1,0 +1,40 @@
+# AML trust routing — all policy fields per capability.
+# threshold/minimumObservations/borderlineMargin/blendFactor are all tunable at runtime.
+# quality floors: 0.0 = no floor (omit or set explicitly to skip floor enforcement).
+entries:
+  # entity-resolution: high trust requirement — resolution errors cause missed alerts
+  - scope: casehubio/aml/trust-routing/entity-resolution
+    casehubio.aml.trust-routing.threshold: "0.70"
+    casehubio.aml.trust-routing.minimum-observations: "10"
+    casehubio.aml.trust-routing.borderline-margin: "0.10"
+    casehubio.aml.trust-routing.blend-factor: "0.60"
+
+  # pattern-analysis: moderate trust — analysis errors are reviewable
+  - scope: casehubio/aml/trust-routing/pattern-analysis
+    casehubio.aml.trust-routing.threshold: "0.65"
+    casehubio.aml.trust-routing.minimum-observations: "10"
+    casehubio.aml.trust-routing.borderline-margin: "0.10"
+    casehubio.aml.trust-routing.blend-factor: "0.60"
+
+  # osint-screening: high trust — missed screening creates regulatory exposure
+  - scope: casehubio/aml/trust-routing/osint-screening
+    casehubio.aml.trust-routing.threshold: "0.70"
+    casehubio.aml.trust-routing.minimum-observations: "10"
+    casehubio.aml.trust-routing.borderline-margin: "0.10"
+    casehubio.aml.trust-routing.blend-factor: "0.65"
+
+  # sar-drafting: highest trust — SAR errors have direct regulatory consequence
+  # investigation-accuracy floor ensures agents that miss key facts are excluded
+  - scope: casehubio/aml/trust-routing/sar-drafting
+    casehubio.aml.trust-routing.threshold: "0.75"
+    casehubio.aml.trust-routing.minimum-observations: "10"
+    casehubio.aml.trust-routing.borderline-margin: "0.10"
+    casehubio.aml.trust-routing.blend-factor: "0.70"
+    casehubio.aml.trust-routing.floor.investigation-accuracy: "0.65"
+
+  # senior-analyst-review: highest threshold — final sign-off on investigations
+  - scope: casehubio/aml/trust-routing/senior-analyst-review
+    casehubio.aml.trust-routing.threshold: "0.80"
+    casehubio.aml.trust-routing.minimum-observations: "10"
+    casehubio.aml.trust-routing.borderline-margin: "0.10"
+    casehubio.aml.trust-routing.blend-factor: "0.70"

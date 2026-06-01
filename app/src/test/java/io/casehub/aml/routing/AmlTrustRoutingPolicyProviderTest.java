@@ -1,57 +1,90 @@
 package io.casehub.aml.routing;
 
 import io.casehub.api.spi.routing.TrustRoutingPolicy;
-import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
+import io.casehub.platform.api.preferences.MapPreferences;
+import io.casehub.platform.api.preferences.PreferenceProvider;
 import org.junit.jupiter.api.Test;
+import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
-@QuarkusTest
 class AmlTrustRoutingPolicyProviderTest {
 
-    @Inject
-    AmlTrustRoutingPolicyProvider provider;
+    private static final PreferenceProvider EMPTY = scope -> new MapPreferences(Map.of());
+
+    private static final PreferenceProvider SAR_DRAFTING = scope ->
+        new MapPreferences(Map.of(
+            "casehubio.aml.trust-routing.threshold", "0.75",
+            "casehubio.aml.trust-routing.minimum-observations", "10",
+            "casehubio.aml.trust-routing.borderline-margin", "0.10",
+            "casehubio.aml.trust-routing.blend-factor", "0.70",
+            "casehubio.aml.trust-routing.floor.investigation-accuracy", "0.65"
+        ));
+
+    private static final PreferenceProvider OSINT_SCREENING = scope ->
+        new MapPreferences(Map.of(
+            "casehubio.aml.trust-routing.threshold", "0.70",
+            "casehubio.aml.trust-routing.minimum-observations", "10",
+            "casehubio.aml.trust-routing.borderline-margin", "0.10",
+            "casehubio.aml.trust-routing.blend-factor", "0.65"
+        ));
 
     @Test
-    void sar_drafting_has_higher_threshold_than_default() {
-        final TrustRoutingPolicy policy = provider.forCapability("sar-drafting");
-        assertEquals(0.75, policy.threshold(), 0.001);
-        assertEquals(0.70, policy.blendFactor(), 0.001);
-        assertEquals(10, policy.minimumObservations());
-        assertTrue(policy.qualityFloors().containsKey("investigation-accuracy"));
-        assertEquals(0.65, policy.qualityFloors().get("investigation-accuracy"), 0.001);
+    void unknownCapabilityReturnsDefault() {
+        var provider = new AmlTrustRoutingPolicyProvider(EMPTY);
+        assertEquals(TrustRoutingPolicy.DEFAULT, provider.forCapability("unknown-capability"));
     }
 
     @Test
-    void osint_screening_threshold_is_0_70() {
-        final TrustRoutingPolicy policy = provider.forCapability("osint-screening");
-        assertEquals(0.70, policy.threshold(), 0.001);
-        assertEquals(0.65, policy.blendFactor(), 0.001);
-        assertTrue(policy.qualityFloors().isEmpty());
+    void sarDraftingThreshold() {
+        var provider = new AmlTrustRoutingPolicyProvider(SAR_DRAFTING);
+        assertEquals(0.75, provider.forCapability("sar-drafting").threshold(), 0.001);
     }
 
     @Test
-    void pattern_analysis_threshold_is_0_65() {
-        final TrustRoutingPolicy policy = provider.forCapability("pattern-analysis");
-        assertEquals(0.65, policy.threshold(), 0.001);
+    void sarDraftingMinimumObservations() {
+        var provider = new AmlTrustRoutingPolicyProvider(SAR_DRAFTING);
+        assertEquals(10, provider.forCapability("sar-drafting").minimumObservations());
     }
 
     @Test
-    void senior_analyst_review_has_highest_threshold() {
-        final TrustRoutingPolicy policy = provider.forCapability("senior-analyst-review");
-        assertEquals(0.80, policy.threshold(), 0.001);
+    void sarDraftingBlendFactor() {
+        var provider = new AmlTrustRoutingPolicyProvider(SAR_DRAFTING);
+        assertEquals(0.70, provider.forCapability("sar-drafting").blendFactor(), 0.001);
     }
 
     @Test
-    void unknown_capability_returns_default_policy() {
-        final TrustRoutingPolicy policy = provider.forCapability("unknown-capability");
-        assertEquals(TrustRoutingPolicy.DEFAULT.threshold(), policy.threshold(), 0.001);
+    void sarDraftingInvestigationAccuracyFloor() {
+        var provider = new AmlTrustRoutingPolicyProvider(SAR_DRAFTING);
+        Map<String, Double> floors = provider.forCapability("sar-drafting").qualityFloors();
+        assertTrue(floors.containsKey("investigation-accuracy"));
+        assertEquals(0.65, floors.get("investigation-accuracy"), 0.001);
     }
 
     @Test
-    void mock_preferences_return_null_so_hardcoded_fallback_always_applies() {
-        final TrustRoutingPolicy policy = provider.forCapability("sar-drafting");
-        assertNotNull(policy);
-        assertEquals(0.75, policy.threshold(), 0.001);
+    void osintScreeningThreshold() {
+        var provider = new AmlTrustRoutingPolicyProvider(OSINT_SCREENING);
+        assertEquals(0.70, provider.forCapability("osint-screening").threshold(), 0.001);
+    }
+
+    @Test
+    void osintScreeningBlendFactor() {
+        var provider = new AmlTrustRoutingPolicyProvider(OSINT_SCREENING);
+        assertEquals(0.65, provider.forCapability("osint-screening").blendFactor(), 0.001);
+    }
+
+    @Test
+    void osintScreeningHasNoQualityFloors() {
+        var provider = new AmlTrustRoutingPolicyProvider(OSINT_SCREENING);
+        assertTrue(provider.forCapability("osint-screening").qualityFloors().isEmpty());
+    }
+
+    @Test
+    void zeroFloorValueNotAddedToMap() {
+        PreferenceProvider withZeroFloor = scope -> new MapPreferences(Map.of(
+            "casehubio.aml.trust-routing.threshold", "0.70",
+            "casehubio.aml.trust-routing.floor.investigation-accuracy", "0.0"
+        ));
+        var provider = new AmlTrustRoutingPolicyProvider(withZeroFloor);
+        assertFalse(provider.forCapability("any").qualityFloors().containsKey("investigation-accuracy"));
     }
 }

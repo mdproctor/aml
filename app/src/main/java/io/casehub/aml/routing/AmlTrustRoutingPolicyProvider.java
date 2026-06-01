@@ -8,23 +8,12 @@ import io.casehub.platform.api.preferences.Preferences;
 import io.casehub.platform.api.preferences.SettingsScope;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
 @ApplicationScoped
 public class AmlTrustRoutingPolicyProvider implements TrustRoutingPolicyProvider {
-
-    private static final TrustPolicyPreference SENTINEL =
-            new TrustPolicyPreference(0.0, 0, 0.0, 0.0, Map.of());
-
-    private static final Map<String, TrustRoutingPolicy> POLICIES = Map.of(
-            "entity-resolution",     new TrustRoutingPolicy(0.70, 10, 0.10, 0.60, Map.of()),
-            "pattern-analysis",      new TrustRoutingPolicy(0.65, 10, 0.10, 0.60, Map.of()),
-            "osint-screening",       new TrustRoutingPolicy(0.70, 10, 0.10, 0.65, Map.of()),
-            "sar-drafting",          new TrustRoutingPolicy(0.75, 10, 0.10, 0.70,
-                                         Map.of("investigation-accuracy", 0.65)),
-            "senior-analyst-review", new TrustRoutingPolicy(0.80, 10, 0.10, 0.70, Map.of())
-    );
 
     private final PreferenceProvider preferenceProvider;
 
@@ -35,27 +24,40 @@ public class AmlTrustRoutingPolicyProvider implements TrustRoutingPolicyProvider
 
     @Override
     public TrustRoutingPolicy forCapability(final String capabilityName) {
-        final PreferenceKey<TrustPolicyPreference> key = new PreferenceKey<>(
-                "casehubio.aml.trust-routing",
-                capabilityName,
-                SENTINEL,
-                s -> { throw new UnsupportedOperationException(
-                        "TrustPolicyPreference YAML parsing not yet configured — activate casehub-platform-config"); }
-        );
-        final Preferences prefs =
-                preferenceProvider.resolve(SettingsScope.of("casehubio", "aml", "trust-routing", capabilityName));
-        final TrustPolicyPreference pref = prefs.get(key);
-        if (pref != null && pref != SENTINEL) {
-            return new TrustRoutingPolicy(
-                    pref.threshold(), pref.minimumObservations(),
-                    pref.borderlineMargin(), pref.blendFactor(),
-                    pref.qualityFloors());
+        final Preferences prefs = preferenceProvider.resolve(
+            SettingsScope.of("casehubio", "aml", "trust-routing", capabilityName));
+
+        final DoublePreference threshold = prefs.get(TrustRoutingPolicyKeys.THRESHOLD);
+        if (threshold == null) {
+            return TrustRoutingPolicy.DEFAULT;
         }
-        return POLICIES.getOrDefault(capabilityName, TrustRoutingPolicy.DEFAULT);
+
+        final IntPreference minObs = prefs.get(TrustRoutingPolicyKeys.MINIMUM_OBSERVATIONS);
+        final DoublePreference borderlineMargin = prefs.get(TrustRoutingPolicyKeys.BORDERLINE_MARGIN);
+        final DoublePreference blendFactor = prefs.get(TrustRoutingPolicyKeys.BLEND_FACTOR);
+
+        final Map<String, Double> qualityFloors = new HashMap<>();
+        TrustRoutingPolicyKeys.allFloorKeys().forEach((dimension, key) ->
+            addFloor(qualityFloors, prefs, key, dimension));
+
+        return new TrustRoutingPolicy(
+            threshold.value(),
+            minObs != null ? minObs.value() : TrustRoutingPolicy.DEFAULT.minimumObservations(),
+            borderlineMargin != null ? borderlineMargin.value() : TrustRoutingPolicy.DEFAULT.borderlineMargin(),
+            blendFactor != null ? blendFactor.value() : TrustRoutingPolicy.DEFAULT.blendFactor(),
+            Map.copyOf(qualityFloors));
     }
 
-    /** Returns the capability tags for which explicit routing policies are configured. */
     public Set<String> capabilities() {
-        return POLICIES.keySet();
+        return Set.of("entity-resolution", "pattern-analysis", "osint-screening",
+                      "sar-drafting", "senior-analyst-review");
+    }
+
+    private static void addFloor(final Map<String, Double> floors, final Preferences prefs,
+            final PreferenceKey<DoublePreference> key, final String dimension) {
+        final DoublePreference value = prefs.get(key);
+        if (value != null && value.value() > 0.0) {
+            floors.put(dimension, value.value());
+        }
     }
 }
