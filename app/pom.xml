@@ -103,6 +103,13 @@
       <version>${casehub.version}</version>
     </dependency>
 
+    <!-- Actor state view — GET /actors/{actorId}/state -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-engine-actor-state</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
+
     <!-- YAML-backed PreferenceProvider — displaces MockPreferenceProvider @DefaultBean
          automatically when on the classpath. Reads casehub.platform.config.files. -->
     <dependency>
