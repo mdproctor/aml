@@ -101,7 +101,7 @@ type: java
 
 **Goal:** Production-grade AML investigation harness demonstrating that financial crime investigation, SAR filing, and FinCEN/FATF regulatory compliance are structurally better served by a formal accountability layer than by best-effort agentic coordination.
 
-**Architecture record:** `LAYER-LOG.md` tracks integration layer entries. A layer is not complete until its entry is written. Arc42Stories migration planned — layer entries will move to `ARC42STORIES.MD §9.4` when the document is bootstrapped. See `../parent/docs/arc42stories-spec.md` and `../parent/docs/arc42stories-casehub-profile.md`.
+**Architecture record:** `ARC42STORIES.MD` (project root) is the primary architecture record. `LAYER-LOG.md` remains as the source-of-truth draft that feeds it; both must be kept in sync when layers are extended. When a layer is extended or a new layer opens, write the LAYER-LOG entry first, then sync to `ARC42STORIES.MD §9.4`.
 
 ---
 

@@ -1,5 +1,7 @@
 # casehub-aml Agentic Harness — Layer Log
 
+**Status:** Migrated to `ARC42STORIES.MD` as of 2026-06-02. LAYER-LOG.md remains as the source-of-truth draft. When a layer is extended or a new layer opens, write the LAYER-LOG entry first, then sync to `ARC42STORIES.MD §9.4`.
+
 Architecture record of what was built at each integration layer. Entries are ordered for
 reading comprehension, not chronology. Each entry is complete when the layer closes.
 
