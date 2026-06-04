@@ -12,13 +12,16 @@ import io.casehub.platform.api.memory.MemoryQuery;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
@@ -30,12 +33,20 @@ class AmlSarOutcomeObserverTest {
 
     private static final String TENANT = TenancyConstants.DEFAULT_TENANT_ID;
 
+    private void drain(final UUID caseId) {
+        Awaitility.await().atMost(Duration.ofSeconds(20)).pollInterval(Duration.ofMillis(100))
+            .until(() -> "completed".equals(
+                given().when().get("/api/layer6/investigations/" + caseId)
+                        .then().extract().path("status")));
+    }
+
     @Test
     void sarOutcomeEvent_writesMemoryForBothAccounts() {
         SuspiciousTransaction tx = new SuspiciousTransaction(
             "TXN-SAR-MEM-001-" + UUID.randomUUID(), "ACC-SAR-ORIGIN-1-" + UUID.randomUUID(), "ACC-SAR-DEST-1-" + UUID.randomUUID(),
             new BigDecimal("80000"), "USD", Instant.now(), "SAR outcome test");
         UUID caseId = coordinator.startInvestigation(tx);
+        drain(caseId);
 
         sarOutcomeEvent.fire(new SarOutcomeRecordedEvent(
             caseId, new SarOutcome(SarVerdict.UPHELD, "SAR upheld", 0.92)));
@@ -56,6 +67,7 @@ class AmlSarOutcomeObserverTest {
             "TXN-SAR-MEM-002-" + UUID.randomUUID(), "ACC-SAR-WITHDRAWN-" + UUID.randomUUID(), "ACC-SAR-WITHDRAWN-DEST-" + UUID.randomUUID(),
             new BigDecimal("30000"), "USD", Instant.now(), "SAR withdrawn test");
         UUID caseId = coordinator.startInvestigation(tx);
+        drain(caseId);
 
         sarOutcomeEvent.fire(new SarOutcomeRecordedEvent(
             caseId, new SarOutcome(SarVerdict.WITHDRAWN, "SAR withdrawn", 0.10)));

@@ -34,9 +34,18 @@ class AmlLayer8RoutingTest {
     @Inject CaseHubRuntime caseHubRuntime;
 
     private static final Duration TIMEOUT             = Duration.ofSeconds(15);
+    private static final Duration DRAIN_TIMEOUT       = Duration.ofSeconds(20);
     private static final Duration POLL_INTERVAL       = Duration.ofMillis(100);
     private static final String   TENANT              = TenancyConstants.DEFAULT_TENANT_ID;
     private static final String   SENIOR_ANALYST_WORKER = "senior-analyst-agent";
+
+    /** Full drain: wait for investigation completion to prevent Quartz contamination. */
+    private void drainInvestigation(final UUID caseId) {
+        await().atMost(DRAIN_TIMEOUT).pollInterval(POLL_INTERVAL).until(() ->
+            "completed".equals(
+                given().when().get("/api/layer6/investigations/" + caseId)
+                        .then().extract().path("status")));
+    }
 
     private UUID startInvestigation(final String txId, final String originAccountId) {
         final var body = """
@@ -83,6 +92,7 @@ class AmlLayer8RoutingTest {
 
         await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL)
             .until(() -> scheduledWorkerNames(caseId).contains(SENIOR_ANALYST_WORKER));
+        drainInvestigation(caseId);
     }
 
     @Test
@@ -100,6 +110,7 @@ class AmlLayer8RoutingTest {
 
         assertFalse(snapshot.get().contains(SENIOR_ANALYST_WORKER),
             "Non-PEP entity with no history must not trigger senior analyst: " + snapshot.get());
+        drainInvestigation(caseId);
     }
 
     @Test
@@ -122,5 +133,6 @@ class AmlLayer8RoutingTest {
 
         assertFalse(snapshot.get().contains(SENIOR_ANALYST_WORKER),
             "Low-confidence history must not trigger senior analyst: " + snapshot.get());
+        drainInvestigation(caseId);
     }
 }

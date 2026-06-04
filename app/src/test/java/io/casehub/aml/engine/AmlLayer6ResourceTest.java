@@ -13,6 +13,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
 class AmlLayer6ResourceTest {
@@ -26,10 +27,16 @@ class AmlLayer6ResourceTest {
 
     @Test
     void post_investigate_returns_202_with_caseId() {
-        given().contentType(ContentType.JSON).body(TRANSACTION)
+        final String caseIdStr = given().contentType(ContentType.JSON).body(TRANSACTION)
                 .when().post("/api/layer6/investigations")
                 .then().statusCode(202)
-                .body("caseId", notNullValue());
+                .extract().path("caseId");
+        assertNotNull(caseIdStr, "caseId must not be null");
+        // Drain: wait for completion to prevent Quartz contamination of subsequent tests.
+        Awaitility.await().atMost(15, TimeUnit.SECONDS).pollInterval(200, TimeUnit.MILLISECONDS)
+                .until(() -> "completed".equals(
+                        given().when().get("/api/layer6/investigations/" + caseIdStr)
+                                .then().extract().path("status")));
     }
 
     @Test

@@ -7,10 +7,12 @@ import jakarta.inject.Inject;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -27,9 +29,16 @@ class AmlTrustRoutingAttestationTest {
     @Inject AmlEngineCoordinator coordinator;
     @Inject AmlTrustAttestationRepository attestationRepo;
 
+    private void drain(final UUID caseId) {
+        Awaitility.await().atMost(Duration.ofSeconds(20)).pollInterval(Duration.ofMillis(100))
+            .until(() -> "completed".equals(
+                given().when().get("/api/layer6/investigations/" + caseId)
+                        .then().extract().path("status")));
+    }
+
     @Test
     void workerDispatch_writesAttestationPerCapability() {
-        UUID caseId = coordinator.startInvestigation(pep("TXN-ATT-001"));
+        UUID caseId = coordinator.startInvestigation(pep("TXN-ATT-001-" + UUID.randomUUID()));
 
         Awaitility.await().atMost(15, TimeUnit.SECONDS).until(() ->
             !attestationRepo.findByInvestigationCaseId(caseId).isEmpty()
@@ -46,11 +55,12 @@ class AmlTrustRoutingAttestationTest {
             assertNotNull(a.selectedWorkerId, "selectedWorkerId must be set");
             assertTrue(a.thresholdApplied > 0.0, "thresholdApplied must be positive");
         }
+        drain(caseId);
     }
 
     @Test
     void workerDispatch_sarDraftingAttestation_hasNonNullScore_whenCacheSeeded() {
-        UUID caseId = coordinator.startInvestigation(pep("TXN-ATT-002"));
+        UUID caseId = coordinator.startInvestigation(pep("TXN-ATT-002-" + UUID.randomUUID()));
 
         Awaitility.await().atMost(15, TimeUnit.SECONDS).until(() ->
             attestationRepo.findByInvestigationCaseId(caseId).stream()
@@ -66,6 +76,7 @@ class AmlTrustRoutingAttestationTest {
             "trustScoreAtRouting must be non-null when cache is seeded");
         assertTrue(sarAttestation.trustScoreAtRouting > 0.0,
             "trustScoreAtRouting must be positive when seeded");
+        drain(caseId);
     }
 
     private SuspiciousTransaction pep(String id) {
