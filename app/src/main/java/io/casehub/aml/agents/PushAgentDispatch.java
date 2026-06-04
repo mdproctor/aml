@@ -77,7 +77,19 @@ public class PushAgentDispatch implements AgentDispatchMechanism, AgentChannelBa
             return;
         }
 
-        final SpecialistOutcome<?> outcome = behaviour.handle(null);
+        final String corrId = message.correlationId() != null ? message.correlationId().toString() : null;
+
+        // Resolve the COMMAND message entity for inReplyTo and behaviour context.
+        // The COMMAND is already flushed to the qhorus datasource within the current transaction.
+        // See qhorus#190 for adding inReplyTo directly to OutboundMessage.
+        final io.casehub.qhorus.runtime.message.Message commandMessage = corrId != null
+                ? messageService.findAllByCorrelationId(corrId).stream()
+                        .filter(m -> m.messageType == MessageType.COMMAND)
+                        .findFirst()
+                        .orElse(null)
+                : null;
+
+        final SpecialistOutcome<?> outcome = behaviour.handle(commandMessage);
 
         final MessageType replyType = switch (outcome) {
             case SpecialistOutcome.Completed<?> ignored -> MessageType.DONE;
@@ -91,18 +103,7 @@ public class PushAgentDispatch implements AgentDispatchMechanism, AgentChannelBa
             case SpecialistOutcome.Failed<?> f          -> f.reason();
         };
 
-        final String corrId = message.correlationId() != null ? message.correlationId().toString() : null;
-
-        // Resolve the COMMAND's Long message ID for inReplyTo.
-        // The COMMAND is already flushed to the qhorus datasource within the current transaction.
-        // See qhorus#190 for adding inReplyTo directly to OutboundMessage.
-        final Long commandId = corrId != null
-                ? messageService.findAllByCorrelationId(corrId).stream()
-                        .filter(m -> m.messageType == MessageType.COMMAND)
-                        .map(m -> m.id)
-                        .findFirst()
-                        .orElse(null)
-                : null;
+        final Long commandId = commandMessage != null ? commandMessage.id : null;
 
         // subjectId not propagated here: OutboundMessage does not carry subjectId (qhorus#190).
         // The tutorial uses QhorusAmlInvestigator for ledger-linked dispatches; PushAgentDispatch

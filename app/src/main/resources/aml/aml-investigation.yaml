@@ -68,13 +68,16 @@ spec:
       when: ".entityResolution != null and .osintScreening == null"
       capability: osint-screening
 
-    ## Adaptive path — fires only when entity is PEP or risk score exceeds threshold.
-    ## Runs in parallel with pattern-analysis and osint-screening on PEP transactions.
+    ## Fires when any high-risk signal is present.
+    ## Signal 1 (prior context): priorEntityContext.knownHighRisk == true fires at case start.
+    ## Signal 2 (entity resolution): PEP entity type or riskScore > 0.8.
+    ## The .seniorAnalystReview == null guard prevents re-dispatch if both signals fire.
     - name: senior-analyst-required
       on: { contextChange: {} }
       when: >-
-        .entityResolution != null and
-        (.entityResolution.entityType == "PEP" or .entityResolution.riskScore > 0.8) and
+        ((.priorEntityContext.knownHighRisk == true) or
+         (.entityResolution.entityType == "PEP") or
+         (.entityResolution.riskScore > 0.8)) and
         .seniorAnalystReview == null
       capability: senior-analyst-review
 

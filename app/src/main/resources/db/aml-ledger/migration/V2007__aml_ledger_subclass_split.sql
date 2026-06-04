@@ -15,13 +15,9 @@ CREATE TABLE aml_case_opened_ledger_entry (
     CONSTRAINT fk_aml_case_opened FOREIGN KEY (id) REFERENCES ledger_entry (id)
 );
 
-CREATE INDEX idx_aml_case_opened_id ON aml_case_opened_ledger_entry (id);
-
 CREATE TABLE aml_compliance_review_ledger_entry (
     id      UUID         NOT NULL,
     task_id VARCHAR(255) NOT NULL,
     CONSTRAINT pk_aml_compliance_review PRIMARY KEY (id),
     CONSTRAINT fk_aml_compliance_review FOREIGN KEY (id) REFERENCES ledger_entry (id)
 );
-
-CREATE INDEX idx_aml_compliance_review_id ON aml_compliance_review_ledger_entry (id);
