@@ -24,17 +24,15 @@ class AmlLedgerCausedByTest {
         UUID caseId = service.investigate(tx("TXN-CB-001")).caseId();
 
         List<LedgerEntry> entries = ledgerRepo.findBySubjectId(caseId);
-        AmlInvestigationLedgerEntry caseOpened = entries.stream()
-            .filter(e -> e instanceof AmlInvestigationLedgerEntry ale
-                         && "CASE_OPENED".equals(ale.eventType))
-            .map(e -> (AmlInvestigationLedgerEntry) e)
-            .findFirst().orElseThrow(() -> new AssertionError("CASE_OPENED not found"));
+        AmlCaseOpenedLedgerEntry caseOpened = entries.stream()
+            .filter(AmlCaseOpenedLedgerEntry.class::isInstance)
+            .map(AmlCaseOpenedLedgerEntry.class::cast)
+            .findFirst().orElseThrow(() -> new AssertionError("AmlCaseOpenedLedgerEntry not found"));
 
-        AmlInvestigationLedgerEntry reviewOpened = entries.stream()
-            .filter(e -> e instanceof AmlInvestigationLedgerEntry ale
-                         && "COMPLIANCE_REVIEW_OPENED".equals(ale.eventType))
-            .map(e -> (AmlInvestigationLedgerEntry) e)
-            .findFirst().orElseThrow(() -> new AssertionError("COMPLIANCE_REVIEW_OPENED not found"));
+        AmlComplianceReviewLedgerEntry reviewOpened = entries.stream()
+            .filter(AmlComplianceReviewLedgerEntry.class::isInstance)
+            .map(AmlComplianceReviewLedgerEntry.class::cast)
+            .findFirst().orElseThrow(() -> new AssertionError("AmlComplianceReviewLedgerEntry not found"));
 
         assertNotNull(reviewOpened.causedByEntryId,
             "COMPLIANCE_REVIEW_OPENED must have causedByEntryId set");

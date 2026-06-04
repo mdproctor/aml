@@ -21,8 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Layer 4: verifies that AML domain-level ledger entries (CASE_OPENED,
- * COMPLIANCE_REVIEW_OPENED) are written for each investigation, and that
+ * Layer 4/8: verifies that AML domain-level ledger entries (AmlCaseOpenedLedgerEntry,
+ * AmlComplianceReviewLedgerEntry) are written for each investigation, and that
  * the HTTP-visible result includes a ledger entry reference for independent verification.
  *
  * <p>Note: {@code @TestTransaction} is intentionally omitted. Rolling back after each test
@@ -56,16 +56,17 @@ class AmlLedgerChainTest {
         AmlInvestigationResult result = service.investigate(sampleTx("TXN-L4-003"));
         var entry = ledgerRepo.findEntryById(result.ledgerCaseEntryId());
         assertTrue(entry.isPresent(), "CASE_OPENED entry must be findable by its UUID");
-        assertEquals(result.caseId(), ((AmlInvestigationLedgerEntry) entry.get()).subjectId,
+        assertEquals(result.caseId(), entry.get().subjectId,
                 "entry subjectId must equal the case UUID");
     }
 
     @Test
-    void investigate_caseOpenedEntry_hasCorrectEventType() {
+    void investigate_caseOpenedEntry_isCorrectType() {
         AmlInvestigationResult result = service.investigate(sampleTx("TXN-L4-004"));
         var entry = ledgerRepo.findEntryById(result.ledgerCaseEntryId())
                 .orElseThrow(() -> new AssertionError("CASE_OPENED entry not found"));
-        assertEquals("CASE_OPENED", ((AmlInvestigationLedgerEntry) entry).eventType);
+        assertTrue(entry instanceof AmlCaseOpenedLedgerEntry,
+                "CASE_OPENED entry must be AmlCaseOpenedLedgerEntry");
     }
 
     @Test
@@ -77,14 +78,12 @@ class AmlLedgerChainTest {
     }
 
     @Test
-    void investigate_complianceReviewEntry_hasCorrectEventType() {
+    void investigate_complianceReviewEntry_isCorrectType() {
         UUID caseId = service.investigate(sampleTx("TXN-L4-006")).caseId();
         List<LedgerEntry> entries = ledgerRepo.findBySubjectId(caseId);
         boolean hasReviewEntry = entries.stream()
-                .filter(e -> e instanceof AmlInvestigationLedgerEntry)
-                .map(e -> (AmlInvestigationLedgerEntry) e)
-                .anyMatch(e -> "COMPLIANCE_REVIEW_OPENED".equals(e.eventType));
-        assertTrue(hasReviewEntry, "COMPLIANCE_REVIEW_OPENED entry must be written after review is opened");
+                .anyMatch(AmlComplianceReviewLedgerEntry.class::isInstance);
+        assertTrue(hasReviewEntry, "AmlComplianceReviewLedgerEntry must be written after review is opened");
     }
 
     private SuspiciousTransaction sampleTx(final String id) {

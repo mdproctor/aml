@@ -12,12 +12,12 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 
 /**
- * Layer 4: writes AML domain-level ledger entries for each investigation lifecycle event.
+ * Layer 4/8: writes AML domain-level ledger entries for each investigation lifecycle event.
  *
  * <p>Two entry types are written per investigation:
  * <ol>
- * <li>CASE_OPENED — at investigation start; subjectId = caseId</li>
- * <li>COMPLIANCE_REVIEW_OPENED — after the compliance officer WorkItem is created</li>
+ * <li>{@link AmlCaseOpenedLedgerEntry} — at investigation start; {@code subjectId = caseId}</li>
+ * <li>{@link AmlComplianceReviewLedgerEntry} — after the compliance officer WorkItem is created</li>
  * </ol>
  *
  * <p>The caseId UUID serves as the shared subjectId linking AML domain entries and
@@ -40,7 +40,7 @@ public class AmlLedgerService {
      */
     public UUID writeCaseOpened(final SuspiciousTransaction transaction, final UUID caseId) {
         final int sequenceNumber = nextSequenceNumber(caseId);
-        final AmlInvestigationLedgerEntry entry = new AmlInvestigationLedgerEntry();
+        final AmlCaseOpenedLedgerEntry entry = new AmlCaseOpenedLedgerEntry();
         entry.id = UUID.randomUUID();
         entry.subjectId = caseId;
         entry.sequenceNumber = sequenceNumber;
@@ -50,7 +50,8 @@ public class AmlLedgerService {
         entry.actorRole = ACTOR_ROLE;
         entry.occurredAt = Instant.now();
         entry.transactionId = transaction.id();
-        entry.eventType = "CASE_OPENED";
+        entry.originAccountId = transaction.originAccountId();
+        entry.destinationAccountId = transaction.destinationAccountId();
         repository.save(entry);
         return entry.id;
     }
@@ -58,7 +59,7 @@ public class AmlLedgerService {
     /**
      * Write a COMPLIANCE_REVIEW_OPENED entry after the SAR review WorkItem is created.
      *
-     * <p>Sets {@code causedByEntryId} by querying for the {@code CASE_OPENED} entry for the
+     * <p>Sets {@code causedByEntryId} by querying for the {@link AmlCaseOpenedLedgerEntry} for the
      * same caseId. This derivation happens inside the method so it works for both:
      * <ol>
      * <li>The synchronous Layer 3 path (AmlInvestigationCoordinator)</li>
@@ -68,13 +69,12 @@ public class AmlLedgerService {
      */
     public void writeComplianceReviewOpened(final UUID caseId, final String taskId) {
         final UUID caseOpenedEntryId = repository.findBySubjectId(caseId).stream()
-                .filter(e -> e instanceof AmlInvestigationLedgerEntry ale
-                             && "CASE_OPENED".equals(ale.eventType))
+                .filter(AmlCaseOpenedLedgerEntry.class::isInstance)
                 .map(e -> e.id)
                 .findFirst()
                 .orElse(null);
         final int sequenceNumber = nextSequenceNumber(caseId);
-        final AmlInvestigationLedgerEntry entry = new AmlInvestigationLedgerEntry();
+        final AmlComplianceReviewLedgerEntry entry = new AmlComplianceReviewLedgerEntry();
         entry.id = UUID.randomUUID();
         entry.subjectId = caseId;
         entry.sequenceNumber = sequenceNumber;
@@ -83,8 +83,7 @@ public class AmlLedgerService {
         entry.actorType = ActorType.SYSTEM;
         entry.actorRole = ACTOR_ROLE;
         entry.occurredAt = Instant.now();
-        entry.transactionId = taskId;
-        entry.eventType = "COMPLIANCE_REVIEW_OPENED";
+        entry.taskId = taskId;
         entry.causedByEntryId = caseOpenedEntryId;
         repository.save(entry);
     }

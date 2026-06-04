@@ -1,6 +1,7 @@
 package io.casehub.aml.compliance;
 
-import io.casehub.aml.ledger.AmlInvestigationLedgerEntry;
+import io.casehub.aml.ledger.AmlCaseOpenedLedgerEntry;
+import io.casehub.aml.ledger.AmlComplianceReviewLedgerEntry;
 import io.casehub.aml.trust.AmlTrustAttestationRepository;
 import io.casehub.aml.trust.AmlTrustRoutingAttestation;
 import io.casehub.aml.trust.AmlWorkerDecisionRepository;
@@ -145,10 +146,10 @@ class AmlComplianceEvidenceServiceTest {
 
     // -- Helpers ---------------------------------------------------------------
 
-    private AmlInvestigationLedgerEntry caseOpenedEntry(UUID caseId, UUID entryId) {
-        var e = new AmlInvestigationLedgerEntry();
+    private AmlCaseOpenedLedgerEntry caseOpenedEntry(UUID caseId, UUID entryId) {
+        var e = new AmlCaseOpenedLedgerEntry();
         e.id = entryId; e.subjectId = caseId; e.sequenceNumber = 1;
-        e.eventType = "CASE_OPENED"; e.transactionId = "TXN-001";
+        e.transactionId = "TXN-001"; e.originAccountId = "ACC-A"; e.destinationAccountId = "ACC-B";
         e.entryType = LedgerEntryType.EVENT; e.actorId = "aml-orchestrator";
         e.actorType = ActorType.SYSTEM; e.actorRole = "AmlInvestigationOrchestrator";
         e.occurredAt = Instant.now().minus(5, ChronoUnit.MINUTES);
@@ -156,11 +157,11 @@ class AmlComplianceEvidenceServiceTest {
         return e;
     }
 
-    private AmlInvestigationLedgerEntry reviewOpenedEntry(UUID caseId, UUID entryId,
+    private AmlComplianceReviewLedgerEntry reviewOpenedEntry(UUID caseId, UUID entryId,
             UUID taskId, UUID causedBy) {
-        var e = new AmlInvestigationLedgerEntry();
+        var e = new AmlComplianceReviewLedgerEntry();
         e.id = entryId; e.subjectId = caseId; e.sequenceNumber = 2;
-        e.eventType = "COMPLIANCE_REVIEW_OPENED"; e.transactionId = taskId.toString();
+        e.taskId = taskId.toString();
         e.entryType = LedgerEntryType.EVENT; e.actorId = "aml-orchestrator";
         e.actorType = ActorType.SYSTEM; e.actorRole = "AmlInvestigationOrchestrator";
         e.occurredAt = Instant.now(); e.digest = "sha256:def"; e.causedByEntryId = causedBy;

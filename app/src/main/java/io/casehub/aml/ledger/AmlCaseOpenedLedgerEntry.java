@@ -1,0 +1,32 @@
+package io.casehub.aml.ledger;
+
+import io.casehub.ledger.runtime.model.LedgerEntry;
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+
+/**
+ * Layer 8: dedicated ledger entry for the CASE_OPENED event.
+ *
+ * <p>Replaces the dual-use {@code AmlInvestigationLedgerEntry} (discriminator {@code AML_INVESTIGATION})
+ * for case-opening events. Each field maps to a dedicated column in the join table
+ * {@code aml_case_opened_ledger_entry} (Flyway V2007).
+ *
+ * <p>{@code subjectId} on this entry equals the case UUID, shared with all other
+ * ledger entries for the same investigation.
+ */
+@Entity
+@Table(name = "aml_case_opened_ledger_entry")
+@DiscriminatorValue("AML_CASE_OPENED")
+public class AmlCaseOpenedLedgerEntry extends LedgerEntry {
+
+    @Column(name = "transaction_id", nullable = false, length = 255)
+    public String transactionId;
+
+    @Column(name = "origin_account_id", nullable = false, length = 255)
+    public String originAccountId;
+
+    @Column(name = "destination_account_id", nullable = false, length = 255)
+    public String destinationAccountId;
+}

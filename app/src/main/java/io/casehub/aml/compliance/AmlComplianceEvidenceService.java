@@ -1,6 +1,7 @@
 package io.casehub.aml.compliance;
 
-import io.casehub.aml.ledger.AmlInvestigationLedgerEntry;
+import io.casehub.aml.ledger.AmlCaseOpenedLedgerEntry;
+import io.casehub.aml.ledger.AmlComplianceReviewLedgerEntry;
 import io.casehub.aml.trust.AmlTrustAttestationRepository;
 import io.casehub.aml.trust.AmlTrustRoutingAttestation;
 import io.casehub.aml.trust.AmlWorkerDecisionRepository;
@@ -9,7 +10,6 @@ import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
 import io.casehub.ledger.runtime.service.model.InclusionProof;
-import io.casehub.ledger.runtime.service.model.ProofStep;
 import io.casehub.work.runtime.model.WorkItem;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 /**
  * Layer 7: assembles compliance evidence for an AML investigation case.
  *
- * <p>Collects data from the Merkle-chained ledger (Layer 4), WorkItem SLA (Layer 2),
+ * <p>Collects data from the Merkle-chained ledger (Layer 4/8), WorkItem SLA (Layer 2),
  * trust routing attestations (Layer 6/7), and GDPR erasure capability (Layer 4)
  * to produce a {@link ComplianceEvidence} record that maps each FinCEN/FATF
  * requirement to its current status.
@@ -54,26 +54,30 @@ public class AmlComplianceEvidenceService {
      * Returns compliance evidence for the given case, or empty if no AML ledger entries exist.
      */
     public Optional<ComplianceEvidence> findEvidence(UUID caseId) {
-        List<AmlInvestigationLedgerEntry> amlEntries =
-                filterAmlEntries(ledgerRepo.findBySubjectId(caseId));
-        if (amlEntries.isEmpty()) return Optional.empty();
-        return Optional.of(build(caseId, amlEntries));
+        List<LedgerEntry> all = ledgerRepo.findBySubjectId(caseId);
+        List<AmlCaseOpenedLedgerEntry> caseEntries = filterCaseOpened(all);
+        List<AmlComplianceReviewLedgerEntry> reviewEntries = filterComplianceReview(all);
+        if (caseEntries.isEmpty() && reviewEntries.isEmpty()) return Optional.empty();
+        return Optional.of(build(caseId, caseEntries, reviewEntries));
     }
 
     /**
      * Assembles full compliance evidence for the given case.
-     * Package-private for direct unit test access (bypasses the double-query in findEvidence).
+     * Package-private for direct unit test access.
      */
     ComplianceEvidence assembleEvidence(UUID caseId) {
-        return build(caseId, filterAmlEntries(ledgerRepo.findBySubjectId(caseId)));
+        List<LedgerEntry> all = ledgerRepo.findBySubjectId(caseId);
+        return build(caseId, filterCaseOpened(all), filterComplianceReview(all));
     }
 
-    private ComplianceEvidence build(UUID caseId, List<AmlInvestigationLedgerEntry> amlEntries) {
+    private ComplianceEvidence build(UUID caseId,
+            List<AmlCaseOpenedLedgerEntry> caseEntries,
+            List<AmlComplianceReviewLedgerEntry> reviewEntries) {
         return new ComplianceEvidence(
                 caseId,
                 Instant.now(),
-                buildAuditChain(caseId, amlEntries),
-                buildSla(amlEntries),
+                buildAuditChain(caseId, caseEntries, reviewEntries),
+                buildSla(reviewEntries),
                 buildTrustRouting(caseId),
                 buildGdprErasure(),
                 null // signature — reserved for future offline signing
@@ -83,8 +87,9 @@ public class AmlComplianceEvidenceService {
     // -- Audit chain -----------------------------------------------------------
 
     private AuditChainRequirement buildAuditChain(UUID caseId,
-            List<AmlInvestigationLedgerEntry> amlEntries) {
-        if (amlEntries.isEmpty()) {
+            List<AmlCaseOpenedLedgerEntry> caseEntries,
+            List<AmlComplianceReviewLedgerEntry> reviewEntries) {
+        if (caseEntries.isEmpty() && reviewEntries.isEmpty()) {
             return new AuditChainRequirement(
                     AuditChainRequirement.REQUIREMENT_ID,
                     AuditChainRequirement.CITATION,
@@ -102,21 +107,26 @@ public class AmlComplianceEvidenceService {
         }
 
         List<LedgerEventRecord> events = new ArrayList<>();
-        for (AmlInvestigationLedgerEntry entry : amlEntries) {
+        for (AmlCaseOpenedLedgerEntry entry : caseEntries) {
             AmlInclusionProof proof = buildInclusionProof(entry.id);
             events.add(new LedgerEventRecord(
-                    entry.id, entry.eventType, entry.actorId, entry.actorRole,
+                    entry.id, "CASE_OPENED", entry.actorId, entry.actorRole,
+                    entry.occurredAt, entry.causedByEntryId, entry.digest, proof));
+        }
+        for (AmlComplianceReviewLedgerEntry entry : reviewEntries) {
+            AmlInclusionProof proof = buildInclusionProof(entry.id);
+            events.add(new LedgerEventRecord(
+                    entry.id, "COMPLIANCE_REVIEW_OPENED", entry.actorId, entry.actorRole,
                     entry.occurredAt, entry.causedByEntryId, entry.digest, proof));
         }
 
-        boolean allReviewsLinked = amlEntries.stream()
-                .filter(e -> "COMPLIANCE_REVIEW_OPENED".equals(e.eventType))
+        boolean allReviewsLinked = reviewEntries.stream()
                 .allMatch(e -> e.causedByEntryId != null);
 
         RequirementStatus status;
         if (chainVerified && allReviewsLinked) {
             status = RequirementStatus.CLOSED;
-        } else if (!amlEntries.isEmpty()) {
+        } else if (!caseEntries.isEmpty() || !reviewEntries.isEmpty()) {
             status = RequirementStatus.PARTIAL;
         } else {
             status = RequirementStatus.GAP;
@@ -145,10 +155,8 @@ public class AmlComplianceEvidenceService {
 
     // -- SLA -------------------------------------------------------------------
 
-    private SlaRequirement buildSla(List<AmlInvestigationLedgerEntry> amlEntries) {
-        Optional<AmlInvestigationLedgerEntry> reviewEntry = amlEntries.stream()
-                .filter(e -> "COMPLIANCE_REVIEW_OPENED".equals(e.eventType))
-                .findFirst();
+    private SlaRequirement buildSla(List<AmlComplianceReviewLedgerEntry> reviewEntries) {
+        Optional<AmlComplianceReviewLedgerEntry> reviewEntry = reviewEntries.stream().findFirst();
 
         if (reviewEntry.isEmpty()) {
             return new SlaRequirement(
@@ -162,7 +170,7 @@ public class AmlComplianceEvidenceService {
 
         UUID taskId;
         try {
-            taskId = UUID.fromString(reviewEntry.get().transactionId);
+            taskId = UUID.fromString(reviewEntry.get().taskId);
         } catch (IllegalArgumentException e) {
             return new SlaRequirement(
                     SlaRequirement.REQUIREMENT_ID,
@@ -264,10 +272,17 @@ public class AmlComplianceEvidenceService {
 
     // -- Internal helpers ------------------------------------------------------
 
-    private List<AmlInvestigationLedgerEntry> filterAmlEntries(List<LedgerEntry> entries) {
+    private List<AmlCaseOpenedLedgerEntry> filterCaseOpened(List<LedgerEntry> entries) {
         return entries.stream()
-                .filter(AmlInvestigationLedgerEntry.class::isInstance)
-                .map(AmlInvestigationLedgerEntry.class::cast)
+                .filter(AmlCaseOpenedLedgerEntry.class::isInstance)
+                .map(AmlCaseOpenedLedgerEntry.class::cast)
+                .toList();
+    }
+
+    private List<AmlComplianceReviewLedgerEntry> filterComplianceReview(List<LedgerEntry> entries) {
+        return entries.stream()
+                .filter(AmlComplianceReviewLedgerEntry.class::isInstance)
+                .map(AmlComplianceReviewLedgerEntry.class::cast)
                 .toList();
     }
 }
