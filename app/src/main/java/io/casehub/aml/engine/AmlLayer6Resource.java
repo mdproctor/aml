@@ -3,7 +3,8 @@ package io.casehub.aml.engine;
 import io.casehub.aml.domain.SarOutcome;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.trust.AmlWorkerDecisionRepository;
-import io.casehub.aml.trust.SarOutcomeFeedbackService;
+import io.casehub.aml.engine.SarOutcomeRecordedEvent;
+import jakarta.enterprise.event.Event;
 import io.casehub.ledger.model.WorkerDecisionEntry;
 import io.casehub.ledger.routing.TrustScoreCache;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -24,7 +25,7 @@ public class AmlLayer6Resource {
 
     @Inject AmlEngineCoordinator coordinator;
     @Inject AmlWorkerDecisionRepository workerDecisionRepo;
-    @Inject SarOutcomeFeedbackService feedbackService;
+    @Inject Event<SarOutcomeRecordedEvent> sarOutcomeEvent;
     @Inject TrustScoreCache trustScoreCache;
 
     @POST
@@ -77,7 +78,7 @@ public class AmlLayer6Resource {
             final SarOutcomeRequest request) {
         final SarOutcome outcome = new SarOutcome(
                 request.verdict(), request.reason(), request.investigationAccuracyScore());
-        feedbackService.recordOutcome(caseId, outcome);
+        sarOutcomeEvent.fire(new SarOutcomeRecordedEvent(caseId, outcome));
         return Response.noContent().build();
     }
 }

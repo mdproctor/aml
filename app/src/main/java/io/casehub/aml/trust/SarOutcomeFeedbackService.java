@@ -2,6 +2,8 @@ package io.casehub.aml.trust;
 
 import io.casehub.aml.domain.SarOutcome;
 import io.casehub.aml.domain.SarVerdict;
+import io.casehub.aml.engine.SarOutcomeRecordedEvent;
+import jakarta.enterprise.event.Observes;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.model.WorkerDecisionEntry;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
@@ -77,6 +79,10 @@ public class SarOutcomeFeedbackService {
         attestation.evidence = outcome.reason();
 
         em.persist(attestation);
+    }
+
+    public void onSarOutcome(@Observes SarOutcomeRecordedEvent event) {
+        recordOutcome(event.caseId(), event.outcome());
     }
 
     private AttestationVerdict toVerdict(final SarVerdict verdict) {
