@@ -128,6 +128,21 @@
       <scope>runtime</scope>
     </dependency>
 
+    <!-- Layer 8: JPA-backed CaseMemoryStore (prod) — @ApplicationScoped, displaces NoOpCaseMemoryStore -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-platform-memory-jpa</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
+
+    <!-- Layer 8: in-memory CaseMemoryStore (test isolation) — @Alternative @Priority(1) -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-platform-memory-inmem</artifactId>
+      <version>${casehub.version}</version>
+      <scope>test</scope>
+    </dependency>
+
     <!-- In-memory engine persistence SPIs (CaseInstanceRepository, EventLogRepository,
          CaseMetaModelRepository) — activated at compile scope so the in-memory impls
          are available at augmentation time without requiring PostgreSQL. -->
