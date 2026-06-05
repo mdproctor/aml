@@ -30,6 +30,7 @@ jobs:
           server-id: github
           server-username: GITHUB_ACTOR
           server-password: GITHUB_TOKEN
+          cache: 'maven'
 
       - name: Build and test
         if: github.event_name != 'pull_request' || github.event.action != 'closed' || github.event.pull_request.merged == true
