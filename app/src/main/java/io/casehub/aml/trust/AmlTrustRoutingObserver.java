@@ -10,6 +10,7 @@ import jakarta.enterprise.event.ObservesAsync;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.transaction.Transactional.TxType;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -17,12 +18,15 @@ import java.util.UUID;
  * Layer 7: writes AmlTrustRoutingAttestation on each WorkerDecisionEvent,
  * capturing the trust score from TrustScoreCache before it can drift.
  *
- * Uses @ObservesAsync to match how the engine fires WorkerDecisionEvent (async CDI).
- * Persists via AmlTrustAttestationRepository (qhorus EntityManager) rather than
- * LedgerEntryRepository to avoid Merkle frontier contention with the engine's own
- * ledger writers on the same subjectId. REQUIRES_NEW decouples each write from the
- * engine worker's transaction. Sequential nextSequenceNumber() is scoped to attestation
- * entries only; concurrent-write risk tracked as casehubio/aml#44.
+ * <p>Uses @ObservesAsync to match how the engine fires WorkerDecisionEvent (async CDI).
+ * REQUIRES_NEW decouples each attestation write from the engine worker's transaction.
+ *
+ * <p><b>Ledger subject isolation:</b> attestations use a dedicated subject UUID derived
+ * from the case UUID rather than the case UUID directly. This keeps the attestation
+ * ledger chain independent of the investigation chain (engine WorkerDecisionEntry,
+ * AML case-opened, compliance-review entries all use caseId as subject). Without this
+ * separation, nextSequenceNumber() would conflict with entries already written by the
+ * ledger service and the engine for the same caseId subject.
  */
 @ApplicationScoped
 public class AmlTrustRoutingObserver {
@@ -41,11 +45,12 @@ public class AmlTrustRoutingObserver {
                 .stream().boxed().findFirst().orElse(null);
 
         final double threshold = policyProvider.forCapability(event.capabilityTag()).threshold();
-        final int seq = attestationRepo.nextSequenceNumber(event.caseId());
+        final UUID attestationSubject = attestationSubjectFor(event.caseId());
+        final int seq = attestationRepo.nextSequenceNumber(attestationSubject);
 
         final AmlTrustRoutingAttestation entry = new AmlTrustRoutingAttestation();
         entry.id = UUID.randomUUID();
-        entry.subjectId = event.caseId();
+        entry.subjectId = attestationSubject;
         entry.investigationCaseId = event.caseId();
         entry.capabilityTag = event.capabilityTag();
         entry.selectedWorkerId = event.workerId();
@@ -58,5 +63,15 @@ public class AmlTrustRoutingObserver {
         entry.actorRole = ACTOR_ROLE;
         entry.occurredAt = Instant.now();
         attestationRepo.save(entry);
+    }
+
+    /**
+     * Derives a stable attestation-specific ledger subject from the investigation case UUID.
+     * Namespaced to ensure it never collides with the case subject used by investigation
+     * entries (WorkerDecisionEntry, AmlCaseOpenedLedgerEntry, etc.).
+     */
+    static UUID attestationSubjectFor(UUID caseId) {
+        return UUID.nameUUIDFromBytes(
+                ("aml-trust-routing-attestation:" + caseId).getBytes(StandardCharsets.UTF_8));
     }
 }
