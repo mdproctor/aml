@@ -21,12 +21,19 @@ import jakarta.persistence.Table;
 @DiscriminatorValue("AML_CASE_OPENED")
 public class AmlCaseOpenedLedgerEntry extends LedgerEntry {
 
+    /** External transaction reference — e.g. {@code "TXN-2024-001"}. */
     @Column(name = "transaction_id", nullable = false, length = 255)
     public String transactionId;
 
+    /**
+     * Source account of the flagged transaction.
+     * Used by {@link io.casehub.aml.memory.AmlSarOutcomeMemoryObserver} to write
+     * SAR outcome memories under both account IDs without requiring a separate DB query.
+     */
     @Column(name = "origin_account_id", nullable = false, length = 255)
     public String originAccountId;
 
+    /** Destination account of the flagged transaction. @see #originAccountId */
     @Column(name = "destination_account_id", nullable = false, length = 255)
     public String destinationAccountId;
 }

@@ -692,3 +692,47 @@ The integration tests use the Layer 6 engine path (async, via Quartz workers). T
 6. Integration tests: start investigation via engine path, poll until complete, then call the evidence endpoint. Accept both `PARTIAL` and `CLOSED` for Merkle chain status in H2 — the concurrency limitation is infrastructure, not architecture. Test GDPR erasure against the system actor (`aml-orchestrator`) since human actors do not yet write ledger entries.
 
 7. Document known gaps between sync and async investigation paths — the evidence endpoint surfaces these as different status values, which is correct behaviour. The examiner sees the gap; the architecture does not hide it.
+
+## Layer 8 — CaseMemoryStore integration (prior entity context)
+
+**Participates in:** S5
+**Completed:** 2026-06-04
+**Issue:** casehubio/aml#32
+**Navigation:** `git log --grep="#32" --oneline`
+**Spec:** `docs/specs/2026-06-03-case-memory-store-design.md` (workspace)
+**Key files:**
+- `app/src/main/java/io/casehub/aml/memory/AmlMemoryDomains.java` — three `MemoryDomain` constants: `ENTITY_RISK`, `NETWORK`, `PATTERN`
+- `app/src/main/java/io/casehub/aml/memory/AmlMemoryPolicyKeys.java` — `ENTITY_RISK_LOOKBACK_DAYS` preference key (default 365 days)
+- `app/src/main/java/io/casehub/aml/memory/AmlPriorContext.java` — value record with `hasHistory()`, `isKnownHighRisk()`, `toContextMap()`
+- `app/src/main/java/io/casehub/aml/memory/AmlMemoryService.java` — central CaseMemoryStore adapter; `queryPriorContext()` + four write methods; all failure-guarded
+- `app/src/main/java/io/casehub/aml/memory/AmlSarOutcomeMemoryObserver.java` — CDI observer writing SAR outcome memories for both account IDs; `@Transactional(REQUIRES_NEW)`
+- `app/src/main/java/io/casehub/aml/engine/SarOutcomeRecordedEvent.java` — CDI event decoupling `AmlLayer6Resource` from observers
+- `app/src/main/java/io/casehub/aml/ledger/AmlCaseOpenedLedgerEntry.java` — replaces dual-use `AmlInvestigationLedgerEntry` for CASE_OPENED; adds `originAccountId`, `destinationAccountId`
+- `app/src/main/java/io/casehub/aml/ledger/AmlComplianceReviewLedgerEntry.java` — replaces dual-use `AmlInvestigationLedgerEntry` for COMPLIANCE_REVIEW_OPENED; has `taskId`
+- `app/src/main/resources/db/aml-ledger/migration/V2007__aml_ledger_subclass_split.sql` — Flyway V2007 on qhorus datasource; drops old table, creates two sibling join tables
+- `app/src/main/resources/aml/aml-investigation.yaml` — `senior-analyst-required` split into `senior-analyst-required-prior-context` (fires when `entityResolution == null`) + `senior-analyst-required-resolution` (fires when `priorContext.knownHighRisk != true`)
+
+### What it adds
+
+**Before:** Every investigation case starts cold. Prior case outcomes, entity risk classifications, and network relationships are invisible to new cases. Analysts must manually pull SAR history.
+
+**After:** `AmlMemoryService.queryPriorContext()` queries `CaseMemoryStore` across three domains before `startCase()`. The result is injected into `initialContext` as `priorEntityContext`. The YAML binding `senior-analyst-required-prior-context` evaluates `priorEntityContext.knownHighRisk` and can route known-high-risk entities to a senior analyst immediately — before entity resolution confirms it.
+
+What this layer adds:
+- **Prior context query at case open** — `AmlEngineCoordinator.startInvestigation()` calls `queryPriorContext()` synchronously before `startCase()`; query uses `withLimit(20).withSince(lookbackCutoff)` per domain
+- **Fact accumulation at case close** — `EntityResolutionBehaviour` writes entity-risk + network facts; `PatternAnalysisBehaviour` writes pattern facts; `AmlSarOutcomeMemoryObserver` writes SAR outcome facts (UPHELD with actual confidence; WITHDRAWN/FLAGGED with confidence=0.0 as reversal signal)
+- **Ledger subclass redesign** — `AmlInvestigationLedgerEntry` was dual-use (`eventType` string); replaced with two typed siblings. `AmlCaseOpenedLedgerEntry` now carries non-nullable `originAccountId` and `destinationAccountId`, required by `AmlSarOutcomeMemoryObserver` to write both-account memories
+- **SAR outcome CDI decoupling** — `AmlLayer6Resource` fires `SarOutcomeRecordedEvent`; `SarOutcomeFeedbackService` and `AmlSarOutcomeMemoryObserver` both observe it independently
+- **YAML binding split** — the original merged OR binding caused a double-dispatch race: async Quartz execution fires the merged condition twice before `seniorAnalystReview` is written back to context, causing two concurrent Quartz jobs to race on `UQ_MERKLE_FRONTIER_SUBJECT_LEVEL`. Two complementary bindings with mutually exclusive guards eliminate the race
+- **Trust seeder fix** — `senior-analyst-agent` seed changed from Beta(8,2)=0.80 to Beta(10,1)≈0.909; Beta(8,2) was exactly at the threshold and within the borderline zone [threshold−margin, threshold+margin], triggering routing escalation on every investigation
+
+### Test infrastructure fixes
+
+- `casehub.ledger.hash-chain.enabled=false` in test properties — H2 lacks PostgreSQL row-level locking; concurrent Quartz worker jobs for the same case race on `UQ_MERKLE_FRONTIER_SUBJECT_LEVEL`; disabling eliminates the constraint as a cross-test contamination vector (PP-20260604-f45c95)
+- Investigation drain pattern — every `@QuarkusTest` that starts an engine investigation polls `GET /api/layer6/investigations/{id}` until `status = "completed"` before returning; prevents pending Quartz jobs from contaminating subsequent tests (PP-20260604-820c35)
+
+### Known gaps
+
+- `caseId` in behaviour-generated memory entries is `null` until qhorus#190 ships — `PushAgentDispatch.post()` passes null to `behaviour.handle()` because `OutboundMessage.correlationId` contains the engine's `eventLogId` (a Long), not the case UUID, and no engine context-update API exists to inject the caseId post-`startCase()`
+- Cascade GDPR erasure for network cross-references — account A's erasure removes A's network memories but B's memory still names A; legal boundary assessment required (aml#N)
+- Account-scoped memory accumulation (not entity-scoped) — beneficial owner X using accounts A, B, C builds no cross-account intelligence; two-phase keying deferred (see spec §Known architectural limitation)

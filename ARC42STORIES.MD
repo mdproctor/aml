@@ -1344,6 +1344,60 @@ The engine fires `WorkerDecisionEvent` via `Event.fireAsync()`. A synchronous `@
 
 ---
 
+### Layer — CaseMemoryStore Integration
+
+**Participates in chapters:** C3, C4, C5
+**Architectural patterns:** Observer (`AmlSarOutcomeMemoryObserver @Observes SarOutcomeRecordedEvent` — CDI event decouples resource from observer list); Service (single `AmlMemoryService` gateway — no caller touches `CaseMemoryStore` directly)
+**Key protocols:** `casehub/ledger-hash-chain-disabled-in-h2-tests.md` (PP-20260604-f45c95); `casehub/engine-investigation-test-drain.md` (PP-20260604-820c35)
+**Design refs:** `docs/specs/2026-06-03-case-memory-store-design.md` (workspace)
+**Issues:** casehubio/aml#32
+**Navigation:** `git log --grep="#32" --oneline`
+**Improvement refs:** 🔲
+**Completed:** 2026-06-04
+
+#### What it adds
+
+**Before:** Every investigation starts cold. Prior SAR history, entity risk classifications, and counterparty network facts are invisible to new cases.
+**After:** `AmlMemoryService.queryPriorContext()` retrieves up to 60 prior-case facts (20 per domain) before `startCase()`. Results are injected as `priorEntityContext` into `initialContext`. The YAML binding `senior-analyst-required-prior-context` evaluates `.priorEntityContext.knownHighRisk` and routes known-high-risk entities immediately — before entity resolution confirms it.
+
+- **Prior context query** — synchronous; lookback window configurable via `AmlMemoryPolicyKeys.ENTITY_RISK_LOOKBACK_DAYS`; per-domain failure isolation (each domain query has its own try/catch)
+- **Fact accumulation** — `EntityResolutionBehaviour` stores entity-risk + network; `PatternAnalysisBehaviour` stores pattern findings; `AmlSarOutcomeMemoryObserver` stores SAR outcomes for both account IDs; WITHDRAWN/FLAGGED writes confidence=0.0 as reversal signal
+- **Ledger subclass split** — `AmlInvestigationLedgerEntry` (dual-use, string `eventType`) replaced by `AmlCaseOpenedLedgerEntry` (adds `originAccountId`/`destinationAccountId`) + `AmlComplianceReviewLedgerEntry` (has `taskId`); Flyway V2007
+- **YAML binding split** — single merged OR binding caused a double-dispatch race (two concurrent Quartz jobs race on Merkle frontier); split into `senior-analyst-required-prior-context` (fires while `entityResolution == null`) + `senior-analyst-required-resolution` (fires when `priorContext.knownHighRisk != true`)
+- **Trust seeder correction** — `senior-analyst-agent` seed Beta(8,2)=0.80 was exactly at threshold and within borderline zone, triggering routing escalation; corrected to Beta(10,1)≈0.909
+
+#### Accountability gaps closed
+
+| Gap | What breaks without it | Closed by |
+|---|---|---|
+| Investigations start cold | Prior entity risk, network relationships, and SAR outcomes are invisible to new investigations | `AmlMemoryService.queryPriorContext()` queries CaseMemoryStore before `startCase()` |
+| Senior analyst routing requires waiting for entity resolution | Known-high-risk entities are routed late (after entity-resolution confirms PEP/risk) | `senior-analyst-required-prior-context` binding fires from `priorEntityContext.knownHighRisk` before entity-resolution runs |
+
+Not closed here: account-scoped memory accumulation does not cross beneficial-owner boundaries (two-phase keying deferred). GDPR cascade erasure for network cross-references requires legal review. `caseId` in behaviour-generated memory entries is null until qhorus#190 ships.
+
+#### Key files
+
+- `app/src/main/java/io/casehub/aml/memory/AmlMemoryDomains.java` — three `MemoryDomain` constants
+- `app/src/main/java/io/casehub/aml/memory/AmlMemoryService.java` — central gateway; all failure-guarded
+- `app/src/main/java/io/casehub/aml/memory/AmlPriorContext.java` — `hasHistory()`, `isKnownHighRisk()`, `toContextMap()`
+- `app/src/main/java/io/casehub/aml/memory/AmlSarOutcomeMemoryObserver.java` — CDI observer; `@Transactional(REQUIRES_NEW)` for default-datasource isolation
+- `app/src/main/java/io/casehub/aml/engine/SarOutcomeRecordedEvent.java` — CDI event decoupling `AmlLayer6Resource` from observer list
+- `app/src/main/java/io/casehub/aml/ledger/AmlCaseOpenedLedgerEntry.java` — CASE_OPENED; non-nullable `originAccountId`/`destinationAccountId`
+- `app/src/main/java/io/casehub/aml/ledger/AmlComplianceReviewLedgerEntry.java` — COMPLIANCE_REVIEW_OPENED; non-nullable `taskId`
+- `app/src/main/resources/db/aml-ledger/migration/V2007__aml_ledger_subclass_split.sql` — Flyway V2007 on qhorus datasource
+- `app/src/main/resources/aml/aml-investigation.yaml` — split `senior-analyst-required` binding
+
+#### Pattern to replicate (in another domain)
+
+1. Define domain constants (`MemoryDomain` records) for each fact category. Keep domains coarse-grained — only split when you need to query or erase them independently.
+2. Build a single central memory service as the only `CaseMemoryStore` gateway; wrap every call in try/catch — memory failures must never block the primary flow.
+3. Store facts from the agent behaviours using the COMMAND payload (deserialize from `command.content`). Note: until qhorus#190 ships, `caseId` in behaviour-generated entries must be null (behaviours receive null Message via `PushAgentDispatch`).
+4. Use the CDI event pattern for outcomes that multiple observers must react to (one resource fires `Event<T>.fire()`; observers self-register).
+5. If the engine case has multiple workers per capability (multi-worker fan-out, engine#82), split any YAML binding that routes based on context into two mutually exclusive bindings with complementary guards — merged OR bindings cause double-dispatch when contextChange fires before the first dispatch's Quartz job writes its result back.
+6. Disable `casehub.ledger.hash-chain.enabled` in H2-backed `@QuarkusTest` — concurrent Quartz jobs race on the Merkle frontier; drain every investigation test to `status = "completed"` before returning.
+
+---
+
 ## §10 Architectural Decisions
 
 Per the Arc42Stories spec: only decisions not captured inline elsewhere. Layer-specific decisions live in §9.4; this section is sparse by design.

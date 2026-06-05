@@ -7,6 +7,23 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * Prior entity context retrieved from {@link io.casehub.platform.api.memory.CaseMemoryStore}
+ * before an AML investigation starts.
+ *
+ * <p>Populated by {@link AmlMemoryService#queryPriorContext(io.casehub.aml.domain.SuspiciousTransaction)}
+ * and injected into the engine's {@code initialContext} under key {@code "priorEntityContext"}
+ * before {@code startCase()} is called. The engine's YAML bindings evaluate
+ * {@code .priorEntityContext.knownHighRisk} to route known-high-risk entities to a senior
+ * analyst immediately — before entity resolution confirms it.
+ *
+ * <p>Fact selection: up to 20 memories per domain are fetched; {@link #toContextMap()} trims to
+ * 10 total, guaranteeing at least one entry per non-empty domain and ordering by recency.
+ *
+ * <p>WITHDRAWN SAR outcomes write a reversal memory with {@code confidence = 0.0}. Because
+ * {@link #isKnownHighRisk()} uses the most-recent confidence per entity, a WITHDRAWN verdict
+ * after an UPHELD verdict correctly suppresses the high-risk signal.
+ */
 public record AmlPriorContext(
     List<Memory> entityRisk,
     List<Memory> network,

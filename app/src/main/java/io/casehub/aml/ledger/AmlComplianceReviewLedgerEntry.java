@@ -21,6 +21,7 @@ import jakarta.persistence.Table;
 @DiscriminatorValue("AML_COMPLIANCE_REVIEW")
 public class AmlComplianceReviewLedgerEntry extends LedgerEntry {
 
+    /** WorkItem UUID of the SAR review task assigned to the compliance officer. */
     @Column(name = "task_id", nullable = false, length = 255)
     public String taskId;
 }

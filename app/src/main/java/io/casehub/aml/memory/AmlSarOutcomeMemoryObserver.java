@@ -14,6 +14,24 @@ import org.jboss.logging.Logger;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+/**
+ * CDI observer that writes SAR outcome facts to {@link io.casehub.platform.api.memory.CaseMemoryStore}
+ * when a SAR verdict is recorded.
+ *
+ * <p>Observes {@link io.casehub.aml.engine.SarOutcomeRecordedEvent} (fired by
+ * {@link io.casehub.aml.engine.AmlLayer6Resource}). Retrieves both account IDs from
+ * {@link AmlCaseOpenedLedgerEntry} and writes the outcome to the
+ * {@link AmlMemoryDomains#ENTITY_RISK} domain under both accounts.
+ *
+ * <p><b>Reversal signal:</b> {@code WITHDRAWN} and {@code FLAGGED} verdicts write
+ * {@code confidence = 0.0}. Because {@link AmlPriorContext#isKnownHighRisk()} uses the
+ * most-recent confidence per entity, a WITHDRAWN verdict after an UPHELD verdict correctly
+ * suppresses the high-risk signal for future investigations.
+ *
+ * <p>Runs in its own {@code REQUIRES_NEW} transaction to isolate the memory write (default
+ * datasource) from the qhorus-datasource transaction used by
+ * {@link io.casehub.aml.trust.SarOutcomeFeedbackService}.
+ */
 @ApplicationScoped
 public class AmlSarOutcomeMemoryObserver {
 
