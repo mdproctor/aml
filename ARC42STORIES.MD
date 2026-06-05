@@ -1173,7 +1173,7 @@ Without explicit hydration, `TrustScoreCache @Startup` may initialize before the
 Engine-ledger ships V2000/V2001 at `classpath:db/migration/` — the same path Flyway scans for qhorus migrations. Qhorus defines its own V2000. Adding `casehub-engine-ledger` without a separate migration path causes `FlywayException: Found more than one migration with version 2000`. Local copies at V2002/V2003 under `classpath:db/aml-engine-ledger/migration/` resolve this. SQL files carry a comment explaining the re-numbering. Tracked as engine#395.
 
 **`CaseLedgerEntryRepository` excluded in tests.**
-`CaseLedgerEntryRepository @ApplicationScoped extends JpaLedgerEntryRepository @Alternative`. In CDI, a non-alternative `@ApplicationScoped` bean corrupts `DefaultCaseDefinitionRegistry`'s case definition lookup. Exclude via `quarkus.arc.exclude-types`. Tracked as engine#396.
+`CaseLedgerEntryRepository @ApplicationScoped extends JpaLedgerEntryRepository @Alternative`. In CDI, a non-alternative `@ApplicationScoped` bean corrupts `DefaultCaseDefinitionRegistry`'s case definition lookup. Exclude via `quarkus.arc.exclude-types`. Tracked as engine#396 ✅ (closed 2026-06-04).
 
 **`LedgerAttestation` wired to `sar-drafting` `WorkerDecisionEntry`.**
 `SarOutcomeFeedbackService` finds the entry by `caseId + capability`, then persists a `LedgerAttestation` using `@PersistenceContext(unitName = "qhorus")`. `trustDimension = "investigation-accuracy"` links the attestation to the correct dimension for `TrustScoreJob` recomputation.
@@ -1204,7 +1204,7 @@ Engine-ledger ships V2000/V2001 at `classpath:db/migration/` — the same path F
 
 - **Symptom:** Layer 5 tests regress after adding `casehub-engine-ledger`: `CaseDefinition not found for case: {UUID}`.
   - **Cause:** `CaseLedgerEntryRepository @ApplicationScoped extends JpaLedgerEntryRepository @Alternative` corrupts `DefaultCaseDefinitionRegistry` case definition lookup.
-  - **Fix:** Add `CaseLedgerEntryRepository` to `quarkus.arc.exclude-types` in test `application.properties`. Tracked as engine#396.
+  - **Fix:** Add `CaseLedgerEntryRepository` to `quarkus.arc.exclude-types` in test `application.properties`. Tracked as engine#396 ✅ (closed 2026-06-04).
 
 - **Symptom:** First investigation request immediately after startup fails with `CaseDefinition not found` even though all CDI beans started cleanly.
   - **Cause:** `@Startup @PostConstruct` seeder runs before `DefaultCaseDefinitionRegistry` finishes registering case definitions — no ordering guarantee.
@@ -1216,7 +1216,7 @@ Engine-ledger ships V2000/V2001 at `classpath:db/migration/` — the same path F
 2. Implement `TrustRoutingPolicyProvider` SPI in a `routing/` package — map capability names to `TrustRoutingPolicy` instances; fall back to `TrustRoutingPolicy.DEFAULT` for unknown capabilities; resolve overrides from `PreferenceProvider` first
 3. Add `casehub-engine-ledger` to `app/pom.xml`
 4. Create local re-numbered Flyway copies for engine-ledger tables at a non-colliding path; add to `quarkus.flyway.qhorus.locations` in both `application.properties` files; add comment in SQL explaining the re-numbering
-5. Add `CaseLedgerEntryRepository` to `quarkus.arc.exclude-types` in test `application.properties` — pending engine#396
+5. Add `CaseLedgerEntryRepository` to `quarkus.arc.exclude-types` in test `application.properties` — resolved — engine#396 ✅
 6. Implement trust score seeder with `@Observes @Priority(20) StartupEvent`; guard each `upsert()` with `if (trustRepo.findCapabilityScore(workerId, cap).isEmpty())`; call `trustScoreCache.hydrate()` after the loop; do NOT use `TrustBootstrapSource`
 7. Implement `XxxWorkerDecisionRepository` with JPQL queries on `WorkerDecisionEntry` via `@PersistenceContext(unitName = "qhorus")`
 8. Implement `XxxOutcomeFeedbackService` — find `WorkerDecisionEntry` by caseId + capability; persist `LedgerAttestation` with `trustDimension`, `dimensionScore`, `verdict` (SOUND/FLAGGED); silently skip if no entry found
