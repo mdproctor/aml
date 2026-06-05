@@ -31,25 +31,25 @@ public class AmlTrustAttestationRepository {
     }
 
     /**
-     * Returns the next sequence number for the given ledger subject.
+     * Assigns the next sequence number and persists the attestation in a single
+     * {@code REQUIRES_NEW} transaction. Must only be called from within a
+     * serialization scope (e.g., a {@code synchronized} block held by the caller)
+     * so that the transaction commits before the lock is released, preventing
+     * concurrent calls from both reading {@code max=null} and both assigning seq=1.
      *
      * <p>Queries across all {@code LedgerEntry} subtypes — the
-     * {@code IDX_LEDGER_ENTRY_SUBJECT_SEQ} constraint is on the base table, so any
-     * subclass entry sharing the same subject would cause a conflict if this query
-     * were scoped to a single subtype.
-     *
-     * <p>In practice the caller always passes the attestation-specific subject (derived
-     * via {@link AmlTrustRoutingObserver#attestationSubjectFor}), so only attestation
-     * entries are present for that subject and the result is always correct.
+     * {@code IDX_LEDGER_ENTRY_SUBJECT_SEQ} constraint is on the base table.
      */
-    @Transactional(TxType.REQUIRED)
-    public int nextSequenceNumber(UUID subjectId) {
+    @Transactional(TxType.REQUIRES_NEW)
+    public AmlTrustRoutingAttestation saveWithSequence(AmlTrustRoutingAttestation entry) {
         Integer max = em.createQuery(
                 "SELECT MAX(e.sequenceNumber) FROM LedgerEntry e" +
                 " WHERE e.subjectId = :sid",
                 Integer.class)
-                .setParameter("sid", subjectId)
+                .setParameter("sid", entry.subjectId)
                 .getSingleResult();
-        return max == null ? 1 : max + 1;
+        entry.sequenceNumber = max == null ? 1 : max + 1;
+        em.persist(entry);
+        return entry;
     }
 }
