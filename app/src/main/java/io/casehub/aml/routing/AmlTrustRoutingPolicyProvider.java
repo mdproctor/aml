@@ -45,7 +45,8 @@ public class AmlTrustRoutingPolicyProvider implements TrustRoutingPolicyProvider
             minObs != null ? minObs.value() : TrustRoutingPolicy.DEFAULT.minimumObservations(),
             borderlineMargin != null ? borderlineMargin.value() : TrustRoutingPolicy.DEFAULT.borderlineMargin(),
             blendFactor != null ? blendFactor.value() : TrustRoutingPolicy.DEFAULT.blendFactor(),
-            Map.copyOf(qualityFloors));
+            Map.copyOf(qualityFloors),
+            TrustRoutingPolicy.DEFAULT.bootstrapEscalationRequired());
     }
 
     public Set<String> capabilities() {
