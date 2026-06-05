@@ -257,7 +257,11 @@ Layer 6: Trust routing — trust-weighted agent selection from SAR outcome attes
          AmlTrustRoutingPolicyProvider, SarOutcomeFeedbackService. ✅
 
 Layer 7: Compliance evidence — accountability properties mapped against FinCEN/FATF
-         requirements. See LAYER-LOG.md §Layer 7.
+         requirements. See LAYER-LOG.md §Layer 7. ✅
+
+Layer 8: + casehub-platform CaseMemoryStore — prior entity context (AmlMemoryService,
+         AmlPriorContext); SAR outcome memories; YAML binding split for prior-context
+         routing; trust seeder corrected. See LAYER-LOG.md §Layer 8. ✅
 ```
 
 ### Foundation Gates
@@ -366,6 +370,10 @@ Consult `docs/conventions/` in the local parent before writing any test — the 
 **Test schema note:** Both datasources use Flyway in `@QuarkusTest`. Flyway locations are pinned explicitly in both `application.properties` files (test and main) to prevent future classpath additions from silently adding unexpected migrations:
 - Default datasource: `quarkus.flyway.locations=classpath:db/migration` (casehub-work migrations only)
 - Qhorus datasource: `quarkus.flyway.qhorus.locations=classpath:db/qhorus/migration,classpath:db/ledger/migration` — the qhorus PU manages ledger entities (`casehub.ledger.datasource=qhorus`), so ledger migrations must run on this datasource. This overrides the qhorus extension default (`db/qhorus/migration` only).
+
+**Investigation @QuarkusTest conventions (Layer 8+):**
+- `casehub.ledger.hash-chain.enabled=false` in test `application.properties` — H2 lacks row-level locking; concurrent Quartz jobs for the same case violate `UQ_MERKLE_FRONTIER_SUBJECT_LEVEL` (protocol PP-20260604-f45c95). Hash chain correctness is tested in casehub-ledger; consumer app tests verify entry structure only.
+- Every test that starts an engine investigation must drain to `status=completed` by polling `GET /api/layer6/investigations/<id>` before the test method returns (protocol PP-20260604-820c35). Tests asserting partial progress (e.g. "senior-analyst was scheduled") must still drain to prevent pending Quartz jobs from contaminating subsequent tests.
 
 ### Code review
 
