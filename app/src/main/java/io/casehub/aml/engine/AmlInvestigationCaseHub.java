@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.casehub.api.model.Capability;
 import io.casehub.api.model.CaseDefinition;
 import io.casehub.api.model.Worker;
+import io.casehub.api.model.WorkerResult;
 import io.casehub.api.engine.YamlCaseHub;
 import io.casehub.aml.ComplianceReviewLifecycle;
 import io.casehub.aml.domain.EntityResolutionResult;
@@ -84,14 +85,14 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
                     final boolean isPep = flagReason != null && flagReason.contains("PEP");
                     final String txId = tx != null
                             ? String.valueOf(tx.getOrDefault("id", "unknown")) : "unknown";
-                    return Map.of(
+                    return WorkerResult.of(Map.of(
                             "entityId", "entity-" + txId,
                             "ownershipChain", isPep
                                     ? "Direct → PEP Principal"
                                     : "Direct → Corporate Entity",
                             "entityType", isPep ? "PEP" : "CORPORATE",
                             "riskScore", isPep ? 0.87 : 0.35
-                    );
+                    ));
                 })
                 .build();
     }
@@ -100,10 +101,10 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
         return Worker.builder()
                 .name("pattern-analysis-agent")
                 .capabilities(List.of(cap("pattern-analysis")))
-                .function((final Map<String, Object> input) -> Map.of(
+                .function((final Map<String, Object> input) -> WorkerResult.of(Map.of(
                         "structuringDetected", false,
                         "description", "No structuring pattern detected in transaction cluster"
-                ))
+                )))
                 .build();
     }
 
@@ -116,12 +117,12 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
         return Worker.builder()
                 .name("osint-screening-agent")
                 .capabilities(List.of(cap("osint-screening")))
-                .function((final Map<String, Object> input) -> Map.of(
+                .function((final Map<String, Object> input) -> WorkerResult.of(Map.of(
                         "declined", true,
                         "reason", "insufficient clearance for PEP database access",
                         "pepHit", false,
                         "sanctionsHit", false
-                ))
+                )))
                 .build();
     }
 
@@ -133,13 +134,13 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
         return Worker.builder()
                 .name("osint-screening-agent-senior")
                 .capabilities(List.of(cap("osint-screening")))
-                .function((final Map<String, Object> input) -> Map.of(
+                .function((final Map<String, Object> input) -> WorkerResult.of(Map.of(
                         "declined", false,
                         "reason", "full-clearance",
                         "pepHit", false,
                         "sanctionsHit", false,
                         "screeningLevel", "ENHANCED"
-                ))
+                )))
                 .build();
     }
 
@@ -147,12 +148,12 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
         return Worker.builder()
                 .name("senior-analyst-agent")
                 .capabilities(List.of(cap("senior-analyst-review")))
-                .function((final Map<String, Object> input) -> Map.of(
+                .function((final Map<String, Object> input) -> WorkerResult.of(Map.of(
                         "reviewed", true,
                         "recommendation",
                         "PEP entity confirmed — enhanced due diligence required."
                                 + " Escalate to compliance director."
-                ))
+                )))
                 .build();
     }
 
@@ -180,7 +181,7 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
                             + (osintDeclined ? " OSINT screening declined." : "");
                     final String complianceTaskId =
                             complianceReviewLifecycle.openReview(tx, buildSummary(input, tx, sarNarrative));
-                    return Map.of("sarNarrative", sarNarrative, "complianceTaskId", complianceTaskId);
+                    return WorkerResult.of(Map.of("sarNarrative", sarNarrative, "complianceTaskId", complianceTaskId));
                 })
                 .build();
     }
@@ -213,7 +214,7 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
                     final String sarNarrative = buildNarrative(tx, entityType, osintDeclined);
                     final String complianceTaskId =
                             complianceReviewLifecycle.openReview(tx, buildSummary(input, tx, sarNarrative));
-                    return Map.of("sarNarrative", sarNarrative, "complianceTaskId", complianceTaskId);
+                    return WorkerResult.of(Map.of("sarNarrative", sarNarrative, "complianceTaskId", complianceTaskId));
                 })
                 .build();
     }
