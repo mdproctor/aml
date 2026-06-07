@@ -170,6 +170,8 @@ Read these **before designing**, not after. The concern column tells you when ea
 | Using casehub-qhorus (COMMAND/RESPONSE/DONE/DECLINE) | `../parent/docs/repos/casehub-qhorus.md` |
 | Using casehub-ledger (Merkle audit, GDPR, trust scoring) | `../parent/docs/repos/casehub-ledger.md` |
 | Using casehub-engine (CasePlanModel, adaptive paths, bindings) | `../parent/docs/repos/casehub-engine.md` |
+
+> **Engine worker return type:** `Worker.Builder.function()` requires `Function<Map<String, Object>, WorkerResult>`. Return `WorkerResult.of(Map.of(...))` — not `Map.of(...)` directly. Applies to all `YamlCaseHub` worker lambdas (casehubio/aml#54).
 | Boundary check — does this belong in foundation or here? | `PLATFORM.md` boundary rules and application tier rule |
 
 ### Persistence and migrations
@@ -374,6 +376,7 @@ Consult `docs/conventions/` in the local parent before writing any test — the 
 **Investigation @QuarkusTest conventions (Layer 8+):**
 - `casehub.ledger.hash-chain.enabled=false` in test `application.properties` — H2 lacks row-level locking; concurrent Quartz jobs for the same case violate `UQ_MERKLE_FRONTIER_SUBJECT_LEVEL` (protocol PP-20260604-f45c95). Hash chain correctness is tested in casehub-ledger; consumer app tests verify entry structure only.
 - Every test that starts an engine investigation must drain to `status=completed` by polling `GET /api/layer6/investigations/<id>` before the test method returns (protocol PP-20260604-820c35). Tests asserting partial progress (e.g. "senior-analyst was scheduled") must still drain to prevent pending Quartz jobs from contaminating subsequent tests.
+- **Ledger subject isolation:** AML `LedgerEntry` subclasses must not share `subjectId` with engine entries for the same case. Use `UUID.nameUUIDFromBytes("aml-<concern>:" + caseId)` as the `subjectId`. The `IDX_LEDGER_ENTRY_SUBJECT_SEQ` constraint is global across all dtypes — sequence assignment scoped to a single subclass silently misses domain entries and causes phantom violations (GE-20260607-1c0a05).
 
 ### Code review
 
