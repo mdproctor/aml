@@ -29,4 +29,10 @@ public class AmlTrustRoutingAttestation extends LedgerEntry {
 
     @Column(name = "investigation_case_id", nullable = false)
     public UUID investigationCaseId;
+
+    @Column(name = "reconstructed", nullable = false)
+    public boolean reconstructed = false;
+
+    @Column(name = "observer_failed", nullable = false)
+    public boolean observerFailed = false;
 }

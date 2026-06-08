@@ -7,5 +7,7 @@ public record RoutingDecisionRecord(
     String selectedWorker,
     Double trustScoreAtRouting,
     double thresholdApplied,
-    UUID attestationEntryId
+    UUID attestationEntryId,
+    boolean reconstructed,
+    boolean observerFailed
 ) {}
