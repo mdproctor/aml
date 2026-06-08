@@ -35,6 +35,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @ApplicationScoped
 public class AmlTrustRoutingObserver {
 
+    private static final org.jboss.logging.Logger LOG =
+            org.jboss.logging.Logger.getLogger(AmlTrustRoutingObserver.class);
+
     private static final String ACTOR_ID = "aml-orchestrator";
     private static final String ACTOR_ROLE = "AmlInvestigationOrchestrator";
 
@@ -45,33 +48,53 @@ public class AmlTrustRoutingObserver {
     @Inject AmlTrustAttestationRepository attestationRepo;
 
     public void onWorkerDecision(@ObservesAsync WorkerDecisionEvent event) {
+        // Pre-try: pure computation only. If policyProvider throws here, the method fails
+        // without writing a failure entry — AUDIT GAP log path (threshold not available).
+        final double threshold = policyProvider.forCapability(event.capabilityTag()).threshold();
         final Double score = trustScoreCache
                 .getCapabilityScore(event.workerId(), event.capabilityTag())
                 .stream().boxed().findFirst().orElse(null);
-
-        final double threshold = policyProvider.forCapability(event.capabilityTag()).threshold();
         final UUID attestationSubject = attestationSubjectFor(event.caseId());
 
-        final AmlTrustRoutingAttestation entry = new AmlTrustRoutingAttestation();
-        entry.id = UUID.randomUUID();
-        entry.subjectId = attestationSubject;
-        entry.investigationCaseId = event.caseId();
-        entry.capabilityTag = event.capabilityTag();
-        entry.selectedWorkerId = event.workerId();
-        entry.trustScoreAtRouting = score;
-        entry.thresholdApplied = threshold;
-        entry.entryType = LedgerEntryType.EVENT;
-        entry.actorId = ACTOR_ID;
-        entry.actorType = ActorType.SYSTEM;
-        entry.actorRole = ACTOR_ROLE;
-        entry.occurredAt = Instant.now();
-
-        // Acquire per-subject lock before starting the transaction. The lock is released
-        // only after REQUIRES_NEW commits (saveWithSequence returns), preventing concurrent
-        // observers from reading the same max-sequence before any entry is committed.
         final Object lock = subjectLocks.computeIfAbsent(attestationSubject, k -> new Object());
-        synchronized (lock) {
-            attestationRepo.saveWithSequence(entry);
+
+        boolean attestationWritten = false;
+        try {
+            final AmlTrustRoutingAttestation entry = new AmlTrustRoutingAttestation();
+            entry.id = UUID.randomUUID();
+            entry.subjectId = attestationSubject;
+            entry.investigationCaseId = event.caseId();
+            entry.capabilityTag = event.capabilityTag();
+            entry.selectedWorkerId = event.workerId();
+            entry.trustScoreAtRouting = score;
+            entry.thresholdApplied = threshold;
+            entry.entryType = LedgerEntryType.EVENT;
+            entry.actorId = ACTOR_ID;
+            entry.actorType = ActorType.SYSTEM;
+            entry.actorRole = ACTOR_ROLE;
+            entry.occurredAt = Instant.now();
+            entry.reconstructed = false;
+            entry.observerFailed = false;
+
+            // Acquire per-subject lock before starting the transaction. The lock is released
+            // only after REQUIRES_NEW commits (saveWithSequence returns), preventing concurrent
+            // observers from reading the same max-sequence before any entry is committed.
+            synchronized (lock) {
+                attestationRepo.saveWithSequence(entry);
+            }
+            attestationWritten = true;
+        } catch (Exception e) {
+            LOG.warnf(e, "AmlTrustRoutingObserver failed caseId=%s cap=%s workerId=%s",
+                    event.caseId(), event.capabilityTag(), event.workerId());
+            if (!attestationWritten) {
+                try {
+                    attestationRepo.saveObserverFailureEntry(event, attestationSubject, threshold);
+                } catch (Exception inner) {
+                    LOG.errorf(inner,
+                            "AUDIT GAP: observer failure entry also failed caseId=%s cap=%s",
+                            event.caseId(), event.capabilityTag());
+                }
+            }
         }
     }
 
