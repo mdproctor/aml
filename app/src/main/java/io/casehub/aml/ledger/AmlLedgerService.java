@@ -5,6 +5,8 @@ import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import jakarta.transaction.Transactional.TxType;
 
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.platform.api.identity.ActorType;
@@ -88,6 +90,60 @@ public class AmlLedgerService {
         repository.save(entry);
     }
 
+    /**
+     * Write an AML_SAR_OFFICER_REVIEWED entry when the compliance officer approves or rejects the SAR.
+     *
+     * <p>Called from {@link io.casehub.aml.compliance.AmlWorkItemLifecycleObserver} which runs in an
+     * {@code @ObservesAsync} context — no transaction is propagated, so REQUIRED starts a new transaction
+     * on the qhorus datasource.
+     *
+     * <p>{@code causedByEntryId} is self-derived from the AmlComplianceReviewLedgerEntry for this case.
+     */
+    @Transactional(TxType.REQUIRED)
+    public void writeSarOfficerReviewed(final UUID caseId, final String officerId,
+            final String reviewDecision) {
+        final UUID causedBy = repository.findBySubjectId(caseId).stream()
+                .filter(AmlComplianceReviewLedgerEntry.class::isInstance)
+                .map(e -> e.id)
+                .findFirst()
+                .orElse(null);
+        final int sequenceNumber = nextSequenceNumber(caseId);
+        final AmlSarOfficerReviewedLedgerEntry entry = new AmlSarOfficerReviewedLedgerEntry();
+        entry.id = UUID.randomUUID();
+        entry.subjectId = caseId;
+        entry.sequenceNumber = sequenceNumber;
+        entry.entryType = LedgerEntryType.EVENT;
+        entry.actorId = officerId;
+        entry.actorType = ActorType.HUMAN;
+        entry.actorRole = "ComplianceOfficer";
+        entry.occurredAt = Instant.now();
+        entry.causedByEntryId = causedBy;
+        entry.reviewDecision = reviewDecision;
+        repository.save(entry);
+    }
+
+    /**
+     * Write an observer-failure record when the main SAR_OFFICER_REVIEWED write fails.
+     *
+     * <p>Per PP-20260530-49856c: failure entry writer must use REQUIRES_NEW so the record
+     * commits independently of any surrounding (possibly failing) transaction context.
+     */
+    @Transactional(TxType.REQUIRES_NEW)
+    public void writeSarOfficerReviewedFailure(final UUID caseId, final String officerId) {
+        final int sequenceNumber = nextSequenceNumber(caseId);
+        final AmlSarOfficerReviewedLedgerEntry entry = new AmlSarOfficerReviewedLedgerEntry();
+        entry.id = UUID.randomUUID();
+        entry.subjectId = caseId;
+        entry.sequenceNumber = sequenceNumber;
+        entry.entryType = LedgerEntryType.EVENT;
+        entry.actorId = ACTOR_ID;
+        entry.actorType = ActorType.SYSTEM;
+        entry.actorRole = "ComplianceOfficer-observer-failed";
+        entry.occurredAt = Instant.now();
+        entry.reviewDecision = "UNKNOWN";
+        repository.save(entry);
+    }
+
     // NOTE: sequential, not concurrent-safe. Safe for Layer 4 where writes per caseId
     // are sequential. Layer 5+ parallel specialist ledger entries would need a DB-level
     // sequence or unique constraint on (subjectId, sequenceNumber).
@@ -102,6 +158,8 @@ public class AmlLedgerService {
         return new AmlLedgerService() {
             @Override public UUID writeCaseOpened(SuspiciousTransaction tx, UUID caseId) { return UUID.randomUUID(); }
             @Override public void writeComplianceReviewOpened(UUID caseId, String taskId) {}
+            @Override public void writeSarOfficerReviewed(UUID caseId, String officerId, String decision) {}
+            @Override public void writeSarOfficerReviewedFailure(UUID caseId, String officerId) {}
         };
     }
 
@@ -110,6 +168,8 @@ public class AmlLedgerService {
         return new AmlLedgerService() {
             @Override public UUID writeCaseOpened(SuspiciousTransaction tx, UUID caseId) { return entryId; }
             @Override public void writeComplianceReviewOpened(UUID caseId, String taskId) {}
+            @Override public void writeSarOfficerReviewed(UUID caseId, String officerId, String decision) {}
+            @Override public void writeSarOfficerReviewedFailure(UUID caseId, String officerId) {}
         };
     }
 }
