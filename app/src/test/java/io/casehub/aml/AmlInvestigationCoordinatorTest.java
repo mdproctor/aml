@@ -51,7 +51,7 @@ class AmlInvestigationCoordinatorTest {
         };
 
         ComplianceReviewLifecycle compliance = new ComplianceReviewLifecycle(
-                req -> workItemWith(expectedId));
+                req -> workItemWith(expectedId), AmlLedgerService.noOp());
 
         AmlLedgerService fakeLedger = AmlLedgerService.noOp();
 
@@ -79,7 +79,7 @@ class AmlInvestigationCoordinatorTest {
                 "narrative");
 
         AmlInvestigationCoordinator coordinator = new AmlInvestigationCoordinator(
-                investigator, new ComplianceReviewLifecycle(req -> workItemWith(UUID.randomUUID())), fakeLedger);
+                investigator, new ComplianceReviewLifecycle(req -> workItemWith(UUID.randomUUID()), AmlLedgerService.noOp()), fakeLedger);
 
         AmlInvestigationResult result = coordinator.investigate(tx);
 

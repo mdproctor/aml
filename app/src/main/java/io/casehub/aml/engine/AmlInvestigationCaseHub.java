@@ -2,11 +2,14 @@ package io.casehub.aml.engine;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jboss.logging.Logger;
 import io.casehub.api.model.Capability;
 import io.casehub.api.model.CaseDefinition;
 import io.casehub.api.model.Worker;
+import io.casehub.api.model.WorkerExecutionContext;
 import io.casehub.api.model.WorkerResult;
 import io.casehub.api.engine.YamlCaseHub;
 import io.casehub.aml.ComplianceReviewLifecycle;
@@ -28,6 +31,8 @@ import jakarta.inject.Inject;
  */
 @ApplicationScoped
 public class AmlInvestigationCaseHub extends YamlCaseHub {
+
+    private static final Logger LOG = Logger.getLogger(AmlInvestigationCaseHub.class);
 
     @Inject
     ComplianceReviewLifecycle complianceReviewLifecycle;
@@ -179,8 +184,10 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
                     final String sarNarrative = "SAR filed for transaction " + tx.id()
                             + ". Amount: " + tx.amount() + " " + tx.currency()
                             + (osintDeclined ? " OSINT screening declined." : "");
+                    // caseId is always available via WorkerExecutionContext — no signal needed.
+                    final UUID caseId = WorkerExecutionContext.current().caseId();
                     final String complianceTaskId =
-                            complianceReviewLifecycle.openReview(tx, buildSummary(input, tx, sarNarrative));
+                            complianceReviewLifecycle.openReview(tx, buildSummary(input, tx, sarNarrative), caseId);
                     return WorkerResult.of(Map.of("sarNarrative", sarNarrative, "complianceTaskId", complianceTaskId));
                 })
                 .build();
@@ -212,8 +219,10 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
                     final boolean osintDeclined = osintMap != null
                             && Boolean.TRUE.equals(osintMap.get("declined"));
                     final String sarNarrative = buildNarrative(tx, entityType, osintDeclined);
+                    // caseId is always available via WorkerExecutionContext — no signal needed.
+                    final UUID caseIdSenior = WorkerExecutionContext.current().caseId();
                     final String complianceTaskId =
-                            complianceReviewLifecycle.openReview(tx, buildSummary(input, tx, sarNarrative));
+                            complianceReviewLifecycle.openReview(tx, buildSummary(input, tx, sarNarrative), caseIdSenior);
                     return WorkerResult.of(Map.of("sarNarrative", sarNarrative, "complianceTaskId", complianceTaskId));
                 })
                 .build();

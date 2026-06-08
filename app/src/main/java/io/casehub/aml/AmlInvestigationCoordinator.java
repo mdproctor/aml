@@ -38,10 +38,8 @@ public class AmlInvestigationCoordinator implements AmlInvestigationApplicationS
         final InvestigationSummary summary = investigator.investigate(transaction, caseId);
 
         // Layer 2: open compliance officer WorkItem with 30-day FinCEN SLA
-        final String taskId = compliance.openReview(transaction, summary);
-
-        // Layer 4: record compliance review opening
-        ledgerService.writeComplianceReviewOpened(caseId, taskId);
+        // writeComplianceReviewOpened() is now called inside openReview() — aml#56
+        final String taskId = compliance.openReview(transaction, summary, caseId);
 
         return new AmlInvestigationResult(summary, taskId, caseId, caseEntryId);
     }
