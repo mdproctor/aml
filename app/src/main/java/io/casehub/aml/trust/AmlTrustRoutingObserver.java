@@ -2,6 +2,7 @@ package io.casehub.aml.trust;
 
 import io.casehub.aml.routing.AmlTrustRoutingPolicyProvider;
 import io.casehub.engine.common.spi.event.WorkerDecisionEvent;
+import org.jboss.logging.Logger;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.routing.TrustScoreCache;
 import io.casehub.platform.api.identity.ActorType;
@@ -35,8 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @ApplicationScoped
 public class AmlTrustRoutingObserver {
 
-    private static final org.jboss.logging.Logger LOG =
-            org.jboss.logging.Logger.getLogger(AmlTrustRoutingObserver.class);
+    private static final Logger LOG = Logger.getLogger(AmlTrustRoutingObserver.class);
 
     private static final String ACTOR_ID = "aml-orchestrator";
     private static final String ACTOR_ROLE = "AmlInvestigationOrchestrator";

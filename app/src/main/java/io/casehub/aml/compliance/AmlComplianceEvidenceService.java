@@ -239,7 +239,8 @@ public class AmlComplianceEvidenceService {
         List<RoutingDecisionRecord> decisions = attestations.stream()
                 .map(a -> new RoutingDecisionRecord(
                         a.capabilityTag, a.selectedWorkerId,
-                        a.trustScoreAtRouting, a.thresholdApplied, a.id))
+                        a.trustScoreAtRouting, a.thresholdApplied, a.id,
+                        a.reconstructed, a.observerFailed))
                 .toList();
 
         RequirementStatus status;

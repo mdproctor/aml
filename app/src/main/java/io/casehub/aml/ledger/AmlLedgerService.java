@@ -130,6 +130,8 @@ public class AmlLedgerService {
      */
     @Transactional(TxType.REQUIRES_NEW)
     public void writeSarOfficerReviewedFailure(final UUID caseId, final String officerId) {
+        // officerId intentionally unused — failure entries are SYSTEM-attributed (aml-orchestrator),
+        // not attributed to the human officer. The observer already logs officerId in its WARN.
         final int sequenceNumber = nextSequenceNumber(caseId);
         final AmlSarOfficerReviewedLedgerEntry entry = new AmlSarOfficerReviewedLedgerEntry();
         entry.id = UUID.randomUUID();
