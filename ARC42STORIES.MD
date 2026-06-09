@@ -1249,7 +1249,7 @@ What this layer adds:
 - **GDPR erasure capability descriptor** — `GdprErasureRequirement` is a static capability descriptor (not per-case); `erasureCapabilityWired = true`; `POST /api/layer7/actors/{actorId}/erasure` delegates to `LedgerErasureService`
 - **Trust score captured at routing time** — `AmlTrustRoutingAttestation` (new `LedgerEntry` subclass) written by `AmlTrustRoutingObserver` at `WorkerDecisionEvent` fire time; `trustScoreAtRouting` and `thresholdApplied` are immutable; `TrustScoreCache` drift after routing is irrelevant for evidence purposes
 
-Not closed here: full SLA `CLOSED` status on the engine async path (gap — engine path does not write `COMPLIANCE_REVIEW_OPENED` ledger entry via `ComplianceReviewLifecycle`; tracked as follow-up). aml#44 (observer failure reconciliation).
+Both gaps now closed: engine path writes `COMPLIANCE_REVIEW_OPENED` via consolidated `ComplianceReviewLifecycle.openReview()` (aml#56 ✅). Observer failure reconciliation implemented with lazy `AmlAttestationReconciler` + PP-20260530-49856c hardening (aml#44 ✅). SAR officer reviewed ledger entry enables GDPR Art.17 erasure against human actorId (aml#55 ✅).
 
 #### Accountability gaps closed
 
@@ -1442,7 +1442,7 @@ Per the Arc42Stories spec: only decisions not captured inline elsewhere. Layer-s
 | Risk | Mitigation | Tracked |
 |---|---|---|
 | 3 `AmlLayer5InvestigationTest` failures — `SchedulerService.registerScheduledTriggers()` returns null `CaseDefinition` | Not fixable in this repo — root cause in engine scheduling timing; all other tests pass | casehubio/engine#409 |
-| `AmlTrustRoutingObserver` failure leaves silent evidence gaps — if the observer CDI async call fails, `WorkerDecisionEntry` exists but has no corresponding attestation | No reconciliation mechanism yet; `TrustRoutingRequirement` shows `PARTIAL` | casehubio/aml#44 |
+| `AmlTrustRoutingObserver` failure leaves silent evidence gaps — if the observer CDI async call fails, `WorkerDecisionEntry` exists but has no corresponding attestation | **Resolved** — `AmlAttestationReconciler` fills gaps lazily on evidence read; observer hardened per PP-20260530-49856c; `observerFailed=true` flag distinguishes failure entries from live attestations | casehubio/aml#44 ✅ |
 | Engine API changes (`tenancyId`, `CaseLifecycleEvent`) require AML updates | API changes from engine#299 and related PRs; V2005/V2006 need reconciliation with engine-ledger V2002/V2003 | casehubio/aml#47, #48 |
 
 ### Technical Debt
