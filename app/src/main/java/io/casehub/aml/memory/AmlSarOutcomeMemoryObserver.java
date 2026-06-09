@@ -48,7 +48,7 @@ public class AmlSarOutcomeMemoryObserver {
         // was written during startInvestigation() in a prior request that has already committed, so
         // reading it here is safe regardless of the outer transaction boundary.
         final AmlCaseOpenedLedgerEntry caseEntry = ledgerRepository
-                .findBySubjectId(event.caseId()).stream()
+                .findBySubjectId(event.caseId(), io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID).stream()
                 .filter(AmlCaseOpenedLedgerEntry.class::isInstance)
                 .map(AmlCaseOpenedLedgerEntry.class::cast)
                 .findFirst()

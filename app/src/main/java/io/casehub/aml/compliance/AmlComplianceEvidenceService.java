@@ -59,7 +59,7 @@ public class AmlComplianceEvidenceService {
      * Returns compliance evidence for the given case, or empty if no AML ledger entries exist.
      */
     public Optional<ComplianceEvidence> findEvidence(UUID caseId) {
-        List<LedgerEntry> all = ledgerRepo.findBySubjectId(caseId);
+        List<LedgerEntry> all = ledgerRepo.findBySubjectId(caseId, io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID);
         List<AmlCaseOpenedLedgerEntry> caseEntries = filterCaseOpened(all);
         List<AmlComplianceReviewLedgerEntry> reviewEntries = filterComplianceReview(all);
         List<AmlSarOfficerReviewedLedgerEntry> officerReviewEntries = filterSarOfficerReviewed(all);
@@ -73,7 +73,7 @@ public class AmlComplianceEvidenceService {
      * Package-private for direct unit test access.
      */
     ComplianceEvidence assembleEvidence(UUID caseId) {
-        List<LedgerEntry> all = ledgerRepo.findBySubjectId(caseId);
+        List<LedgerEntry> all = ledgerRepo.findBySubjectId(caseId, io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID);
         return build(caseId,
             filterCaseOpened(all), filterComplianceReview(all),
             filterSarOfficerReviewed(all));
@@ -111,8 +111,8 @@ public class AmlComplianceEvidenceService {
         boolean chainVerified = false;
         String treeRoot = null;
         try {
-            chainVerified = verificationService.verify(caseId);
-            treeRoot = verificationService.treeRoot(caseId);
+            chainVerified = verificationService.verify(caseId, io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID);
+            treeRoot = verificationService.treeRoot(caseId, io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID);
         } catch (IllegalStateException ignored) {
             // No Merkle frontier — hash-chain disabled (tests) or not yet built
         }
@@ -158,7 +158,7 @@ public class AmlComplianceEvidenceService {
 
     private AmlInclusionProof buildInclusionProof(UUID entryId) {
         try {
-            InclusionProof proof = verificationService.inclusionProof(entryId);
+            InclusionProof proof = verificationService.inclusionProof(entryId, io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID);
             List<AmlProofStep> steps = proof.siblings().stream()
                     .map(s -> new AmlProofStep(s.hash(), s.side().name()))
                     .toList();

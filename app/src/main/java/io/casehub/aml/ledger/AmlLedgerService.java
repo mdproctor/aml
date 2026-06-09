@@ -10,6 +10,7 @@ import jakarta.transaction.Transactional.TxType;
 
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.platform.api.identity.ActorType;
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 
@@ -54,7 +55,7 @@ public class AmlLedgerService {
         entry.transactionId = transaction.id();
         entry.originAccountId = transaction.originAccountId();
         entry.destinationAccountId = transaction.destinationAccountId();
-        repository.save(entry);
+        repository.save(entry, TenancyConstants.DEFAULT_TENANT_ID);
         return entry.id;
     }
 
@@ -70,7 +71,7 @@ public class AmlLedgerService {
      * </ol>
      */
     public void writeComplianceReviewOpened(final UUID caseId, final String taskId) {
-        final UUID caseOpenedEntryId = repository.findBySubjectId(caseId).stream()
+        final UUID caseOpenedEntryId = repository.findBySubjectId(caseId, TenancyConstants.DEFAULT_TENANT_ID).stream()
                 .filter(AmlCaseOpenedLedgerEntry.class::isInstance)
                 .map(e -> e.id)
                 .findFirst()
@@ -87,7 +88,7 @@ public class AmlLedgerService {
         entry.occurredAt = Instant.now();
         entry.taskId = taskId;
         entry.causedByEntryId = caseOpenedEntryId;
-        repository.save(entry);
+        repository.save(entry, TenancyConstants.DEFAULT_TENANT_ID);
     }
 
     /**
@@ -102,7 +103,7 @@ public class AmlLedgerService {
     @Transactional(TxType.REQUIRED)
     public void writeSarOfficerReviewed(final UUID caseId, final String officerId,
             final String reviewDecision) {
-        final UUID causedBy = repository.findBySubjectId(caseId).stream()
+        final UUID causedBy = repository.findBySubjectId(caseId, TenancyConstants.DEFAULT_TENANT_ID).stream()
                 .filter(AmlComplianceReviewLedgerEntry.class::isInstance)
                 .map(e -> e.id)
                 .findFirst()
@@ -119,7 +120,7 @@ public class AmlLedgerService {
         entry.occurredAt = Instant.now();
         entry.causedByEntryId = causedBy;
         entry.reviewDecision = reviewDecision;
-        repository.save(entry);
+        repository.save(entry, TenancyConstants.DEFAULT_TENANT_ID);
     }
 
     /**
@@ -143,14 +144,14 @@ public class AmlLedgerService {
         entry.actorRole = "ComplianceOfficer-observer-failed";
         entry.occurredAt = Instant.now();
         entry.reviewDecision = "UNKNOWN";
-        repository.save(entry);
+        repository.save(entry, TenancyConstants.DEFAULT_TENANT_ID);
     }
 
     // NOTE: sequential, not concurrent-safe. Safe for Layer 4 where writes per caseId
     // are sequential. Layer 5+ parallel specialist ledger entries would need a DB-level
     // sequence or unique constraint on (subjectId, sequenceNumber).
     private int nextSequenceNumber(final UUID subjectId) {
-        return repository.findLatestBySubjectId(subjectId)
+        return repository.findLatestBySubjectId(subjectId, TenancyConstants.DEFAULT_TENANT_ID)
                 .map(e -> e.sequenceNumber + 1)
                 .orElse(1);
     }

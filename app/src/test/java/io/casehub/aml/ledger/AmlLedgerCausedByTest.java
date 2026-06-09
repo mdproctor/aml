@@ -23,7 +23,7 @@ class AmlLedgerCausedByTest {
     void complianceReviewEntry_hasCausedByEntryId_pointingToCaseOpened() {
         UUID caseId = service.investigate(tx("TXN-CB-001")).caseId();
 
-        List<LedgerEntry> entries = ledgerRepo.findBySubjectId(caseId);
+        List<LedgerEntry> entries = ledgerRepo.findBySubjectId(caseId, io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID);
         AmlCaseOpenedLedgerEntry caseOpened = entries.stream()
             .filter(AmlCaseOpenedLedgerEntry.class::isInstance)
             .map(AmlCaseOpenedLedgerEntry.class::cast)

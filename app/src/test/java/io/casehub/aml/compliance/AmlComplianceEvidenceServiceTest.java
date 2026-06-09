@@ -58,10 +58,10 @@ class AmlComplianceEvidenceServiceTest {
     void assembleEvidence_happyPath_allRequirementsClosed() {
         var opened = caseOpenedEntry(caseId, caseOpenedId);
         var review = reviewOpenedEntry(caseId, reviewOpenedId, taskId, caseOpenedId);
-        when(ledgerRepo.findBySubjectId(caseId)).thenReturn(List.of(opened, review));
-        when(verificationService.verify(caseId)).thenReturn(true);
-        when(verificationService.treeRoot(caseId)).thenReturn(treeRoot);
-        when(verificationService.inclusionProof(any())).thenReturn(stubProof());
+        when(ledgerRepo.findBySubjectId(eq(caseId), any())).thenReturn(List.of(opened, review));
+        when(verificationService.verify(eq(caseId), any())).thenReturn(true);
+        when(verificationService.treeRoot(eq(caseId), any())).thenReturn(treeRoot);
+        when(verificationService.inclusionProof(any(), any())).thenReturn(stubProof());
         WorkItem wi = workItem(taskId, Instant.now().plus(30, ChronoUnit.DAYS), null);
         when(em.find(eq(WorkItem.class), eq(taskId))).thenReturn(wi);
         var att1 = attestation(caseId, "entity-resolution", "agent-A", 0.8, 0.70);
@@ -98,10 +98,10 @@ class AmlComplianceEvidenceServiceTest {
     void assembleEvidence_chainVerifiedFalse_auditChainPartial() {
         var opened = caseOpenedEntry(caseId, caseOpenedId);
         var review = reviewOpenedEntry(caseId, reviewOpenedId, taskId, caseOpenedId);
-        when(ledgerRepo.findBySubjectId(caseId)).thenReturn(List.of(opened, review));
-        when(verificationService.verify(caseId)).thenReturn(false);
-        when(verificationService.treeRoot(caseId)).thenReturn(treeRoot);
-        when(verificationService.inclusionProof(any())).thenReturn(stubProof());
+        when(ledgerRepo.findBySubjectId(eq(caseId), any())).thenReturn(List.of(opened, review));
+        when(verificationService.verify(eq(caseId), any())).thenReturn(false);
+        when(verificationService.treeRoot(eq(caseId), any())).thenReturn(treeRoot);
+        when(verificationService.inclusionProof(any(), any())).thenReturn(stubProof());
         when(em.find(eq(WorkItem.class), eq(taskId))).thenReturn(workItem(taskId, Instant.now().plus(30, ChronoUnit.DAYS), null));
         when(attestationRepo.findByInvestigationCaseId(caseId)).thenReturn(List.of());
         when(mockReconciler.reconcileIfNeeded(eq(caseId), any(), any())).thenReturn(List.of());
@@ -114,10 +114,10 @@ class AmlComplianceEvidenceServiceTest {
     void assembleEvidence_slaBreached_statusBreached() {
         var opened = caseOpenedEntry(caseId, caseOpenedId);
         var review = reviewOpenedEntry(caseId, reviewOpenedId, taskId, caseOpenedId);
-        when(ledgerRepo.findBySubjectId(caseId)).thenReturn(List.of(opened, review));
-        when(verificationService.verify(caseId)).thenReturn(true);
-        when(verificationService.treeRoot(caseId)).thenReturn(treeRoot);
-        when(verificationService.inclusionProof(any())).thenReturn(stubProof());
+        when(ledgerRepo.findBySubjectId(eq(caseId), any())).thenReturn(List.of(opened, review));
+        when(verificationService.verify(eq(caseId), any())).thenReturn(true);
+        when(verificationService.treeRoot(eq(caseId), any())).thenReturn(treeRoot);
+        when(verificationService.inclusionProof(any(), any())).thenReturn(stubProof());
         when(attestationRepo.findByInvestigationCaseId(caseId)).thenReturn(List.of());
         when(mockReconciler.reconcileIfNeeded(eq(caseId), any(), any())).thenReturn(List.of());
         when(workerDecisionRepo.findAllByCaseId(caseId)).thenReturn(List.of());
@@ -131,10 +131,10 @@ class AmlComplianceEvidenceServiceTest {
     void assembleEvidence_partialAttestations_trustRoutingPartial() {
         var opened = caseOpenedEntry(caseId, caseOpenedId);
         var review = reviewOpenedEntry(caseId, reviewOpenedId, taskId, caseOpenedId);
-        when(ledgerRepo.findBySubjectId(caseId)).thenReturn(List.of(opened, review));
-        when(verificationService.verify(caseId)).thenReturn(true);
-        when(verificationService.treeRoot(caseId)).thenReturn(treeRoot);
-        when(verificationService.inclusionProof(any())).thenReturn(stubProof());
+        when(ledgerRepo.findBySubjectId(eq(caseId), any())).thenReturn(List.of(opened, review));
+        when(verificationService.verify(eq(caseId), any())).thenReturn(true);
+        when(verificationService.treeRoot(eq(caseId), any())).thenReturn(treeRoot);
+        when(verificationService.inclusionProof(any(), any())).thenReturn(stubProof());
         when(em.find(eq(WorkItem.class), eq(taskId))).thenReturn(workItem(taskId, Instant.now().plus(30, ChronoUnit.DAYS), null));
         var partialAtt = attestation(caseId, "entity-resolution", "agent-A", 0.8, 0.70);
         when(attestationRepo.findByInvestigationCaseId(caseId)).thenReturn(List.of(partialAtt));
@@ -148,7 +148,7 @@ class AmlComplianceEvidenceServiceTest {
 
     @Test
     void findEvidence_noLedgerEntries_returnsEmpty() {
-        when(ledgerRepo.findBySubjectId(caseId)).thenReturn(List.of());
+        when(ledgerRepo.findBySubjectId(eq(caseId), any())).thenReturn(List.of());
         assertTrue(service.findEvidence(caseId).isEmpty());
     }
 
@@ -226,10 +226,10 @@ class AmlComplianceEvidenceServiceTest {
         var opened = caseOpenedEntry(caseId, caseOpenedId);
         var review = reviewOpenedEntry(caseId, reviewOpenedId, taskId, caseOpenedId);
         var officerReview = officerReviewEntry(caseId, UUID.randomUUID(), reviewOpenedId);
-        when(ledgerRepo.findBySubjectId(caseId)).thenReturn(List.of(opened, review, officerReview));
-        when(verificationService.verify(caseId)).thenReturn(true);
-        when(verificationService.treeRoot(caseId)).thenReturn(treeRoot);
-        when(verificationService.inclusionProof(any())).thenReturn(stubProof());
+        when(ledgerRepo.findBySubjectId(eq(caseId), any())).thenReturn(List.of(opened, review, officerReview));
+        when(verificationService.verify(eq(caseId), any())).thenReturn(true);
+        when(verificationService.treeRoot(eq(caseId), any())).thenReturn(treeRoot);
+        when(verificationService.inclusionProof(any(), any())).thenReturn(stubProof());
         when(em.find(eq(WorkItem.class), eq(taskId)))
             .thenReturn(workItem(taskId, Instant.now().plus(30, ChronoUnit.DAYS), null));
         when(attestationRepo.findByInvestigationCaseId(caseId)).thenReturn(List.of());
@@ -248,10 +248,10 @@ class AmlComplianceEvidenceServiceTest {
     void assembleEvidence_observerFailedAttestation_trustRoutingPartial() {
         var opened = caseOpenedEntry(caseId, caseOpenedId);
         var review = reviewOpenedEntry(caseId, reviewOpenedId, taskId, caseOpenedId);
-        when(ledgerRepo.findBySubjectId(caseId)).thenReturn(List.of(opened, review));
-        when(verificationService.verify(caseId)).thenReturn(false);
-        when(verificationService.treeRoot(caseId)).thenReturn(treeRoot);
-        when(verificationService.inclusionProof(any())).thenReturn(stubProof());
+        when(ledgerRepo.findBySubjectId(eq(caseId), any())).thenReturn(List.of(opened, review));
+        when(verificationService.verify(eq(caseId), any())).thenReturn(false);
+        when(verificationService.treeRoot(eq(caseId), any())).thenReturn(treeRoot);
+        when(verificationService.inclusionProof(any(), any())).thenReturn(stubProof());
         when(em.find(eq(WorkItem.class), eq(taskId)))
             .thenReturn(workItem(taskId, Instant.now().plus(30, ChronoUnit.DAYS), null));
         var failureAtt = attestation(caseId, "entity-resolution", "agent-A", 0.8, 0.70);
@@ -268,10 +268,10 @@ class AmlComplianceEvidenceServiceTest {
     @Test
     void assembleEvidence_reconstructedAttestation_trustRoutingPartial() {
         var opened = caseOpenedEntry(caseId, caseOpenedId);
-        when(ledgerRepo.findBySubjectId(caseId)).thenReturn(List.of(opened));
-        when(verificationService.verify(caseId)).thenReturn(false);
-        when(verificationService.treeRoot(caseId)).thenReturn(treeRoot);
-        when(verificationService.inclusionProof(any())).thenReturn(stubProof());
+        when(ledgerRepo.findBySubjectId(eq(caseId), any())).thenReturn(List.of(opened));
+        when(verificationService.verify(eq(caseId), any())).thenReturn(false);
+        when(verificationService.treeRoot(eq(caseId), any())).thenReturn(treeRoot);
+        when(verificationService.inclusionProof(any(), any())).thenReturn(stubProof());
         when(em.find(eq(WorkItem.class), any())).thenReturn(null);
         var recon = attestation(caseId, "entity-resolution", "agent-A", 0.8, 0.70);
         recon.reconstructed = true;

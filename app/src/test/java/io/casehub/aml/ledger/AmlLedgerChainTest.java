@@ -54,7 +54,7 @@ class AmlLedgerChainTest {
     @Test
     void investigate_caseOpenedEntryExistsInLedger() {
         AmlInvestigationResult result = service.investigate(sampleTx("TXN-L4-003"));
-        var entry = ledgerRepo.findEntryById(result.ledgerCaseEntryId());
+        var entry = ledgerRepo.findEntryById(result.ledgerCaseEntryId(), io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID);
         assertTrue(entry.isPresent(), "CASE_OPENED entry must be findable by its UUID");
         assertEquals(result.caseId(), entry.get().subjectId,
                 "entry subjectId must equal the case UUID");
@@ -63,7 +63,7 @@ class AmlLedgerChainTest {
     @Test
     void investigate_caseOpenedEntry_isCorrectType() {
         AmlInvestigationResult result = service.investigate(sampleTx("TXN-L4-004"));
-        var entry = ledgerRepo.findEntryById(result.ledgerCaseEntryId())
+        var entry = ledgerRepo.findEntryById(result.ledgerCaseEntryId(), io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID)
                 .orElseThrow(() -> new AssertionError("CASE_OPENED entry not found"));
         assertTrue(entry instanceof AmlCaseOpenedLedgerEntry,
                 "CASE_OPENED entry must be AmlCaseOpenedLedgerEntry");
@@ -72,7 +72,7 @@ class AmlLedgerChainTest {
     @Test
     void investigate_atLeastTwoAmlEntriesExistPerCase() {
         UUID caseId = service.investigate(sampleTx("TXN-L4-005")).caseId();
-        List<LedgerEntry> entries = ledgerRepo.findBySubjectId(caseId);
+        List<LedgerEntry> entries = ledgerRepo.findBySubjectId(caseId, io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID);
         assertTrue(entries.size() >= 2,
                 "Expected at least CASE_OPENED and COMPLIANCE_REVIEW_OPENED, got " + entries.size());
     }
@@ -80,7 +80,7 @@ class AmlLedgerChainTest {
     @Test
     void investigate_complianceReviewEntry_isCorrectType() {
         UUID caseId = service.investigate(sampleTx("TXN-L4-006")).caseId();
-        List<LedgerEntry> entries = ledgerRepo.findBySubjectId(caseId);
+        List<LedgerEntry> entries = ledgerRepo.findBySubjectId(caseId, io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID);
         boolean hasReviewEntry = entries.stream()
                 .anyMatch(AmlComplianceReviewLedgerEntry.class::isInstance);
         assertTrue(hasReviewEntry, "AmlComplianceReviewLedgerEntry must be written after review is opened");
