@@ -172,6 +172,7 @@ Read these **before designing**, not after. The concern column tells you when ea
 | Using casehub-engine (CasePlanModel, adaptive paths, bindings) | `../parent/docs/repos/casehub-engine.md` |
 
 > **Engine worker return type:** `Worker.Builder.function()` requires `Function<Map<String, Object>, WorkerResult>`. Return `WorkerResult.of(Map.of(...))` — not `Map.of(...)` directly. Applies to all `YamlCaseHub` worker lambdas (casehubio/aml#54).
+> **LedgerEntryRepository + LedgerVerificationService tenancyId parameter:** All methods in `LedgerEntryRepository` and `LedgerVerificationService` require a `String tenancyId` second parameter (SNAPSHOT change). Use `TenancyConstants.DEFAULT_TENANT_ID` at all AML call sites. Affected methods: `save()`, `findBySubjectId()`, `findLatestBySubjectId()`, `findEntryById()`, `verify()`, `treeRoot()`, `inclusionProof()`.
 | Boundary check — does this belong in foundation or here? | `PLATFORM.md` boundary rules and application tier rule |
 
 ### Persistence and migrations
