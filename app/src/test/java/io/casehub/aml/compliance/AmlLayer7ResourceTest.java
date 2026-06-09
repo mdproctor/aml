@@ -2,30 +2,32 @@ package io.casehub.aml.compliance;
 
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.trust.AmlTrustAttestationRepository;
+import io.casehub.work.runtime.service.WorkItemService;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
+
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Layer 7: integration test for the compliance evidence REST endpoint.
  *
  * <p>Starts a full investigation via the Layer 6 engine path, waits for async
  * completion, then verifies the compliance evidence response structure.
- *
- * <p>Note on SLA status: the engine path (Layer 5/6) creates the compliance officer
- * WorkItem inside the sar-drafting worker, but does not write a
- * COMPLIANCE_REVIEW_OPENED ledger entry linking back to the WorkItem. The SLA
- * requirement therefore shows GAP in this integration test. The Layer 3 synchronous
- * path ({@code AmlInvestigationCoordinator}) writes both entries and achieves CLOSED.
- * Closing this gap for the engine path is tracked as a follow-up.
  *
  * <p>Note on Merkle chain: concurrent CaseLedgerEntry writes in the H2 test environment
  * cause Merkle frontier collisions (unique constraint on subject_id + level). This
@@ -36,6 +38,10 @@ import static org.hamcrest.Matchers.*;
 class AmlLayer7ResourceTest {
 
     @Inject AmlTrustAttestationRepository attestationRepo;
+    @Inject WorkItemService workItemService;
+
+    @PersistenceContext(unitName = "qhorus")
+    EntityManager qhorusEm;
 
     @Test
     void getComplianceEvidence_afterInvestigation_returnsAllRequirements() {
@@ -76,15 +82,16 @@ class AmlLayer7ResourceTest {
             .body("caseId", equalTo(caseId))
             .body("generatedAt", notNullValue())
             .body("signature", nullValue())
-            // Audit chain: CASE_OPENED present; hash-chain disabled in tests
-            // (H2 concurrent Merkle writes violate UQ_MERKLE_FRONTIER_SUBJECT_LEVEL)
+            // Audit chain: CASE_OPENED + COMPLIANCE_REVIEW_OPENED now both present;
+            // hash-chain disabled in tests (H2 concurrent Merkle writes violate UQ_MERKLE_FRONTIER_SUBJECT_LEVEL)
             .body("auditChain.status", anyOf(equalTo("CLOSED"), equalTo("PARTIAL"), equalTo("GAP")))
-            .body("auditChain.events", hasSize(greaterThanOrEqualTo(1)))
+            .body("auditChain.events", hasSize(greaterThanOrEqualTo(2)))
             .body("auditChain.events[0].eventType", equalTo("CASE_OPENED"))
             .body("auditChain.events[0].causedByEntryId", nullValue())
-            // SLA: engine path does not write COMPLIANCE_REVIEW_OPENED ledger entry,
-            // so the SLA requirement shows GAP (no WorkItem linkage in the ledger)
-            .body("sla.status", equalTo("GAP"))
+            .body("auditChain.events[1].eventType", equalTo("COMPLIANCE_REVIEW_OPENED"))
+            // SLA: WorkItem now created by engine path (COMPLIANCE_REVIEW_OPENED written)
+            .body("sla.status", anyOf(equalTo("PARTIAL"), equalTo("CLOSED"), equalTo("BREACHED")))
+            .body("sla.workItemId", notNullValue())
             // Trust routing: all dispatched capabilities have attestations
             .body("trustRouting.status", equalTo("CLOSED"))
             .body("trustRouting.decisions", not(empty()))
@@ -99,6 +106,131 @@ class AmlLayer7ResourceTest {
         given().when()
             .get("/api/investigations/{caseId}/compliance-evidence", UUID.randomUUID())
             .then().statusCode(404);
+    }
+
+    @Test
+    void gdprDemoFlow_officerReview_erasure() {
+        // Start investigation via layer6 (async, returns 202)
+        String caseId = given().contentType(ContentType.JSON)
+            .body(pepTransaction("TXN-GDPR-" + UUID.randomUUID()))
+            .when().post("/api/layer6/investigations")
+            .then().statusCode(202)
+            .extract().path("caseId");
+
+        UUID caseUUID = UUID.fromString(caseId);
+
+        // Wait for sar-drafting attestation to appear
+        Awaitility.await().atMost(30, TimeUnit.SECONDS).pollInterval(500, TimeUnit.MILLISECONDS)
+            .until(() -> attestationRepo.findByInvestigationCaseId(caseUUID).stream()
+                .anyMatch(a -> "sar-drafting".equals(a.capabilityTag)));
+
+        // Drain to completed status
+        Awaitility.await().atMost(20, TimeUnit.SECONDS).pollInterval(200, TimeUnit.MILLISECONDS)
+            .until(() -> "completed".equals(
+                given().when().get("/api/layer6/investigations/" + caseId)
+                    .then().extract().path("status")));
+
+        // Verify sla.workItemId is present (COMPLIANCE_REVIEW_OPENED now written on engine path)
+        String workItemIdStr = given().when()
+            .get("/api/investigations/{caseId}/compliance-evidence", caseId)
+            .then().statusCode(200)
+            .body("sla.workItemId", notNullValue())
+            .extract().path("sla.workItemId");
+        UUID taskId = UUID.fromString(workItemIdStr);
+
+        // Complete WorkItem as compliance officer: PENDING → claim → ASSIGNED → start → IN_PROGRESS → complete → COMPLETED
+        workItemService.claim(taskId, "compliance-officer-001");
+        workItemService.start(taskId, "compliance-officer-001");
+        // 4-param complete: id, actorId, resolution, outcome — fires both sync and async WorkItemLifecycleEvent
+        workItemService.complete(taskId, "compliance-officer-001", "SAR approved", "APPROVED");
+
+        // Await @ObservesAsync delivery — poll until SAR_OFFICER_REVIEWED appears in audit chain
+        Awaitility.await().atMost(5, TimeUnit.SECONDS).pollInterval(200, TimeUnit.MILLISECONDS)
+            .until(() -> {
+                io.restassured.response.Response r = given().when()
+                    .get("/api/investigations/{caseId}/compliance-evidence", caseId);
+                if (r.statusCode() != 200) return false;
+                List<?> events = r.jsonPath().getList("auditChain.events");
+                return events != null && events.stream().anyMatch(e ->
+                    "SAR_OFFICER_REVIEWED".equals(((Map<?, ?>) e).get("eventType")));
+            });
+
+        // Assert officer review event appears in audit chain
+        given().when().get("/api/investigations/{caseId}/compliance-evidence", caseId)
+            .then().statusCode(200)
+            // auditChain: CLOSED requires chainVerified=true; hash-chain disabled in H2 — accept PARTIAL too
+            .body("auditChain.status", anyOf(equalTo("CLOSED"), equalTo("PARTIAL")))
+            .body("auditChain.events.eventType", hasItem("SAR_OFFICER_REVIEWED"));
+
+        // GDPR erasure: erase the officer's actorId from the ledger
+        given().when().post("/api/actors/compliance-officer-001/erasure")
+            .then().statusCode(200);
+
+        // Verify the officer's actorId is pseudonymized after erasure — no longer the original value
+        given().when().get("/api/investigations/{caseId}/compliance-evidence", caseId)
+            .then().statusCode(200);
+        // Extract events and verify officer entry is pseudonymized (not the raw actorId)
+        io.restassured.response.Response evidenceResponse = given().when()
+            .get("/api/investigations/{caseId}/compliance-evidence", caseId)
+            .then().statusCode(200).extract().response();
+        List<Map<String, Object>> events = evidenceResponse.jsonPath().getList("auditChain.events");
+        boolean officerEntryPseudonymized = events.stream()
+            .filter(e -> "SAR_OFFICER_REVIEWED".equals(e.get("eventType")))
+            .allMatch(e -> !"compliance-officer-001".equals(e.get("actorId")));
+        org.junit.jupiter.api.Assertions.assertTrue(officerEntryPseudonymized,
+            "Officer actorId should be pseudonymized after GDPR erasure");
+    }
+
+    @Test
+    void reconciliationPath_deletedAttestation_rebuiltOnRead() {
+        // Start investigation and drain
+        String caseId = given().contentType(ContentType.JSON)
+            .body(pepTransaction("TXN-RECON-" + UUID.randomUUID()))
+            .when().post("/api/layer6/investigations")
+            .then().statusCode(202)
+            .extract().path("caseId");
+
+        UUID caseUUID = UUID.fromString(caseId);
+
+        Awaitility.await().atMost(30, TimeUnit.SECONDS).pollInterval(500, TimeUnit.MILLISECONDS)
+            .until(() -> attestationRepo.findByInvestigationCaseId(caseUUID).stream()
+                .anyMatch(a -> "sar-drafting".equals(a.capabilityTag)));
+        Awaitility.await().atMost(20, TimeUnit.SECONDS).pollInterval(200, TimeUnit.MILLISECONDS)
+            .until(() -> "completed".equals(
+                given().when().get("/api/layer6/investigations/" + caseId)
+                    .then().extract().path("status")));
+
+        // Verify baseline: trustRouting.status = CLOSED
+        given().when().get("/api/investigations/{caseId}/compliance-evidence", caseId)
+            .then().statusCode(200)
+            .body("trustRouting.status", equalTo("CLOSED"));
+
+        // Simulate observer failure: delete one attestation row via JPQL
+        UUID deletedAttId = attestationRepo.findByInvestigationCaseId(caseUUID)
+            .stream().findFirst().orElseThrow().id;
+        deleteAttestation(deletedAttId);
+
+        // First read after deletion: reconciler fills the gap, status = PARTIAL (reconstructed=true)
+        given().when().get("/api/investigations/{caseId}/compliance-evidence", caseId)
+            .then().statusCode(200)
+            .body("trustRouting.status", equalTo("PARTIAL"))
+            .body("trustRouting.decisions.reconstructed", hasItem(true));
+
+        // Second read: count reconstructed entries — should not increase (idempotent)
+        long countBefore = attestationRepo.findByInvestigationCaseId(caseUUID).stream()
+            .filter(a -> a.reconstructed).count();
+        given().when().get("/api/investigations/{caseId}/compliance-evidence", caseId);
+        long countAfter = attestationRepo.findByInvestigationCaseId(caseUUID).stream()
+            .filter(a -> a.reconstructed).count();
+        assertEquals(countBefore, countAfter, "No duplicate reconstructed entries on second call");
+    }
+
+    @Transactional
+    void deleteAttestation(UUID id) {
+        qhorusEm.createQuery("DELETE FROM AmlTrustRoutingAttestation a WHERE a.id = :id")
+            .setParameter("id", id)
+            .executeUpdate();
+        qhorusEm.clear();
     }
 
     private SuspiciousTransaction pepTransaction(String id) {
