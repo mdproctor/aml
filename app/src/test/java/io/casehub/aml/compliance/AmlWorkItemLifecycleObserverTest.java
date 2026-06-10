@@ -67,7 +67,7 @@ class AmlWorkItemLifecycleObserverTest {
                 "/workitems/" + UUID.randomUUID(),
                 UUID.randomUUID().toString(),
                 UUID.randomUUID(), WorkItemStatus.COMPLETED,
-                Instant.now(), "officer", null, null, null, null);
+                Instant.now(), "officer", null, null, null, null, null);
         observer.onWorkItemLifecycle(event);
 
         verify(ledgerService, never()).writeSarOfficerReviewed(any(), any(), any());

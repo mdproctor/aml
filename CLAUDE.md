@@ -265,6 +265,11 @@ Layer 7: Compliance evidence — accountability properties mapped against FinCEN
 Layer 8: + casehub-platform CaseMemoryStore — prior entity context (AmlMemoryService,
          AmlPriorContext); SAR outcome memories; YAML binding split for prior-context
          routing; trust seeder corrected. See LAYER-LOG.md §Layer 8. ✅
+
+Layer 9: + casehub-engine-work-adapter (ActionRiskClassifier oversight gate) —
+         AmlActionType + AmlActionRiskClassifier + Layer 9 oversight harness
+         (AmlOversightCaseHub, AmlOversightCoordinator, AmlLayer9Resource).
+         See LAYER-LOG.md §Layer 9. ✅
 ```
 
 ### Foundation Gates
@@ -279,6 +284,7 @@ Layer 8: + casehub-platform CaseMemoryStore — prior entity context (AmlMemoryS
 | LLM triage supervisor | LlmPlanningStrategy SPI (engine) |
 | GDPR erasure | LedgerErasureService (casehub-ledger ✅) |
 | FinCEN Merkle audit | CaseLedgerEntry ✅ (2026-04-26) |
+| ActionRiskClassifier oversight gate | casehub-engine-work-adapter ✅ (aml#42, 2026-06-09) |
 
 ---
 
@@ -378,6 +384,10 @@ Consult `docs/conventions/` in the local parent before writing any test — the 
 - `casehub.ledger.hash-chain.enabled=false` in test `application.properties` — H2 lacks row-level locking; concurrent Quartz jobs for the same case violate `UQ_MERKLE_FRONTIER_SUBJECT_LEVEL` (protocol PP-20260604-f45c95). Hash chain correctness is tested in casehub-ledger; consumer app tests verify entry structure only.
 - Every test that starts an engine investigation must drain to `status=completed` by polling `GET /api/layer6/investigations/<id>` before the test method returns (protocol PP-20260604-820c35). Tests asserting partial progress (e.g. "senior-analyst was scheduled") must still drain to prevent pending Quartz jobs from contaminating subsequent tests.
 - **Ledger subject isolation:** AML `LedgerEntry` subclasses must not share `subjectId` with engine entries for the same case. Use `UUID.nameUUIDFromBytes("aml-<concern>:" + caseId)` as the `subjectId`. The `IDX_LEDGER_ENTRY_SUBJECT_SEQ` constraint is global across all dtypes — sequence assignment scoped to a single subclass silently misses domain entries and causes phantom violations (GE-20260607-1c0a05).
+- **casehub-engine-work-adapter CDI exclusions:** With `casehub-engine-work-adapter` on the classpath, `JpaPlanItemStore @ApplicationScoped` (non-alternative) competes with `MemoryPlanItemStore @Alternative`. Add `io.casehub.workadapter.JpaPlanItemStore` to `quarkus.arc.exclude-types` in test properties.
+- **casehub-work SNAPSHOT (June 2026) — `TenantScopedPrincipal @RequestScoped`:** The work SNAPSHOT added `TenantScopedPrincipal @RequestScoped` which can cause `caseInstance.tenancyId=null` on Vert.x event loop threads when CDI request context is not propagated. This breaks `WorkerDecisionEntry` saves in Layer 5–8 tests. Tracked in aml#59 — fix needed in casehub-work.
+- **Awaitility on default-datasource EntityManager:** Awaitility polling lambdas run on the test thread, which has no JTA transaction context. Wrap `EntityManager` queries in `QuarkusTransaction.requiringNew().call(() -> ...)` to avoid `ContextNotActiveException`. Use `@PersistenceContext` (no unitName) for `WorkItem` entities (default datasource, not qhorus).
+- **Layer 9 gate test completion:** `AmlLayer9Resource.getInvestigation()` uses `CaseInstanceCache.get(caseId).getState() == CaseStatus.COMPLETED` rather than `WorkerDecisionEntry` — resilient to concurrent H2 `ledger_subject_sequence` INSERT race when multiple Quartz workers fire `WorkerDecisionEvent` simultaneously.
 
 ### Code review
 

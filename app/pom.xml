@@ -103,6 +103,19 @@
       <version>${casehub.version}</version>
     </dependency>
 
+    <!-- Layer 9: oversight gate — ActionGateWorkItemHandler + WorkItemLifecycleAdapter -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-engine-work-adapter</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
+    <!-- Transitive of work-adapter; has embedded jandex.idx — auto-discovered -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-engine-blackboard</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
+
     <!-- Actor state view — GET /actors/{actorId}/state -->
     <dependency>
       <groupId>io.casehub</groupId>

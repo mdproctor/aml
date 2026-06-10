@@ -3,6 +3,7 @@ package io.casehub.aml.trust;
 import io.casehub.engine.common.spi.event.WorkerDecisionEvent;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.platform.api.identity.ActorType;
+import io.casehub.platform.api.identity.TenancyConstants;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -94,6 +95,8 @@ public class AmlTrustAttestationRepository {
         entry.sequenceNumber = max == null ? 1 : max + 1;
         entry.reconstructed = false;
         entry.observerFailed = true;
+        entry.tenancyId = event.tenancyId() != null
+                ? event.tenancyId() : TenancyConstants.DEFAULT_TENANT_ID;
         em.persist(entry);
         return entry;
     }

@@ -2,10 +2,10 @@ package io.casehub.aml.trust;
 
 import io.casehub.aml.routing.AmlTrustRoutingPolicyProvider;
 import io.casehub.engine.common.spi.event.WorkerDecisionEvent;
-import org.jboss.logging.Logger;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.routing.TrustScoreCache;
 import io.casehub.platform.api.identity.ActorType;
+import io.casehub.platform.api.identity.TenancyConstants;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.ObservesAsync;
 import jakarta.inject.Inject;
@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.jboss.logging.Logger;
 
 /**
  * Layer 7: writes AmlTrustRoutingAttestation on each WorkerDecisionEvent,
@@ -75,6 +76,10 @@ public class AmlTrustRoutingObserver {
             entry.occurredAt = Instant.now();
             entry.reconstructed = false;
             entry.observerFailed = false;
+            // LedgerEntry.tenancyId is nullable=false (SNAPSHOT change). Use event tenancyId
+            // when available; fall back to DEFAULT_TENANT_ID for single-tenant harness.
+            entry.tenancyId = event.tenancyId() != null
+                    ? event.tenancyId() : TenancyConstants.DEFAULT_TENANT_ID;
 
             // Acquire per-subject lock before starting the transaction. The lock is released
             // only after REQUIRES_NEW commits (saveWithSequence returns), preventing concurrent
