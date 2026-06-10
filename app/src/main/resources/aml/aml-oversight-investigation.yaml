@@ -1,0 +1,60 @@
+dsl: "0.1"
+version: "1.0.0"
+name: aml-oversight-investigation
+namespace: casehub-aml
+title: AML Oversight Gate — entity network link confirmation
+
+spec:
+
+  ## ─── Capabilities ─────────────────────────────────────────────────────────
+  capabilities:
+    - name: entity-resolution
+      description: "Identify entities and risk profile from suspicious transaction"
+      inputSchema: "{ transaction: .transaction }"
+      outputSchema: "{ entityResolution: . }"
+
+    - name: entity-link-proposal
+      description: "Propose adding entity network link to investigation graph"
+      inputSchema: "{ entityResolution: .entityResolution }"
+      outputSchema: "{ entityLinkProposal: . }"
+
+    - name: investigation-summary
+      description: "Summarise investigation findings after entity link is confirmed"
+      inputSchema: "{ entityResolution: .entityResolution, entityLinkProposal: .entityLinkProposal }"
+      outputSchema: "{ investigationSummary: . }"
+
+  ## ─── Goals ────────────────────────────────────────────────────────────────
+  goals:
+    - name: investigation-complete
+      kind: success
+      condition: ".investigationSummary != null"
+
+  ## ─── Completion ───────────────────────────────────────────────────────────
+  completion:
+    success:
+      allOf:
+        - investigation-complete
+
+  ## ─── Bindings ─────────────────────────────────────────────────────────────
+  bindings:
+
+    ## Fires first — entity resolution has no prerequisite
+    - name: entity-resolution
+      on: { contextChange: {} }
+      when: ".transaction != null and .entityResolution == null"
+      capability: entity-resolution
+
+    ## Fires after entity resolution. Worker declares PlannedAction(ENTITY_LINK_CREATION).
+    ## Engine gates this step for PEP or high-risk entities (riskScore >= 0.8) — output is
+    ## NOT committed until the approver's WorkItem is resolved. For Autonomous cases, output
+    ## is committed immediately and entityLinkProposal appears in context.
+    - name: entity-link-proposal
+      on: { contextChange: {} }
+      when: ".entityResolution != null and .entityLinkProposal == null"
+      capability: entity-link-proposal
+
+    ## Fires once entityLinkProposal is present (either gate approved or Autonomous).
+    - name: investigation-summary
+      on: { contextChange: {} }
+      when: ".entityLinkProposal != null and .investigationSummary == null"
+      capability: investigation-summary

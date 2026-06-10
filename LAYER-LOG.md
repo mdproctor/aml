@@ -731,6 +731,39 @@ What this layer adds:
 - `casehub.ledger.hash-chain.enabled=false` in test properties — H2 lacks PostgreSQL row-level locking; concurrent Quartz worker jobs for the same case race on `UQ_MERKLE_FRONTIER_SUBJECT_LEVEL`; disabling eliminates the constraint as a cross-test contamination vector (PP-20260604-f45c95)
 - Investigation drain pattern — every `@QuarkusTest` that starts an engine investigation polls `GET /api/layer6/investigations/{id}` until `status = "completed"` before returning; prevents pending Quartz jobs from contaminating subsequent tests (PP-20260604-820c35)
 
+---
+
+## Layer 9 — ActionRiskClassifier oversight gate (aml#42)
+
+**Participates in:** S6 (new — oversight gate)
+**Completed:** 2026-06-09
+**Issue:** casehubio/aml#42
+**Also closes:** casehubio/aml#57
+
+### What it adds
+
+`AmlActionRiskClassifier @RiskClassifier @ApplicationScoped` — implements the engine's `ActionRiskClassifier` SPI. Encodes FinCEN/FATF regulatory gate requirements for five consequential AML action types. Discovered automatically by the engine via `@RiskClassifier` CDI qualifier; no explicit wiring.
+
+`AmlActionType` enum — pure Java domain vocabulary in `api/` encoding gate policy, reversibility, candidate groups, reason string, and oversight scope per action type. `AmlGroups` companion holds group name constants.
+
+Layer 9 oversight harness — `AmlOversightCaseHub` + `AmlOversightCoordinator` + `AmlLayer9Resource` demonstrate the gate in a self-contained investigation flow (`entity-resolution` → `entity-link-proposal` (PlannedAction) → `investigation-summary`). The gate fires for PEP or high-risk entities; low-risk CORPORATE cases proceed autonomously.
+
+`casehub-engine-work-adapter` + `casehub-engine-blackboard` added as compile deps — provides `ActionGateWorkItemHandler` (creates WorkItem when gate fires) and `WorkItemLifecycleAdapter` (resumes case on WorkItem approval).
+
+### Key design decisions
+
+- Layer 9 is a DEDICATED oversight harness, NOT wired into the existing Layer 1–8 investigation flow. Layer 1–8 workers are unchanged; the classifier is live in CDI and fires for any future worker that declares a PlannedAction.
+- `AmlActionType.GatePolicy` variants: `ALWAYS`, `RISK_SCORE_THRESHOLD`, `CONFIDENCE_THRESHOLD`. Thresholds are regulatory constants, not preferences.
+- Fail-closed: known action type with missing context → `GateRequired("Risk assessment unavailable")`. Unknown action type → `Autonomous`.
+- `AmlLayer9Resource.getInvestigation()` uses `CaseInstanceCache` for completion detection (resilient to concurrent H2 `ledger_subject_sequence` INSERT race).
+
+### Known issues / deferred
+
+- `sar-drafting` workers still call `openReview()` as an unconditional side effect — correct design would add `PlannedAction(SAR_FILING)` and a separate `compliance-review-opening` step. Tracked in aml#58.
+- casehub-work SNAPSHOT (June 2026) added `TenantScopedPrincipal @RequestScoped` which causes `caseInstance.tenancyId = null` on Vert.x event loop threads. This breaks `WorkerDecisionEntry` saves in Layer 5–8 tests. Fix needed in casehub-work (aml#59).
+- `ledger_subject_sequence` concurrent INSERT race in H2 when multiple Quartz workers fire `WorkerDecisionEvent` simultaneously. Affects reliability of `WorkerDecisionEntry` in tests. Fix needed in casehub-ledger.
+- `docs/sql/V2011__UQ_TRUST_ATTEST_CASE_CAP_RECONSTRUCTED.sql` — partial unique index for `aml_trust_routing_attestation.reconstructed = TRUE`. Apply manually on production PostgreSQL after V2009 (H2 limitation, aml#57 closed).
+
 ### Known gaps
 
 - `caseId` in behaviour-generated memory entries is `null` until qhorus#190 ships — `PushAgentDispatch.post()` passes null to `behaviour.handle()` because `OutboundMessage.correlationId` contains the engine's `eventLogId` (a Long), not the case UUID, and no engine context-update API exists to inject the caseId post-`startCase()`

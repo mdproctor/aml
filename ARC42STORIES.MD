@@ -129,6 +129,7 @@ CaseHub harness applications follow the Profile integration sequence:
 | casehub-engine | `casehub-engine` | L5 | ✅ complete |
 | Trust Routing | `casehub-ledger` (trust APIs) | L6 | ✅ complete |
 | Compliance Evidence | *(application layer — no new foundation)* | L7 | ✅ complete |
+| ActionRiskClassifier | `casehub-engine-work-adapter` | L9 | ✅ complete |
 
 **Note on Layer 7:** Compliance Evidence is an AML-specific application layer, not a standard foundation integration step. It assembles accountability properties from Layers 1–6 into independently verifiable evidence.
 
@@ -1455,6 +1456,46 @@ Per the Arc42Stories spec: only decisions not captured inline elsewhere. Layer-s
 | CDI ambiguity workarounds — `quarkus.arc.exclude-types` list growing | Two `@DefaultBean` conflicts resolved in June 2026 session (casehubio/aml#49); V2005/V2006 pending | L5/L6 | casehubio/aml#49 |
 | Trust score not captured in engine `WorkerDecisionEntry` | `WorkerDecisionEntry` records selected worker but not the trust score; `AmlTrustRoutingAttestation` is the workaround; tracked upstream | L6/L7 | casehubio/engine#403 |
 | No public WorkItem read API | Evidence SLA builder uses direct `EntityManager.find()` on default PU — internal; upstream gap | L7 | casehubio/work#241 |
+
+---
+
+### Layer — ActionRiskClassifier Oversight Gate
+
+**Participates in chapters:** (new — S6 oversight gate)
+**Issue:** casehubio/aml#42  
+**Architectural patterns:** Strategy (classifier per action type), SPI (ActionRiskClassifier), Observer (gate WorkItem lifecycle via WorkItemLifecycleAdapter)
+**Key protocols:** consumer-spi-placement.md (AmlActionRiskClassifier in app/routing/); trust-maturity-model.md (gate is pre-selection, not trust-based)
+
+**What it adds:**
+
+`AmlActionRiskClassifier @RiskClassifier @ApplicationScoped` — implements `ActionRiskClassifier` SPI from casehub-engine-api. The engine's `ChainedReactiveActionRiskClassifier` discovers it via `@RiskClassifier` CDI qualifier and chains it with any other classifiers. Fail-closed: recognised action type with missing context → `GateRequired("Risk assessment unavailable")`. Unknown type → `Autonomous`.
+
+`AmlActionType` enum — pure Java domain vocabulary (`api/`) encoding `GatePolicy`, reversibility, candidate groups, reason string, oversight scope per consequential action type. Five types: `SAR_FILING`, `ACCOUNT_RESTRICTION`, `TRANSACTION_BLOCKING`, `ENTITY_LINK_CREATION`, `LAW_ENFORCEMENT_REFERRAL`.
+
+Layer 9 oversight harness — `AmlOversightCaseHub` + `AmlOversightCoordinator` + `AmlLayer9Resource` (`/api/layer9/investigations`). Self-contained case: entity-resolution → entity-link-proposal (declares `PlannedAction(ENTITY_LINK_CREATION)`) → investigation-summary. Gate fires for PEP or riskScore ≥ 0.8; CORPORATE low-risk → Autonomous.
+
+`casehub-engine-work-adapter` added as compile dep — provides `ActionGateWorkItemHandler` (creates WorkItem on gate schedule event) and `WorkItemLifecycleAdapter` (routes WorkItem approval back to engine to resume gated case).
+
+**Key architectural decisions:**
+
+- Layer 9 is independent of Layer 1–8 investigation flow. The classifier is live in CDI and fires for any future worker that declares a PlannedAction — zero coupling to existing workers.
+- `GateRequired.candidateGroups` semantics: fewer groups = more restrictive (GE-20260607-326c7e). `["aml-mlro"]` is tightest gate in the system.
+- Completion detection via `CaseInstanceCache` (engine state) rather than `WorkerDecisionEntry` — resilient to concurrent H2 `ledger_subject_sequence` INSERT race.
+
+**Accountability properties added:**
+
+| Property | Delivered by |
+|---|---|
+| Machine-readable gate decision record | gate WorkItem creates auditable approval record before consequential action proceeds |
+| MLRO sign-off before SAR filing | SAR_FILING gate type, groups=["aml-mlro"] |
+| Law enforcement referral gate | LAW_ENFORCEMENT_REFERRAL type, groups=["aml-senior-compliance"] |
+
+**Known gaps / deferred:**
+
+- sar-drafting workers still call `openReview()` unconditionally — correct design separates drafting (PlannedAction) from compliance-review-opening (post-MLRO). aml#58.
+- casehub-work SNAPSHOT regression: `TenantScopedPrincipal @RequestScoped` causes null tenancyId on Vert.x threads → WorkerDecisionEntry save failures in Layer 5–8 tests. aml#59.
+
+---
 
 ### Layer Churn
 
