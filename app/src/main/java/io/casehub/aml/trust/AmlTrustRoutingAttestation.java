@@ -35,4 +35,17 @@ public class AmlTrustRoutingAttestation extends LedgerEntry {
 
     @Column(name = "observer_failed", nullable = false)
     public boolean observerFailed = false;
+
+    @Override
+    protected byte[] domainContentBytes() {
+        return String.join("|",
+            capabilityTag != null ? capabilityTag : "",
+            selectedWorkerId != null ? selectedWorkerId : "",
+            trustScoreAtRouting != null ? String.valueOf(trustScoreAtRouting) : "",
+            String.valueOf(thresholdApplied),
+            investigationCaseId != null ? investigationCaseId.toString() : "",
+            String.valueOf(reconstructed),
+            String.valueOf(observerFailed)
+        ).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
 }

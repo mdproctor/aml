@@ -25,4 +25,9 @@ public class AmlSarOfficerReviewedLedgerEntry extends LedgerEntry {
     /** "APPROVED" or "REJECTED" — the officer's explicit SAR verdict. */
     @Column(name = "review_decision", nullable = false, length = 20)
     public String reviewDecision;
+
+    @Override
+    protected byte[] domainContentBytes() {
+        return (reviewDecision != null ? reviewDecision : "").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
 }

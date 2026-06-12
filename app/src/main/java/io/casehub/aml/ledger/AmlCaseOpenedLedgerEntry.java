@@ -36,4 +36,13 @@ public class AmlCaseOpenedLedgerEntry extends LedgerEntry {
     /** Destination account of the flagged transaction. @see #originAccountId */
     @Column(name = "destination_account_id", nullable = false, length = 255)
     public String destinationAccountId;
+
+    @Override
+    protected byte[] domainContentBytes() {
+        return String.join("|",
+            transactionId != null ? transactionId : "",
+            originAccountId != null ? originAccountId : "",
+            destinationAccountId != null ? destinationAccountId : ""
+        ).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
 }
