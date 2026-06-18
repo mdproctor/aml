@@ -1,7 +1,6 @@
 package io.casehub.aml.trust;
 
 import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
-import io.casehub.ledger.routing.TrustScoreCache;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 import io.casehub.platform.api.identity.ActorType;
 import io.quarkus.runtime.StartupEvent;
@@ -39,14 +38,10 @@ public class AmlTrustScoreSeeder {
     );
 
     private final ActorTrustScoreRepository trustRepo;
-    private final TrustScoreCache trustScoreCache;
 
     @Inject
-    public AmlTrustScoreSeeder(
-            final ActorTrustScoreRepository trustRepo,
-            final TrustScoreCache trustScoreCache) {
+    public AmlTrustScoreSeeder(final ActorTrustScoreRepository trustRepo) {
         this.trustRepo = trustRepo;
-        this.trustScoreCache = trustScoreCache;
     }
 
     @Transactional
@@ -71,7 +66,5 @@ public class AmlTrustScoreSeeder {
                         Instant.now());
             }
         }
-        // Force cache reload with seeded scores regardless of @Startup initialization order.
-        trustScoreCache.hydrate();
     }
 }

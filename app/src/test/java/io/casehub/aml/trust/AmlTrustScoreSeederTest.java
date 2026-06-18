@@ -1,7 +1,7 @@
 package io.casehub.aml.trust;
 
 import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
-import io.casehub.ledger.routing.TrustScoreCache;
+import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -15,7 +15,7 @@ class AmlTrustScoreSeederTest {
     ActorTrustScoreRepository trustRepo;
 
     @Inject
-    TrustScoreCache trustScoreCache;
+    TrustScoreSource trustScoreSource;
 
     @Test
     void sar_drafting_senior_seeded_with_high_trust() {
@@ -48,10 +48,10 @@ class AmlTrustScoreSeederTest {
     }
 
     @Test
-    void trust_score_cache_reflects_seeded_scores() {
-        assertTrue(trustScoreCache.getCapabilityScore("sar-drafting-agent-senior", "sar-drafting").isPresent());
+    void trust_score_source_reflects_seeded_scores() {
+        assertTrue(trustScoreSource.capabilityScore("sar-drafting-agent-senior", "sar-drafting").isPresent());
         assertEquals(0.90,
-                trustScoreCache.getCapabilityScore("sar-drafting-agent-senior", "sar-drafting").getAsDouble(),
+                trustScoreSource.capabilityScore("sar-drafting-agent-senior", "sar-drafting").getAsDouble(),
                 0.01);
     }
 

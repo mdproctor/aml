@@ -3,7 +3,7 @@ package io.casehub.aml.trust;
 import io.casehub.aml.routing.AmlTrustRoutingPolicyProvider;
 import io.casehub.engine.common.spi.event.WorkerDecisionEvent;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.routing.TrustScoreCache;
+import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.TenancyConstants;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -44,7 +44,7 @@ public class AmlTrustRoutingObserver {
 
     private final ConcurrentHashMap<UUID, Object> subjectLocks = new ConcurrentHashMap<>();
 
-    @Inject TrustScoreCache trustScoreCache;
+    @Inject TrustScoreSource trustScoreSource;
     @Inject AmlTrustRoutingPolicyProvider policyProvider;
     @Inject AmlTrustAttestationRepository attestationRepo;
 
@@ -52,8 +52,8 @@ public class AmlTrustRoutingObserver {
         // Pre-try: pure computation only. If policyProvider throws here, the method fails
         // without writing a failure entry — AUDIT GAP log path (threshold not available).
         final double threshold = policyProvider.forCapability(event.capabilityTag()).threshold();
-        final Double score = trustScoreCache
-                .getCapabilityScore(event.workerId(), event.capabilityTag())
+        final Double score = trustScoreSource
+                .capabilityScore(event.workerId(), event.capabilityTag())
                 .stream().boxed().findFirst().orElse(null);
         final UUID attestationSubject = attestationSubjectFor(event.caseId());
 

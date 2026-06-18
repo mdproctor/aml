@@ -5,8 +5,8 @@ import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.trust.AmlWorkerDecisionRepository;
 import io.casehub.aml.engine.SarOutcomeRecordedEvent;
 import jakarta.enterprise.event.Event;
+import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.model.WorkerDecisionEntry;
-import io.casehub.ledger.routing.TrustScoreCache;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -26,7 +26,7 @@ public class AmlLayer6Resource {
     @Inject AmlEngineCoordinator coordinator;
     @Inject AmlWorkerDecisionRepository workerDecisionRepo;
     @Inject Event<SarOutcomeRecordedEvent> sarOutcomeEvent;
-    @Inject TrustScoreCache trustScoreCache;
+    @Inject TrustScoreSource trustScoreSource;
 
     @POST
     public Response startInvestigation(final SuspiciousTransaction transaction) {
@@ -37,10 +37,8 @@ public class AmlLayer6Resource {
     /**
      * Returns the investigation status and routing decisions for a completed case.
      *
-     * <p>The {@code trustScore} in each {@link WorkerRoutingDecision} reflects the score in the
-     * {@link TrustScoreCache} at response time, not the score used at routing time. The cache
-     * is updated when {@code TrustScoreJob} fires (nightly in production) or when a
-     * {@link io.casehub.ledger.runtime.service.routing.TrustScoreFullPayload} event is received.
+     * <p>The {@code trustScore} in each {@link WorkerRoutingDecision} reflects the score from
+     * {@link TrustScoreSource} at response time, not the score used at routing time.
      * After recording a SAR outcome, the score will drift once the next scoring cycle runs.
      * This is intentional for the tutorial — it shows "current trust level" rather than
      * "trust level that drove this routing decision."
@@ -60,7 +58,7 @@ public class AmlLayer6Resource {
         final List<WorkerRoutingDecision> decisions = entries.stream()
                 .map(e -> {
                     final OptionalDouble score =
-                            trustScoreCache.getCapabilityScore(e.workerId, e.capabilityTag);
+                            trustScoreSource.capabilityScore(e.workerId, e.capabilityTag);
                     return new WorkerRoutingDecision(
                             e.capabilityTag,
                             e.workerId,
