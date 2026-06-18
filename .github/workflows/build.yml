@@ -1,28 +1,31 @@
-name: Build and Test
+name: Build and Publish
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    types: [ opened, synchronize, reopened, closed ]
-    branches: [ main ]
+    branches: [main]
   repository_dispatch:
-    types: [ upstream-published ]
+    types: [upstream-published]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
       packages: write
 
     steps:
       - uses: actions/checkout@v4
-        if: github.event_name != 'pull_request' || github.event.action != 'closed' || github.event.pull_request.merged == true
 
       - name: Set up Java 21
-        if: github.event_name != 'pull_request' || github.event.action != 'closed' || github.event.pull_request.merged == true
         uses: actions/setup-java@v4
         with:
           java-version: '21'
@@ -30,17 +33,15 @@ jobs:
           server-id: github
           server-username: GITHUB_ACTOR
           server-password: GITHUB_TOKEN
-          cache: 'maven'
 
       - name: Build and test
-        if: github.event_name != 'pull_request' || github.event.action != 'closed' || github.event.pull_request.merged == true
         run: mvn --batch-mode verify
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Surefire reports
         uses: actions/upload-artifact@v4
-        if: always() && (github.event_name != 'pull_request' || github.event.action != 'closed' || github.event.pull_request.merged == true)
+        if: always()
         with:
           name: surefire-reports
           path: |
@@ -48,3 +49,9 @@ jobs:
             **/target/failsafe-reports/*
           if-no-files-found: ignore
           retention-days: 5
+
+      - name: Publish to GitHub Packages
+        if: github.event_name != 'pull_request'
+        run: mvn --batch-mode deploy -DskipTests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
