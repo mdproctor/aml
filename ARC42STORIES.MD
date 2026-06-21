@@ -1449,16 +1449,16 @@ Per the Arc42Stories spec: only decisions not captured inline elsewhere. Layer-s
 |---|---|---|
 | 3 `AmlLayer5InvestigationTest` failures — `SchedulerService.registerScheduledTriggers()` returns null `CaseDefinition` | Not fixable in this repo — root cause in engine scheduling timing; all other tests pass | casehubio/engine#409 |
 | `AmlTrustRoutingObserver` failure leaves silent evidence gaps — if the observer CDI async call fails, `WorkerDecisionEntry` exists but has no corresponding attestation | **Resolved** — `AmlAttestationReconciler` fills gaps lazily on evidence read; observer hardened per PP-20260530-49856c; `observerFailed=true` flag distinguishes failure entries from live attestations | casehubio/aml#44 ✅ |
-| Engine API changes (`tenancyId`, `CaseLifecycleEvent`) require AML updates | API changes from engine#299 and related PRs; V2005/V2006 need reconciliation with engine-ledger V2002/V2003 | casehubio/aml#47, #48 |
+| Engine API changes (`tenancyId`, `CaseLifecycleEvent`) require AML updates | **Resolved** — V2005/V2006 V-numbers got IF NOT EXISTS guards; CaseLifecycleEvent not used in AML (no observer); V2002/V2003 re-numbering confirmed correct | casehubio/aml#47 ✅, #48 ✅ |
 
 ### Technical Debt
 
 | Item | Description | Layer | Tracked |
 |---|---|---|---|
 | Raw worker lambdas in `AmlInvestigationCaseHub` | Migrate to `FuncWorkflowBuilder` for type-safe worker definitions | L5 | casehubio/aml#46 |
-| No fluent Java DSL for `aml-investigation.yaml` | YAML-only case definition; no compile-time binding validation | L5 | casehubio/aml#45 |
+| No fluent Java DSL for `aml-investigation.yaml` | **Resolved** — `AmlInvestigationCaseDescriptor` POJO per PP-20260518; structural tests without Quarkus | L5 | casehubio/aml#45 ✅ |
 | SLA `GAP` on engine async path | `sar-drafting` worker does not write `COMPLIANCE_REVIEW_OPENED` ledger entry; SLA evidence builder has no WorkItem ID | L7 | Deferred |
-| CDI ambiguity workarounds — `quarkus.arc.exclude-types` list growing | Two `@DefaultBean` conflicts resolved in June 2026 session (casehubio/aml#49); V2005/V2006 pending | L5/L6 | casehubio/aml#49 |
+| CDI ambiguity workarounds — `quarkus.arc.exclude-types` list growing | **Resolved** — #49: DefaultTestPrincipal/NoOpGroupMembershipProvider excluded, SarOutcomeRequest DTO; #63: QhorusInboundCurrentPrincipal excluded in test only | L5/L6 | casehubio/aml#49 ✅, #63 ✅ |
 | Trust score not captured in engine `WorkerDecisionEntry` | `WorkerDecisionEntry` records selected worker but not the trust score; `AmlTrustRoutingAttestation` is the workaround; tracked upstream | L6/L7 | casehubio/engine#403 |
 | No public WorkItem read API | Evidence SLA builder uses direct `EntityManager.find()` on default PU — internal; upstream gap | L7 | casehubio/work#241 |
 
