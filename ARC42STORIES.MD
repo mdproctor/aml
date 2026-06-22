@@ -1459,7 +1459,7 @@ Per the Arc42Stories spec: only decisions not captured inline elsewhere. Layer-s
 
 | Item | Description | Layer | Tracked |
 |---|---|---|---|
-| Raw worker lambdas in `AmlInvestigationCaseHub` | Migrate to `FuncWorkflowBuilder` for type-safe worker definitions | L5 | casehubio/aml#46 |
+| Raw worker lambdas in `AmlInvestigationCaseDescriptor` (SAR workers) | **Partially resolved** — 5/7 workers migrated to `WorkerFunction.Flow` (FuncWorkflowBuilder) in aml#46 ✅; 2 SAR drafting workers remain `WorkerFunction.Sync` pending `WorkerExecutionContext` support in `executeFlow` (engine gap) | L5 | casehubio/aml#66 |
 | No fluent Java DSL for `aml-investigation.yaml` | **Resolved** — `AmlInvestigationCaseDescriptor` POJO per PP-20260518; structural tests without Quarkus | L5 | casehubio/aml#45 ✅ |
 | SLA `GAP` on engine async path | `sar-drafting` worker does not write `COMPLIANCE_REVIEW_OPENED` ledger entry; SLA evidence builder has no WorkItem ID | L7 | Deferred |
 | CDI ambiguity workarounds — `quarkus.arc.exclude-types` list growing | **Resolved** — #49: DefaultTestPrincipal/NoOpGroupMembershipProvider excluded, SarOutcomeRequest DTO; #63: QhorusInboundCurrentPrincipal excluded in test only | L5/L6 | casehubio/aml#49 ✅, #63 ✅ |
