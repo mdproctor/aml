@@ -3,8 +3,10 @@ package io.casehub.aml.engine;
 import io.casehub.aml.domain.SarOutcome;
 import io.casehub.aml.domain.SarVerdict;
 import io.casehub.aml.domain.SuspiciousTransaction;
+import io.casehub.engine.common.spi.cache.CaseInstanceCache;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
+import jakarta.inject.Inject;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
@@ -17,6 +19,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
 class AmlLayer6ResourceTest {
+
+    @Inject CaseInstanceCache caseInstanceCache;
 
     private static final SuspiciousTransaction TRANSACTION = new SuspiciousTransaction(
             "TXN-L6-" + UUID.randomUUID(),
@@ -67,6 +71,26 @@ class AmlLayer6ResourceTest {
                 .when().post("/api/layer6/investigations/" + UUID.randomUUID() + "/outcome")
                 .then().statusCode(400)
                 .body("error", containsString("investigationAccuracyScore"));
+    }
+
+    @Test
+    void get_investigation_returns_completed_after_cache_eviction() {
+        final String caseIdStr = given().contentType(ContentType.JSON).body(TRANSACTION)
+                .when().post("/api/layer6/investigations")
+                .then().statusCode(202)
+                .extract().path("caseId");
+
+        Awaitility.await().atMost(30, TimeUnit.SECONDS).pollInterval(500, TimeUnit.MILLISECONDS)
+                .until(() -> "completed".equals(
+                        given().when().get("/api/layer6/investigations/" + caseIdStr)
+                                .then().statusCode(200).extract().path("status")));
+
+        // Simulate cache eviction — endpoint must fall back to CaseInstanceRepository
+        caseInstanceCache.clear();
+
+        given().when().get("/api/layer6/investigations/" + caseIdStr)
+                .then().statusCode(200)
+                .body("status", equalTo("completed"));
     }
 
     @Test

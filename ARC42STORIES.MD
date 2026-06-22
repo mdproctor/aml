@@ -1047,7 +1047,7 @@ Not closed here: trust-weighted agent selection (L6). Compliance evidence endpoi
 
 - `app/src/main/resources/aml/aml-investigation.yaml` — YAML CasePlanModel: 5 capabilities, 5 `contextChange` bindings, 1 goal (`investigation-complete`)
 - `app/src/main/java/io/casehub/aml/engine/AmlInvestigationCaseHub.java` — `@ApplicationScoped extends YamlCaseHub`; thin CDI wrapper; augments YAML definition with 7 workers from `AmlInvestigationCaseDescriptor` in `@PostConstruct`
-- `app/src/main/java/io/casehub/aml/engine/AmlInvestigationCaseDescriptor.java` — plain POJO (no CDI); carries all 7 worker lambdas and helper methods; testable without Quarkus; per protocol PP-20260518
+- `app/src/main/java/io/casehub/aml/engine/AmlInvestigationCaseDescriptor.java` — plain POJO (no CDI); carries 5 `WorkerFunction.Flow` workers (FuncWorkflowBuilder, per PP-20260531) + 2 SAR drafting workers as `WorkerFunction.Sync` (pending `WorkerExecutionContext` support in `executeFlow` — aml#66); testable without Quarkus; per protocol PP-20260518
 - `app/src/main/java/io/casehub/aml/engine/AmlEngineCoordinator.java` — starts engine case; writes `CASE_OPENED` ledger entry with engine-returned UUID; returns the UUID
 - `app/src/main/java/io/casehub/aml/engine/AmlLayer5Resource.java` — `POST /api/layer5/investigations`; returns `Layer5InvestigationResponse { UUID caseId, String status }`
 - `app/src/main/java/io/casehub/aml/engine/Layer5InvestigationResponse.java` — response record
@@ -1055,7 +1055,11 @@ Not closed here: trust-weighted agent selection (L6). Compliance evidence endpoi
 
 #### Key wiring
 
-**Worker functions are in `AmlInvestigationCaseDescriptor`.** The descriptor is a plain POJO (no CDI) carrying all 7 worker lambdas. `AmlInvestigationCaseHub` creates the descriptor in `@PostConstruct` using its CDI-injected dependencies and calls `augmentedDefinition.getWorkers().addAll(descriptor.workers())`. The YAML `workers:` section is empty — YAML supplies bindings and capabilities; Java supplies the worker functions. `cap()` helper creates `Capability` objects with passthrough schemas because name-matching is all that is needed for binding dispatch.
+**Worker functions are in `AmlInvestigationCaseDescriptor`.** The descriptor is a plain POJO (no CDI) carrying 7 worker functions. `AmlInvestigationCaseHub` creates the descriptor in `@PostConstruct` using its CDI-injected dependencies and calls `augmentedDefinition.getWorkers().addAll(descriptor.workers())`. The YAML `workers:` section is empty — YAML supplies bindings and capabilities; Java supplies the worker functions. `cap()` helper creates `Capability` objects with passthrough schemas because name-matching is all that is needed for binding dispatch.
+
+Five pure-computation workers use `WorkerFunction.Flow` (FuncWorkflowBuilder per PP-20260531): entity-resolution, pattern-analysis, osint-screening (×2), senior-analyst-review. Two SAR drafting workers remain `WorkerFunction.Sync` — they call `WorkerExecutionContext.current().caseId()` to pass the case ID to `ComplianceReviewLifecycle.openReview()`, and `DefaultWorkerExecutor.executeFlow` does not set `WorkerExecutionContext` before invoking `FlowWorkerExecutor`. Migration tracked in aml#66.
+
+**`casehub-engine-flow` added as compile dependency** — activates `FlowWorkerExecutor @ApplicationScoped` which displaces `NoOpWorkflowExecutor @DefaultBean`. Required for `WorkerFunction.Flow` execution; `quarkus-flow` was already a transitive dependency.
 
 **Engine case UUID is the shared stable identifier.** `AmlEngineCoordinator` starts the case first, receives the engine-generated UUID, then writes the `CASE_OPENED` ledger entry using that UUID. This ensures the engine event log, AML ledger entries, and compliance officer WorkItem all share one identifier.
 
@@ -1187,8 +1191,8 @@ Engine-ledger ships V2000/V2001 at `classpath:db/migration/` — the same path F
 
 **Why idempotency guard on the seeder:** `if (trustRepo.findCapabilityScore(workerId, cap).isEmpty())` — the seeder runs on every deployment restart. Without the guard, live trust scores accumulated from real SAR outcome attestations are overwritten with the initial Beta parameters on every restart.
 
-**`AmlLayer6Resource.getInvestigation()` completion check — `CaseInstanceCache`, not `WorkerDecisionEntry`.**
-The endpoint determines completion by checking `CaseInstanceCache.get(caseId).getState() == CaseStatus.COMPLETED`, not by scanning `WorkerDecisionEntry` for a `sar-drafting` entry. The previous approach had an async delivery race: `WorkerDecisionEntry` is written by an `@ObservesAsync` observer which can lag behind the engine's COMPLETED state under H2 concurrency, causing the endpoint to report "in-progress" on a completed case. This pattern matches Layer 9. The `WorkerDecisionEntry` query is deferred to the completed branch only. Caveat: if the engine evicts the case from cache before polling, the endpoint permanently shows "in-progress" — tracked as aml#65.
+**`AmlLayer6Resource.getInvestigation()` and `AmlLayer9Resource.getInvestigation()` completion check — cache-first with repository fallback.**
+The endpoints check `CaseInstanceCache.get(caseId)` first. If the cache returns null (TTL eviction or JVM restart), both resources fall back to `CaseInstanceRepository.findByUuid(caseId, TenancyConstants.DEFAULT_TENANT_ID).await().indefinitely()`. The previous cache-only approach caused the endpoint to permanently report "in-progress" after eviction — fixed in aml#65. The original switch from `WorkerDecisionEntry` scanning to `CaseInstanceCache` addressed an async delivery race under H2 concurrency (`WorkerDecisionEntry` is written by `@ObservesAsync` and can lag behind the engine's COMPLETED state).
 
 #### Pattern introduced
 

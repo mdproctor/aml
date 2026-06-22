@@ -88,6 +88,14 @@
       <artifactId>casehub-engine-scheduler-quartz</artifactId>
       <version>${casehub.version}</version>
     </dependency>
+    <!-- Flow worker executor — enables WorkerFunction.Flow execution via quarkus-flow.
+         Displaces NoOpWorkflowExecutor @DefaultBean. Required for FuncWorkflowBuilder workers
+         (PP-20260531-worker-func-exec). quarkus-flow is already a transitive dep. -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-engine-flow</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
 
     <!-- JQEvaluator required by engine CDI beans (GE-20260523-86ed13) -->
     <dependency>

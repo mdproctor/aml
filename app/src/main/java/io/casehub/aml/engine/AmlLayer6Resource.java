@@ -4,11 +4,14 @@ import io.casehub.api.model.CaseStatus;
 import io.casehub.aml.domain.SarOutcome;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.trust.AmlWorkerDecisionRepository;
+import io.casehub.engine.common.internal.model.CaseInstance;
+import io.casehub.engine.common.spi.CaseInstanceRepository;
 import io.casehub.engine.common.spi.cache.CaseInstanceCache;
-import jakarta.enterprise.event.Event;
 import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.model.WorkerDecisionEntry;
+import io.casehub.platform.api.identity.TenancyConstants;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -29,6 +32,7 @@ public class AmlLayer6Resource {
     @Inject Event<SarOutcomeRecordedEvent> sarOutcomeEvent;
     @Inject TrustScoreSource trustScoreSource;
     @Inject CaseInstanceCache caseInstanceCache;
+    @Inject CaseInstanceRepository caseInstanceRepository;
 
     @POST
     public Response startInvestigation(final SuspiciousTransaction transaction) {
@@ -39,14 +43,10 @@ public class AmlLayer6Resource {
     /**
      * Returns the investigation status and routing decisions for a completed case.
      *
-     * <p>Completion is determined by {@link CaseStatus#COMPLETED} on the {@link CaseInstanceCache},
-     * not by presence of a {@code sar-drafting} {@link WorkerDecisionEntry}. This matches the
-     * Layer 9 pattern and is resilient to observer delivery delays — the case reaches COMPLETED
-     * once all bindings and goals are satisfied, regardless of when async observers write entries.
-     *
-     * <p>Caveat: if the engine evicts a case from the cache before this endpoint is polled,
-     * {@code CaseInstanceCache.get(caseId)} returns {@code null} and the response permanently
-     * shows {@code "in-progress"}. The cache TTL is an engine implementation detail. See #65.
+     * <p>Completion is determined by {@link CaseStatus#COMPLETED}. The cache is checked first;
+     * if the cache has evicted the entry (TTL expiry or JVM restart), the endpoint falls back
+     * to {@link CaseInstanceRepository} so that completed cases always return {@code "completed"}
+     * regardless of cache lifetime.
      *
      * <p>The {@code trustScore} in each {@link WorkerRoutingDecision} reflects the score from
      * {@link TrustScoreSource} at response time, not the score used at routing time.
@@ -54,7 +54,12 @@ public class AmlLayer6Resource {
     @GET
     @Path("/{caseId}")
     public Layer6InvestigationResponse getInvestigation(@PathParam("caseId") UUID caseId) {
-        final var instance = caseInstanceCache.get(caseId);
+        CaseInstance instance = caseInstanceCache.get(caseId);
+        if (instance == null) {
+            instance = caseInstanceRepository
+                    .findByUuid(caseId, TenancyConstants.DEFAULT_TENANT_ID)
+                    .await().indefinitely();
+        }
         final boolean completed = instance != null && instance.getState() == CaseStatus.COMPLETED;
 
         if (!completed) {

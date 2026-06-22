@@ -17,12 +17,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static io.serverlessworkflow.fluent.func.FuncWorkflowBuilder.workflow;
+import static io.serverlessworkflow.fluent.func.dsl.FuncDSL.function;
+
 /**
  * Descriptor carrying the business logic for the AML investigation case type.
  *
- * <p>A plain POJO — no CDI annotations. All worker lambdas and helper methods
+ * <p>A plain POJO — no CDI annotations. All worker functions and helper methods
  * for the AML investigation workflow live here. Constructed by
  * {@link AmlInvestigationCaseHub} with its CDI-managed dependencies.
+ *
+ * <p>Pure-computation workers use {@code FuncWorkflowBuilder.workflow().tasks(function(...)).build()}
+ * per protocol PP-20260531-worker-func-exec. SAR drafting workers remain as
+ * {@code WorkerFunction.Sync} pending engine support for {@link WorkerExecutionContext} in
+ * the flow execution path (see #66).
  *
  * <p>Testable without Quarkus: pass {@code null} for both constructor args for
  * structural tests (worker count, names, capabilities). Worker lambdas capture
@@ -61,23 +69,29 @@ public final class AmlInvestigationCaseDescriptor {
         return Worker.builder()
                 .name("entity-resolution-agent")
                 .capabilities(List.of(cap("entity-resolution")))
-                .function((final Map<String, Object> input) -> {
-                    @SuppressWarnings("unchecked")
-                    final Map<String, Object> tx = (Map<String, Object>) input.get("transaction");
-                    final String flagReason = tx != null
-                            ? (String) tx.getOrDefault("flagReason", "") : "";
-                    final boolean isPep = flagReason != null && flagReason.contains("PEP");
-                    final String txId = tx != null
-                            ? String.valueOf(tx.getOrDefault("id", "unknown")) : "unknown";
-                    return WorkerResult.of(Map.of(
-                            "entityId", "entity-" + txId,
-                            "ownershipChain", isPep
-                                    ? "Direct → PEP Principal"
-                                    : "Direct → Corporate Entity",
-                            "entityType", isPep ? "PEP" : "CORPORATE",
-                            "riskScore", isPep ? 0.87 : 0.35
-                    ));
-                })
+                .function(
+                    workflow("entity-resolution")
+                        .tasks(
+                            function(s -> {
+                                @SuppressWarnings("unchecked")
+                                final Map<String, Object> input = (Map<String, Object>) s;
+                                @SuppressWarnings("unchecked")
+                                final Map<String, Object> tx = (Map<String, Object>) input.get("transaction");
+                                final String flagReason = tx != null
+                                        ? (String) tx.getOrDefault("flagReason", "") : "";
+                                final boolean isPep = flagReason != null && flagReason.contains("PEP");
+                                final String txId = tx != null
+                                        ? String.valueOf(tx.getOrDefault("id", "unknown")) : "unknown";
+                                return Map.of(
+                                        "entityId", "entity-" + txId,
+                                        "ownershipChain", isPep
+                                                ? "Direct → PEP Principal"
+                                                : "Direct → Corporate Entity",
+                                        "entityType", isPep ? "PEP" : "CORPORATE",
+                                        "riskScore", isPep ? 0.87 : 0.35
+                                );
+                            }, Map.class))
+                        .build())
                 .build();
     }
 
@@ -85,10 +99,14 @@ public final class AmlInvestigationCaseDescriptor {
         return Worker.builder()
                 .name("pattern-analysis-agent")
                 .capabilities(List.of(cap("pattern-analysis")))
-                .function((final Map<String, Object> input) -> WorkerResult.of(Map.of(
-                        "structuringDetected", false,
-                        "description", "No structuring pattern detected in transaction cluster"
-                )))
+                .function(
+                    workflow("pattern-analysis")
+                        .tasks(
+                            function(s -> Map.of(
+                                    "structuringDetected", false,
+                                    "description", "No structuring pattern detected in transaction cluster"
+                            ), Map.class))
+                        .build())
                 .build();
     }
 
@@ -101,12 +119,16 @@ public final class AmlInvestigationCaseDescriptor {
         return Worker.builder()
                 .name("osint-screening-agent")
                 .capabilities(List.of(cap("osint-screening")))
-                .function((final Map<String, Object> input) -> WorkerResult.of(Map.of(
-                        "declined", true,
-                        "reason", "insufficient clearance for PEP database access",
-                        "pepHit", false,
-                        "sanctionsHit", false
-                )))
+                .function(
+                    workflow("osint-screening")
+                        .tasks(
+                            function(s -> Map.of(
+                                    "declined", true,
+                                    "reason", "insufficient clearance for PEP database access",
+                                    "pepHit", false,
+                                    "sanctionsHit", false
+                            ), Map.class))
+                        .build())
                 .build();
     }
 
@@ -118,13 +140,17 @@ public final class AmlInvestigationCaseDescriptor {
         return Worker.builder()
                 .name("osint-screening-agent-senior")
                 .capabilities(List.of(cap("osint-screening")))
-                .function((final Map<String, Object> input) -> WorkerResult.of(Map.of(
-                        "declined", false,
-                        "reason", "full-clearance",
-                        "pepHit", false,
-                        "sanctionsHit", false,
-                        "screeningLevel", "ENHANCED"
-                )))
+                .function(
+                    workflow("osint-screening-senior")
+                        .tasks(
+                            function(s -> Map.of(
+                                    "declined", false,
+                                    "reason", "full-clearance",
+                                    "pepHit", false,
+                                    "sanctionsHit", false,
+                                    "screeningLevel", "ENHANCED"
+                            ), Map.class))
+                        .build())
                 .build();
     }
 
@@ -132,12 +158,16 @@ public final class AmlInvestigationCaseDescriptor {
         return Worker.builder()
                 .name("senior-analyst-agent")
                 .capabilities(List.of(cap("senior-analyst-review")))
-                .function((final Map<String, Object> input) -> WorkerResult.of(Map.of(
-                        "reviewed", true,
-                        "recommendation",
-                        "PEP entity confirmed — enhanced due diligence required."
-                                + " Escalate to compliance director."
-                )))
+                .function(
+                    workflow("senior-analyst-review")
+                        .tasks(
+                            function(s -> Map.of(
+                                    "reviewed", true,
+                                    "recommendation",
+                                    "PEP entity confirmed — enhanced due diligence required."
+                                            + " Escalate to compliance director."
+                            ), Map.class))
+                        .build())
                 .build();
     }
 
@@ -145,6 +175,10 @@ public final class AmlInvestigationCaseDescriptor {
      * Junior SAR drafting worker — minimal narrative, suitable for routine cases.
      * Opens the compliance officer WorkItem (Layer 2 — 30-day FinCEN SLA).
      * Runs on a Quartz worker thread; JPA calls via ComplianceReviewLifecycle are safe here.
+     *
+     * <p>Remains as WorkerFunction.Sync (raw lambda) because WorkerExecutionContext.current()
+     * is only set in the executeSync path. Migration to FuncWorkflowBuilder is blocked on
+     * engine support for WorkerExecutionContext in FlowWorkerExecutor. See #66.
      */
     private Worker sarDraftingWorkerJunior() {
         return Worker.builder()
@@ -175,6 +209,9 @@ public final class AmlInvestigationCaseDescriptor {
      * Senior SAR drafting worker — full narrative including entity type and flag reason.
      * Used for complex or PEP cases routed via trust-weighted selection.
      * Opens the compliance officer WorkItem (Layer 2 — 30-day FinCEN SLA).
+     *
+     * <p>Remains as WorkerFunction.Sync (raw lambda) for the same reason as
+     * {@link #sarDraftingWorkerJunior()}. See #66.
      */
     private Worker sarDraftingWorkerSenior() {
         return Worker.builder()
