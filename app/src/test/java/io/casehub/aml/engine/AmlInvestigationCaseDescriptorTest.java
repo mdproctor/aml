@@ -69,31 +69,23 @@ class AmlInvestigationCaseDescriptorTest {
 
     @Test
     void worker_execution_model_classification_is_exhaustive() {
-        // Pure computation workers must use WorkerFunction.Flow (FuncWorkflowBuilder).
-        // SAR drafting workers remain Sync pending engine WorkerExecutionContext support (#66).
+        // All workers use WorkerFunction.Flow (FuncWorkflowBuilder) per PP-20260531-worker-func-exec.
         // Any new worker must be explicitly classified here — this prevents silent omissions.
-        // Protocol PP-20260531-worker-func-exec.
-        final Set<String> pureComputationWorkers = Set.of(
+        final Set<String> allWorkers = Set.of(
                 "entity-resolution-agent",
                 "pattern-analysis-agent",
                 "osint-screening-agent",
                 "osint-screening-agent-senior",
-                "senior-analyst-agent");
-        final Set<String> sarWorkers = Set.of(
+                "senior-analyst-agent",
                 "sar-drafting-agent-junior",
                 "sar-drafting-agent-senior");
 
         for (final Worker w : descriptor.workers()) {
-            if (pureComputationWorkers.contains(w.getName())) {
+            if (allWorkers.contains(w.getName())) {
                 assertInstanceOf(WorkerFunction.Flow.class, w.getFunction(),
                         "Worker " + w.getName() + " must use WorkerFunction.Flow (FuncWorkflowBuilder).");
-            } else if (sarWorkers.contains(w.getName())) {
-                assertInstanceOf(WorkerFunction.Sync.class, w.getFunction(),
-                        "SAR worker " + w.getName() + " must remain Sync until engine"
-                                + " provides WorkerExecutionContext in the flow path (#66).");
             } else {
-                fail("Worker " + w.getName() + " is unclassified — add it to pureComputationWorkers"
-                        + " or sarWorkers in this test to make the execution model explicit.");
+                fail("Worker " + w.getName() + " is unclassified — add it to allWorkers in this test.");
             }
         }
     }

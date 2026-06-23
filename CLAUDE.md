@@ -171,7 +171,7 @@ Read these **before designing**, not after. The concern column tells you when ea
 | Using casehub-ledger (Merkle audit, GDPR, trust scoring) | `../parent/docs/repos/casehub-ledger.md` |
 | Using casehub-engine (CasePlanModel, adaptive paths, bindings) | `../parent/docs/repos/casehub-engine.md` |
 
-> **Engine worker return type:** `Worker.Builder.function()` requires `Function<Map<String, Object>, WorkerResult>`. Return `WorkerResult.of(Map.of(...))` — not `Map.of(...)` directly. Applies to all `YamlCaseHub` worker lambdas (casehubio/aml#54).
+> **Engine worker return type:** `WorkerFunction.Sync` (raw lambda) workers — e.g. `AmlOversightCaseHub` — must return `WorkerResult.of(Map.of(...))`. `WorkerFunction.Flow` (FuncWorkflowBuilder) workers return `Map<String, Object>` directly; `executeFlow` calls `model.asMap()` and wraps internally. Do not wrap Flow worker returns.
 > **LedgerEntryRepository + LedgerVerificationService tenancyId parameter:** All methods in `LedgerEntryRepository` and `LedgerVerificationService` require a `String tenancyId` second parameter (SNAPSHOT change). Use `TenancyConstants.DEFAULT_TENANT_ID` at all AML call sites. Affected methods: `save()`, `findBySubjectId()`, `findLatestBySubjectId()`, `findEntryById()`, `verify()`, `treeRoot()`, `inclusionProof()`.
 | Boundary check — does this belong in foundation or here? | `PLATFORM.md` boundary rules and application tier rule |
 
