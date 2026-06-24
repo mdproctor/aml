@@ -11,6 +11,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
 import java.util.Map;
 
+import static io.serverlessworkflow.fluent.func.FuncWorkflowBuilder.workflow;
+import static io.serverlessworkflow.fluent.func.dsl.FuncDSL.function;
+
 /**
  * Layer 9 case hub — oversight gate demonstration.
  *
@@ -58,19 +61,25 @@ public class AmlOversightCaseHub extends YamlCaseHub {
         return Worker.builder()
             .name("oversight-entity-resolution-agent")
             .capabilities(List.of(cap("entity-resolution")))
-            .function((final Map<String, Object> input) -> {
-                @SuppressWarnings("unchecked")
-                final Map<String, Object> tx = (Map<String, Object>) input.get("transaction");
-                final String flagReason = tx != null ? (String) tx.getOrDefault("flagReason", "") : "";
-                final boolean isPep = flagReason != null && flagReason.contains("PEP");
-                final String txId = tx != null ? String.valueOf(tx.getOrDefault("id", "unknown")) : "unknown";
-                return WorkerResult.of(Map.of(
-                    "entityId", "entity-" + txId,
-                    "ownershipChain", isPep ? "Direct → PEP Principal" : "Direct → Corporate Entity",
-                    "entityType", isPep ? "PEP" : "CORPORATE",
-                    "riskScore", isPep ? 0.87 : 0.35
-                ));
-            })
+            .function(
+                workflow("oversight-entity-resolution")
+                    .tasks(
+                        function(s -> {
+                            @SuppressWarnings("unchecked")
+                            final Map<String, Object> input = (Map<String, Object>) s;
+                            @SuppressWarnings("unchecked")
+                            final Map<String, Object> tx = (Map<String, Object>) input.get("transaction");
+                            final String flagReason = tx != null ? (String) tx.getOrDefault("flagReason", "") : "";
+                            final boolean isPep = flagReason != null && flagReason.contains("PEP");
+                            final String txId = tx != null ? String.valueOf(tx.getOrDefault("id", "unknown")) : "unknown";
+                            return Map.of(
+                                "entityId", "entity-" + txId,
+                                "ownershipChain", isPep ? "Direct → PEP Principal" : "Direct → Corporate Entity",
+                                "entityType", isPep ? "PEP" : "CORPORATE",
+                                "riskScore", isPep ? 0.87 : 0.35
+                            );
+                        }, Map.class))
+                    .build())
             .build();
     }
 
@@ -103,16 +112,22 @@ public class AmlOversightCaseHub extends YamlCaseHub {
         return Worker.builder()
             .name("oversight-investigation-summary-agent")
             .capabilities(List.of(cap("investigation-summary")))
-            .function((final Map<String, Object> input) -> {
-                @SuppressWarnings("unchecked")
-                final Map<String, Object> link = (Map<String, Object>) input.get("entityLinkProposal");
-                final String entityType = link != null
-                    ? (String) link.getOrDefault("entityType", "UNKNOWN") : "UNKNOWN";
-                return WorkerResult.of(Map.of(
-                    "summary", "Entity link confirmed for " + entityType + " entity",
-                    "status", "LINK_CONFIRMED"
-                ));
-            })
+            .function(
+                workflow("oversight-investigation-summary")
+                    .tasks(
+                        function(s -> {
+                            @SuppressWarnings("unchecked")
+                            final Map<String, Object> input = (Map<String, Object>) s;
+                            @SuppressWarnings("unchecked")
+                            final Map<String, Object> link = (Map<String, Object>) input.get("entityLinkProposal");
+                            final String entityType = link != null
+                                ? (String) link.getOrDefault("entityType", "UNKNOWN") : "UNKNOWN";
+                            return Map.of(
+                                "summary", "Entity link confirmed for " + entityType + " entity",
+                                "status", "LINK_CONFIRMED"
+                            );
+                        }, Map.class))
+                    .build())
             .build();
     }
 }

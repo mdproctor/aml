@@ -1057,7 +1057,7 @@ Not closed here: trust-weighted agent selection (L6). Compliance evidence endpoi
 
 **Worker functions are in `AmlInvestigationCaseDescriptor`.** The descriptor is a plain POJO (no CDI) carrying 7 worker functions. `AmlInvestigationCaseHub` creates the descriptor in `@PostConstruct` using its CDI-injected dependencies and calls `augmentedDefinition.getWorkers().addAll(descriptor.workers())`. The YAML `workers:` section is empty — YAML supplies bindings and capabilities; Java supplies the worker functions. `cap()` helper creates `Capability` objects with passthrough schemas because name-matching is all that is needed for binding dispatch.
 
-All 7 workers use `WorkerFunction.Flow` (FuncWorkflowBuilder per PP-20260531). SAR drafting workers migrated in aml#66 — engine#559 added `WorkerExecutionContext.set(context)` in `DefaultWorkerExecutor.executeFlow()`. `AmlOversightCaseHub` workers remain `WorkerFunction.Sync` pending engine PlannedAction support in flow path (aml#67, engine#564).
+All 7 workers use `WorkerFunction.Flow` (FuncWorkflowBuilder per PP-20260531). SAR drafting workers migrated in aml#66 — engine#559 added `WorkerExecutionContext.set(context)` in `DefaultWorkerExecutor.executeFlow()`. `AmlOversightCaseHub`: 2 of 3 workers migrated to Flow in aml#67 (`entityResolutionWorker`, `investigationSummaryWorker`); `entityLinkProposalWorker` remains Sync pending PlannedAction support in FlowWorkerExecutor (engine#564).
 
 **`casehub-engine-flow` added as compile dependency** — activates `FlowWorkerExecutor @ApplicationScoped` which displaces `NoOpWorkflowExecutor @DefaultBean`. Required for `WorkerFunction.Flow` execution; `quarkus-flow` was already a transitive dependency.
 
@@ -1459,7 +1459,7 @@ Per the Arc42Stories spec: only decisions not captured inline elsewhere. Layer-s
 
 | Item | Description | Layer | Tracked |
 |---|---|---|---|
-| Raw worker lambdas in `AmlInvestigationCaseDescriptor` (SAR workers) | ✅ Resolved — all 7 workers use `WorkerFunction.Flow` (aml#46 + aml#66). `AmlOversightCaseHub` workers tracked separately (aml#67, engine#564). | L5 | casehubio/aml#66 ✅ |
+| Raw worker lambdas in `AmlInvestigationCaseDescriptor` (SAR workers) | ✅ Resolved — all 7 workers use `WorkerFunction.Flow` (aml#46 + aml#66). `AmlOversightCaseHub`: 2/3 migrated (aml#67); `entityLinkProposalWorker` blocked on engine#564. | L5 | casehubio/aml#67 ✅ |
 | No fluent Java DSL for `aml-investigation.yaml` | **Resolved** — `AmlInvestigationCaseDescriptor` POJO per PP-20260518; structural tests without Quarkus | L5 | casehubio/aml#45 ✅ |
 | SLA `GAP` on engine async path | `sar-drafting` worker does not write `COMPLIANCE_REVIEW_OPENED` ledger entry; SLA evidence builder has no WorkItem ID | L7 | Deferred |
 | CDI ambiguity workarounds — `quarkus.arc.exclude-types` list growing | **Resolved** — #49: DefaultTestPrincipal/NoOpGroupMembershipProvider excluded, SarOutcomeRequest DTO; #63: QhorusInboundCurrentPrincipal excluded in test only | L5/L6 | casehubio/aml#49 ✅, #63 ✅ |

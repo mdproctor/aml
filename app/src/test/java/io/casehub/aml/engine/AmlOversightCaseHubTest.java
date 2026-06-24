@@ -1,0 +1,83 @@
+package io.casehub.aml.engine;
+
+import io.casehub.api.model.Worker;
+import io.casehub.api.model.WorkerFunction;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.Test;
+
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
+
+@QuarkusTest
+class AmlOversightCaseHubTest {
+
+    @Inject
+    AmlOversightCaseHub caseHub;
+
+    @Test
+    void definitionLoads() {
+        final var def = caseHub.getDefinition();
+        assertNotNull(def);
+        assertEquals("casehub-aml", def.getNamespace());
+        assertEquals("aml-oversight-investigation", def.getName());
+    }
+
+    @Test
+    void hasThreeWorkers() {
+        final var workers = caseHub.getDefinition().getWorkers();
+        final var names = workers.stream().map(Worker::getName).collect(Collectors.toSet());
+        assertEquals(3, workers.size(), "Exactly 3 oversight workers expected");
+        assertEquals(Set.of(
+                "oversight-entity-resolution-agent",
+                "oversight-entity-link-proposal-agent",
+                "oversight-investigation-summary-agent"), names);
+    }
+
+    @Test
+    void each_worker_declares_exactly_one_capability() {
+        for (final Worker w : caseHub.getDefinition().getWorkers()) {
+            assertEquals(1, w.getCapabilities().size(),
+                    "Worker " + w.getName() + " must declare exactly one capability");
+        }
+    }
+
+    @Test
+    void capability_names_match_expected_tags() {
+        final var capByWorker = caseHub.getDefinition().getWorkers().stream()
+                .collect(Collectors.toMap(
+                        Worker::getName,
+                        w -> w.getCapabilities().get(0).getName()));
+
+        assertEquals("entity-resolution", capByWorker.get("oversight-entity-resolution-agent"));
+        assertEquals("entity-link-proposal", capByWorker.get("oversight-entity-link-proposal-agent"));
+        assertEquals("investigation-summary", capByWorker.get("oversight-investigation-summary-agent"));
+    }
+
+    @Test
+    void worker_execution_model_classification() {
+        final Set<String> flowWorkers = Set.of(
+                "oversight-entity-resolution-agent",
+                "oversight-investigation-summary-agent");
+        final Set<String> syncWorkers = Set.of(
+                "oversight-entity-link-proposal-agent");
+
+        for (final Worker w : caseHub.getDefinition().getWorkers()) {
+            if (flowWorkers.contains(w.getName())) {
+                assertInstanceOf(WorkerFunction.Flow.class, w.getFunction(),
+                        "Worker " + w.getName() + " must use WorkerFunction.Flow (PP-20260531)");
+            } else if (syncWorkers.contains(w.getName())) {
+                assertInstanceOf(WorkerFunction.Sync.class, w.getFunction(),
+                        "Worker " + w.getName() + " must remain Sync until engine#564 ships");
+            } else {
+                fail("Worker " + w.getName() + " is unclassified — add it to flowWorkers or syncWorkers.");
+            }
+        }
+    }
+}
