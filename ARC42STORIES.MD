@@ -1383,7 +1383,7 @@ The engine fires `WorkerDecisionEvent` via `Event.fireAsync()`. A synchronous `@
 | Investigations start cold | Prior entity risk, network relationships, and SAR outcomes are invisible to new investigations | `AmlMemoryService.queryPriorContext()` queries CaseMemoryStore before `startCase()` |
 | Senior analyst routing requires waiting for entity resolution | Known-high-risk entities are routed late (after entity-resolution confirms PEP/risk) | `senior-analyst-required-prior-context` binding fires from `priorEntityContext.knownHighRisk` before entity-resolution runs |
 
-Not closed here: account-scoped memory accumulation does not cross beneficial-owner boundaries (two-phase keying deferred). GDPR cascade erasure for network cross-references requires legal review. `caseId` in behaviour-generated memory entries is null until qhorus#190 ships.
+Not closed here: account-scoped memory accumulation does not cross beneficial-owner boundaries (two-phase keying deferred). GDPR cascade erasure for network cross-references requires legal review. `caseId` in behaviour-generated memory entries was null (qhorus#190 — now shipped).
 
 #### Key files
 
@@ -1401,7 +1401,7 @@ Not closed here: account-scoped memory accumulation does not cross beneficial-ow
 
 1. Define domain constants (`MemoryDomain` records) for each fact category. Keep domains coarse-grained — only split when you need to query or erase them independently.
 2. Build a single central memory service as the only `CaseMemoryStore` gateway; wrap every call in try/catch — memory failures must never block the primary flow.
-3. Store facts from the agent behaviours using the COMMAND payload (deserialize from `command.content`). Note: until qhorus#190 ships, `caseId` in behaviour-generated entries must be null (behaviours receive null Message via `PushAgentDispatch`).
+3. Store facts from the agent behaviours using the COMMAND payload (deserialize from `command.content`). Note: qhorus#190 shipped — `caseId` is now available in behaviour-generated entries.
 4. Use the CDI event pattern for outcomes that multiple observers must react to (one resource fires `Event<T>.fire()`; observers self-register).
 5. If the engine case has multiple workers per capability (multi-worker fan-out, engine#82), split any YAML binding that routes based on context into two mutually exclusive bindings with complementary guards — merged OR bindings cause double-dispatch when contextChange fires before the first dispatch's Quartz job writes its result back.
 6. Disable `casehub.ledger.hash-chain.enabled` in H2-backed `@QuarkusTest` — concurrent Quartz jobs race on the Merkle frontier; drain every investigation test to `status = "completed"` before returning.
