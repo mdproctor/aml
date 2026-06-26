@@ -1,15 +1,19 @@
 package io.casehub.aml.routing;
 
-import io.casehub.api.spi.PlannedAction;
+import io.casehub.api.spi.ClassificationContext;
 import io.casehub.api.spi.RiskDecision;
+import io.casehub.worker.api.PlannedAction;
 import io.casehub.aml.domain.AmlActionType;
 import io.casehub.aml.domain.AmlGroups;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.util.Map;
+import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 class AmlActionRiskClassifierTest {
+
+    private static final ClassificationContext TEST_CTX = new ClassificationContext("test-worker", UUID.randomUUID(), "default", "aml-test", "test-cap", "test-binding");
 
     AmlActionRiskClassifier classifier;
 
@@ -92,7 +96,7 @@ class AmlActionRiskClassifierTest {
     @Test
     void entityLink_nullContext_failClosed() {
         final RiskDecision result = classifier.classify(
-            PlannedAction.of("desc", AmlActionType.ENTITY_LINK_CREATION.actionType(), null));
+            PlannedAction.of("desc", AmlActionType.ENTITY_LINK_CREATION.actionType(), null), TEST_CTX);
         assertGateRequiredWithReason(result, "Risk assessment unavailable");
     }
 
@@ -168,15 +172,15 @@ class AmlActionRiskClassifierTest {
     @Test
     void unknownActionType_autonomous() {
         final RiskDecision result = classifier.classify(
-            PlannedAction.of("something", "foo.bar", Map.of()));
+            PlannedAction.of("something", "foo.bar", Map.of()), TEST_CTX);
         assertInstanceOf(RiskDecision.Autonomous.class, result,
             "Unknown action type must be Autonomous");
     }
 
     @Test
-    void nullActionType_autonomous() {
+    void emptyActionType_autonomous() {
         final RiskDecision result = classifier.classify(
-            PlannedAction.of("something", null, Map.of()));
+            PlannedAction.of("something", "", Map.of()), TEST_CTX);
         assertInstanceOf(RiskDecision.Autonomous.class, result);
     }
 
@@ -219,7 +223,7 @@ class AmlActionRiskClassifierTest {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private RiskDecision classify(final AmlActionType type, final Map<String, Object> context) {
-        return classifier.classify(PlannedAction.of("test action", type.actionType(), context));
+        return classifier.classify(PlannedAction.of("test action", type.actionType(), context), TEST_CTX);
     }
 
     private void assertGateRequired(final RiskDecision result, final String expectedGroup, final boolean expectedReversible) {

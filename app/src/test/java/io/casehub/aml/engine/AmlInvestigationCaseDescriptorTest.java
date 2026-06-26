@@ -1,7 +1,7 @@
 package io.casehub.aml.engine;
 
-import io.casehub.api.model.Worker;
-import io.casehub.api.model.WorkerFunction;
+import io.casehub.engine.flow.FlowWorkerFunction;
+import io.casehub.worker.api.Worker;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -23,7 +23,7 @@ class AmlInvestigationCaseDescriptorTest {
     void workers_returnsSevenDistinctWorkers() {
         final List<Worker> workers = descriptor.workers();
         assertEquals(7, workers.size(), "Descriptor must declare exactly 7 workers");
-        final Set<String> names = workers.stream().map(Worker::getName).collect(Collectors.toSet());
+        final Set<String> names = workers.stream().map(Worker::name).collect(Collectors.toSet());
         assertEquals(7, names.size(), "All worker names must be distinct");
         assertEquals(Set.of(
                 "entity-resolution-agent",
@@ -38,8 +38,8 @@ class AmlInvestigationCaseDescriptorTest {
     @Test
     void each_worker_declares_exactly_one_capability() {
         for (final Worker w : descriptor.workers()) {
-            assertEquals(1, w.getCapabilities().size(),
-                    "Worker " + w.getName() + " must declare exactly one capability");
+            assertEquals(1, w.capabilities().size(),
+                    "Worker " + w.name() + " must declare exactly one capability");
         }
     }
 
@@ -47,8 +47,8 @@ class AmlInvestigationCaseDescriptorTest {
     void capability_names_match_expected_tags() {
         final var capByWorker = descriptor.workers().stream()
                 .collect(Collectors.toMap(
-                        Worker::getName,
-                        w -> w.getCapabilities().get(0).getName()));
+                        Worker::name,
+                        w -> w.capabilities().get(0).name()));
 
         assertEquals("entity-resolution",   capByWorker.get("entity-resolution-agent"));
         assertEquals("pattern-analysis",    capByWorker.get("pattern-analysis-agent"));
@@ -62,8 +62,8 @@ class AmlInvestigationCaseDescriptorTest {
     @Test
     void each_worker_has_non_null_function() {
         for (final Worker w : descriptor.workers()) {
-            assertNotNull(w.getFunction(),
-                    "Worker " + w.getName() + " must have a non-null function");
+            assertNotNull(w.function(),
+                    "Worker " + w.name() + " must have a non-null function");
         }
     }
 
@@ -81,11 +81,11 @@ class AmlInvestigationCaseDescriptorTest {
                 "sar-drafting-agent-senior");
 
         for (final Worker w : descriptor.workers()) {
-            if (allWorkers.contains(w.getName())) {
-                assertInstanceOf(WorkerFunction.Flow.class, w.getFunction(),
-                        "Worker " + w.getName() + " must use WorkerFunction.Flow (FuncWorkflowBuilder).");
+            if (allWorkers.contains(w.name())) {
+                assertInstanceOf(FlowWorkerFunction.class, w.function(),
+                        "Worker " + w.name() + " must use FlowWorkerFunction (FuncWorkflowBuilder).");
             } else {
-                fail("Worker " + w.getName() + " is unclassified — add it to allWorkers in this test.");
+                fail("Worker " + w.name() + " is unclassified — add it to allWorkers in this test.");
             }
         }
     }

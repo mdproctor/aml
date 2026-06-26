@@ -1,9 +1,10 @@
 package io.casehub.aml.engine;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.casehub.api.model.Capability;
-import io.casehub.api.model.Worker;
+import io.casehub.engine.flow.FlowWorkerFunction;
 import io.casehub.api.model.WorkerExecutionContext;
+import io.casehub.worker.api.Capability;
+import io.casehub.worker.api.Worker;
 import io.casehub.aml.ComplianceReviewLifecycle;
 import io.casehub.aml.domain.EntityResolutionResult;
 import io.casehub.aml.domain.InvestigationSummary;
@@ -66,7 +67,7 @@ public final class AmlInvestigationCaseDescriptor {
         return Worker.builder()
                 .name("entity-resolution-agent")
                 .capabilities(List.of(cap("entity-resolution")))
-                .function(
+                .function(new FlowWorkerFunction(
                     workflow("entity-resolution")
                         .tasks(
                             function(s -> {
@@ -88,7 +89,7 @@ public final class AmlInvestigationCaseDescriptor {
                                         "riskScore", isPep ? 0.87 : 0.35
                                 );
                             }, Map.class))
-                        .build())
+                        .build()))
                 .build();
     }
 
@@ -96,14 +97,14 @@ public final class AmlInvestigationCaseDescriptor {
         return Worker.builder()
                 .name("pattern-analysis-agent")
                 .capabilities(List.of(cap("pattern-analysis")))
-                .function(
+                .function(new FlowWorkerFunction(
                     workflow("pattern-analysis")
                         .tasks(
                             function(s -> Map.of(
                                     "structuringDetected", false,
                                     "description", "No structuring pattern detected in transaction cluster"
                             ), Map.class))
-                        .build())
+                        .build()))
                 .build();
     }
 
@@ -116,7 +117,7 @@ public final class AmlInvestigationCaseDescriptor {
         return Worker.builder()
                 .name("osint-screening-agent")
                 .capabilities(List.of(cap("osint-screening")))
-                .function(
+                .function(new FlowWorkerFunction(
                     workflow("osint-screening")
                         .tasks(
                             function(s -> Map.of(
@@ -125,7 +126,7 @@ public final class AmlInvestigationCaseDescriptor {
                                     "pepHit", false,
                                     "sanctionsHit", false
                             ), Map.class))
-                        .build())
+                        .build()))
                 .build();
     }
 
@@ -137,7 +138,7 @@ public final class AmlInvestigationCaseDescriptor {
         return Worker.builder()
                 .name("osint-screening-agent-senior")
                 .capabilities(List.of(cap("osint-screening")))
-                .function(
+                .function(new FlowWorkerFunction(
                     workflow("osint-screening-senior")
                         .tasks(
                             function(s -> Map.of(
@@ -147,7 +148,7 @@ public final class AmlInvestigationCaseDescriptor {
                                     "sanctionsHit", false,
                                     "screeningLevel", "ENHANCED"
                             ), Map.class))
-                        .build())
+                        .build()))
                 .build();
     }
 
@@ -155,7 +156,7 @@ public final class AmlInvestigationCaseDescriptor {
         return Worker.builder()
                 .name("senior-analyst-agent")
                 .capabilities(List.of(cap("senior-analyst-review")))
-                .function(
+                .function(new FlowWorkerFunction(
                     workflow("senior-analyst-review")
                         .tasks(
                             function(s -> Map.of(
@@ -164,7 +165,7 @@ public final class AmlInvestigationCaseDescriptor {
                                     "PEP entity confirmed — enhanced due diligence required."
                                             + " Escalate to compliance director."
                             ), Map.class))
-                        .build())
+                        .build()))
                 .build();
     }
 
@@ -177,7 +178,7 @@ public final class AmlInvestigationCaseDescriptor {
         return Worker.builder()
                 .name("sar-drafting-agent-junior")
                 .capabilities(List.of(cap("sar-drafting")))
-                .function(
+                .function(new FlowWorkerFunction(
                     workflow("sar-drafting-junior")
                         .tasks(
                             function(s -> {
@@ -200,7 +201,7 @@ public final class AmlInvestigationCaseDescriptor {
                                         complianceReviewLifecycle.openReview(tx, buildSummary(input, tx, sarNarrative), caseId);
                                 return Map.of("sarNarrative", sarNarrative, "complianceTaskId", complianceTaskId);
                             }, Map.class))
-                        .build())
+                        .build()))
                 .build();
     }
 
@@ -213,7 +214,7 @@ public final class AmlInvestigationCaseDescriptor {
         return Worker.builder()
                 .name("sar-drafting-agent-senior")
                 .capabilities(List.of(cap("sar-drafting")))
-                .function(
+                .function(new FlowWorkerFunction(
                     workflow("sar-drafting-senior")
                         .tasks(
                             function(s -> {
@@ -240,7 +241,7 @@ public final class AmlInvestigationCaseDescriptor {
                                         complianceReviewLifecycle.openReview(tx, buildSummary(input, tx, sarNarrative), caseId);
                                 return Map.of("sarNarrative", sarNarrative, "complianceTaskId", complianceTaskId);
                             }, Map.class))
-                        .build())
+                        .build()))
                 .build();
     }
 

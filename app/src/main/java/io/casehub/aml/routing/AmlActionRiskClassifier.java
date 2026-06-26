@@ -1,8 +1,9 @@
 package io.casehub.aml.routing;
 
 import io.casehub.api.spi.ActionRiskClassifier;
-import io.casehub.api.spi.PlannedAction;
+import io.casehub.api.spi.ClassificationContext;
 import io.casehub.api.spi.RiskClassifier;
+import io.casehub.worker.api.PlannedAction;
 import io.casehub.api.spi.RiskDecision;
 import io.casehub.aml.domain.AmlActionType;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -29,7 +30,7 @@ public class AmlActionRiskClassifier implements ActionRiskClassifier {
     static final double CONFIDENCE_GATE_THRESHOLD = 0.9;
 
     @Override
-    public RiskDecision classify(final PlannedAction action) {
+    public RiskDecision classify(final PlannedAction action, final ClassificationContext context) {
         final Optional<AmlActionType> typeOpt = AmlActionType.fromActionType(action.actionType());
         if (typeOpt.isEmpty()) {
             return new RiskDecision.Autonomous();
@@ -37,8 +38,8 @@ public class AmlActionRiskClassifier implements ActionRiskClassifier {
         final AmlActionType type = typeOpt.get();
         return switch (type.gatePolicy()) {
             case ALWAYS -> gate(type);
-            case RISK_SCORE_THRESHOLD -> classifyByRiskScore(type, action.context());
-            case CONFIDENCE_THRESHOLD -> classifyByConfidence(type, action.context());
+            case RISK_SCORE_THRESHOLD -> classifyByRiskScore(type, action.parameters());
+            case CONFIDENCE_THRESHOLD -> classifyByConfidence(type, action.parameters());
         };
     }
 

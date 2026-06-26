@@ -1,11 +1,12 @@
 package io.casehub.aml.engine;
 
 import io.casehub.api.engine.YamlCaseHub;
-import io.casehub.api.model.Capability;
 import io.casehub.api.model.CaseDefinition;
-import io.casehub.api.model.Worker;
-import io.casehub.api.model.WorkerResult;
-import io.casehub.api.spi.PlannedAction;
+import io.casehub.engine.flow.FlowWorkerFunction;
+import io.casehub.worker.api.Capability;
+import io.casehub.worker.api.PlannedAction;
+import io.casehub.worker.api.Worker;
+import io.casehub.worker.api.WorkerResult;
 import io.casehub.aml.domain.AmlActionType;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
@@ -61,7 +62,7 @@ public class AmlOversightCaseHub extends YamlCaseHub {
         return Worker.builder()
             .name("oversight-entity-resolution-agent")
             .capabilities(List.of(cap("entity-resolution")))
-            .function(
+            .function(new FlowWorkerFunction(
                 workflow("oversight-entity-resolution")
                     .tasks(
                         function(s -> {
@@ -79,7 +80,7 @@ public class AmlOversightCaseHub extends YamlCaseHub {
                                 "riskScore", isPep ? 0.87 : 0.35
                             );
                         }, Map.class))
-                    .build())
+                    .build()))
             .build();
     }
 
@@ -112,7 +113,7 @@ public class AmlOversightCaseHub extends YamlCaseHub {
         return Worker.builder()
             .name("oversight-investigation-summary-agent")
             .capabilities(List.of(cap("investigation-summary")))
-            .function(
+            .function(new FlowWorkerFunction(
                 workflow("oversight-investigation-summary")
                     .tasks(
                         function(s -> {
@@ -127,7 +128,7 @@ public class AmlOversightCaseHub extends YamlCaseHub {
                                 "status", "LINK_CONFIRMED"
                             );
                         }, Map.class))
-                    .build())
+                    .build()))
             .build();
     }
 }

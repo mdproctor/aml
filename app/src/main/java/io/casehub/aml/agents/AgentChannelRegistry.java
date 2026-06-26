@@ -9,6 +9,7 @@ import jakarta.inject.Inject;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.runtime.channel.Channel;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 
@@ -43,9 +44,9 @@ public class AgentChannelRegistry {
             }
 
             Channel channel = channelService.findByName(behaviour.capability())
-                    .orElseGet(() -> channelService.create(
-                            behaviour.capability(), ORCHESTRATOR,
-                            ChannelSemantic.APPEND, ORCHESTRATOR));
+                    .orElseGet(() -> channelService.create(ChannelCreateRequest.builder(behaviour.capability())
+                            .description(ORCHESTRATOR).semantic(ChannelSemantic.APPEND)
+                            .adminInstances(ORCHESTRATOR).build()));
 
             ChannelRef ref = new ChannelRef(channel.id, channel.name);
             // Per protocol: open() before registerBackend()

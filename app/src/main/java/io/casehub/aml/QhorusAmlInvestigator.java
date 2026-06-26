@@ -18,6 +18,7 @@ import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.Channel;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.MessageService;
 
@@ -65,8 +66,9 @@ public class QhorusAmlInvestigator implements AmlInvestigator {
     private <T> SpecialistOutcome<T> dispatch(final String capability,
             final SuspiciousTransaction transaction, final UUID caseId) {
         final Channel channel = channelService.findByName(capability)
-                .orElseGet(() -> channelService.create(
-                        capability, ORCHESTRATOR, ChannelSemantic.APPEND, ORCHESTRATOR));
+                .orElseGet(() -> channelService.create(ChannelCreateRequest.builder(capability)
+                        .description(ORCHESTRATOR).semantic(ChannelSemantic.APPEND)
+                        .adminInstances(ORCHESTRATOR).build()));
 
         final String correlationId = UUID.randomUUID().toString();
 
