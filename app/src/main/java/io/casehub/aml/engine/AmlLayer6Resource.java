@@ -1,9 +1,11 @@
 package io.casehub.aml.engine;
 
-import io.casehub.api.model.CaseStatus;
+import io.casehub.aml.compliance.AmlInvestigationOutcomeService;
+import io.casehub.aml.domain.InvestigationOutcome;
 import io.casehub.aml.domain.SarOutcome;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.trust.AmlWorkerDecisionRepository;
+import io.casehub.api.model.CaseStatus;
 import io.casehub.engine.common.internal.model.CaseInstance;
 import io.casehub.engine.common.spi.CaseInstanceRepository;
 import io.casehub.engine.common.spi.cache.CaseInstanceCache;
@@ -13,9 +15,15 @@ import io.casehub.platform.api.identity.TenancyConstants;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalDouble;
@@ -27,12 +35,20 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 public class AmlLayer6Resource {
 
-    @Inject AmlEngineCoordinator coordinator;
-    @Inject AmlWorkerDecisionRepository workerDecisionRepo;
-    @Inject Event<SarOutcomeRecordedEvent> sarOutcomeEvent;
-    @Inject TrustScoreSource trustScoreSource;
-    @Inject CaseInstanceCache caseInstanceCache;
-    @Inject CaseInstanceRepository caseInstanceRepository;
+    @Inject
+    AmlEngineCoordinator           coordinator;
+    @Inject
+    AmlWorkerDecisionRepository    workerDecisionRepo;
+    @Inject
+    Event<SarOutcomeRecordedEvent> sarOutcomeEvent;
+    @Inject
+    TrustScoreSource               trustScoreSource;
+    @Inject
+    CaseInstanceCache              caseInstanceCache;
+    @Inject
+    CaseInstanceRepository         caseInstanceRepository;
+    @Inject
+    AmlInvestigationOutcomeService outcomeService;
 
     @POST
     public Response startInvestigation(final SuspiciousTransaction transaction) {
@@ -57,28 +73,29 @@ public class AmlLayer6Resource {
         CaseInstance instance = caseInstanceCache.get(caseId);
         if (instance == null) {
             instance = caseInstanceRepository
-                    .findByUuid(caseId, TenancyConstants.DEFAULT_TENANT_ID)
-                    .await().indefinitely();
+                               .findByUuid(caseId, TenancyConstants.DEFAULT_TENANT_ID)
+                               .await().indefinitely();
         }
         final boolean completed = instance != null && instance.getState() == CaseStatus.COMPLETED;
 
         if (!completed) {
-            return new Layer6InvestigationResponse(caseId, "in-progress", List.of());
+            return new Layer6InvestigationResponse(caseId, "in-progress", List.of(), null);
         }
 
         final List<WorkerDecisionEntry> entries = workerDecisionRepo.findAllByCaseId(caseId);
         final List<WorkerRoutingDecision> decisions = entries.stream()
-                .map(e -> {
-                    final OptionalDouble score =
-                            trustScoreSource.capabilityScore(e.workerId, e.capabilityTag);
-                    return new WorkerRoutingDecision(
-                            e.capabilityTag,
-                            e.workerId,
-                            score.isPresent() ? score.getAsDouble() : null);
-                })
-                .toList();
+                                                             .map(e -> {
+                                                                 final OptionalDouble score =
+                                                                         trustScoreSource.capabilityScore(e.workerId, e.capabilityTag);
+                                                                 return new WorkerRoutingDecision(
+                                                                         e.capabilityTag,
+                                                                         e.workerId,
+                                                                         score.isPresent() ? score.getAsDouble() : null);
+                                                             })
+                                                             .toList();
 
-        return new Layer6InvestigationResponse(caseId, "completed", decisions);
+        final InvestigationOutcome outcome = outcomeService.resolve(caseId);
+        return new Layer6InvestigationResponse(caseId, "completed", decisions, outcome);
     }
 
     @POST

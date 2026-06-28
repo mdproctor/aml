@@ -250,6 +250,8 @@ aml-app/    — CDI wiring; all Quarkus/JPA runtime
             DefaultAmlInvestigationService @DefaultBean · QhorusAmlInvestigator
   agents/   AgentBehaviour · AgentDispatchMechanism · PushAgentDispatch
             EntityResolutionBehaviour · PatternAnalysisBehaviour · OsintScreeningBehaviour
+  compliance/ AmlComplianceEvidenceService · AmlInvestigationOutcomeService
+            AmlWorkItemLifecycleObserver · AmlLayer7Resource
   engine/   AmlInvestigationCaseHub · AmlEngineCoordinator
             AmlLayer5Resource · AmlLayer6Resource · Layer5InvestigationResponse
             Layer6InvestigationResponse · WorkerRoutingDecision · SarOutcomeRequest
@@ -258,7 +260,6 @@ aml-app/    — CDI wiring; all Quarkus/JPA runtime
   trust/    AmlTrustScoreSeeder · AmlTrustRoutingObserver · AmlTrustRoutingAttestation
             AmlTrustAttestationRepository · AmlWorkerDecisionRepository
             SarOutcomeFeedbackService
-  compliance/  AmlComplianceEvidenceService · AmlLayer7Resource
   rest/     IllegalArgumentExceptionMapper · JsonMappingExceptionMapper · ErrorResponse
 ```
 
@@ -1160,7 +1161,7 @@ Not closed here: externally verifiable evidence endpoint (L7). Trust score at ro
 - `app/src/main/java/io/casehub/aml/trust/SarOutcomeFeedbackService.java` — writes `LedgerAttestation` on the `sar-drafting` `WorkerDecisionEntry`; silently skips if no matching entry found
 - `app/src/main/java/io/casehub/aml/trust/AmlWorkerDecisionRepository.java` — JPQL queries on `WorkerDecisionEntry` via `@PersistenceContext(unitName = "qhorus")`
 - `app/src/main/java/io/casehub/aml/engine/AmlLayer6Resource.java` — `POST /api/layer6/investigations`, `GET /api/layer6/investigations/{caseId}`, `POST /api/layer6/investigations/{caseId}/outcome`
-- `app/src/main/java/io/casehub/aml/engine/Layer6InvestigationResponse.java` — `record(UUID caseId, String status, List<WorkerRoutingDecision> routingDecisions)`
+- `app/src/main/java/io/casehub/aml/engine/Layer6InvestigationResponse.java` — `record(UUID caseId, String status, List<WorkerRoutingDecision> routingDecisions, InvestigationOutcome outcome)`
 - `app/src/main/java/io/casehub/aml/engine/WorkerRoutingDecision.java` — `record(String capabilityTag, String selectedWorker, Double trustScore)` with `@JsonInclude(NON_NULL)`
 - `app/src/main/resources/db/aml-engine-ledger/migration/V2002__case_ledger_entry.sql` — local re-numbered copy of engine-ledger V2000 (avoids Flyway collision with qhorus V2000)
 - `app/src/main/resources/db/aml-engine-ledger/migration/V2003__worker_decision_entry.sql` — local re-numbered copy of engine-ledger V2001
@@ -1481,7 +1482,7 @@ Per the Arc42Stories spec: only decisions not captured inline elsewhere. Layer-s
 
 `AmlActionType` enum — pure Java domain vocabulary (`api/`) encoding `GatePolicy`, reversibility, candidate groups, reason string, oversight scope per consequential action type. Five types: `SAR_FILING`, `ACCOUNT_RESTRICTION`, `TRANSACTION_BLOCKING`, `ENTITY_LINK_CREATION`, `LAW_ENFORCEMENT_REFERRAL`.
 
-Layer 9 oversight harness — `AmlOversightCaseHub` + `AmlOversightCoordinator` + `AmlLayer9Resource` (`/api/layer9/investigations`). Self-contained case: entity-resolution → entity-link-proposal (declares `PlannedAction(ENTITY_LINK_CREATION)`) → investigation-summary. Gate fires for PEP or riskScore ≥ 0.8; CORPORATE low-risk → Autonomous.
+Layer 9 oversight harness — `AmlOversightCaseHub` + `AmlOversightCoordinator` + `AmlLayer9Resource` (`/api/layer9/investigations`). Self-contained case: entity-resolution → entity-link-proposal (declares `PlannedAction(ENTITY_LINK_CREATION)`) → investigation-summary. Gate fires for PEP or riskScore ≥ 0.8; CORPORATE low-risk → Autonomous. Both Layer 6 and Layer 9 `getInvestigation()` endpoints return an `InvestigationOutcome` field derived from `AmlSarOfficerReviewedLedgerEntry` via `AmlInvestigationOutcomeService` (compliance package). Outcome is null for Layer 9 oversight investigations (no SAR filing in oversight flow).
 
 `casehub-engine-work-adapter` added as compile dep — provides `ActionGateWorkItemHandler` (creates WorkItem on gate schedule event) and `WorkItemLifecycleAdapter` (routes WorkItem approval back to engine to resume gated case).
 

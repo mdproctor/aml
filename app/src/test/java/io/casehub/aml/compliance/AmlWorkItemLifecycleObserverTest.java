@@ -37,7 +37,7 @@ class AmlWorkItemLifecycleObserverTest {
 
         verify(ledgerService).writeSarOfficerReviewed(eq(caseId), eq("compliance-officer-001"),
                 eq("APPROVED"));
-        verify(ledgerService, never()).writeSarOfficerReviewedFailure(any(), any());
+        verify(ledgerService, never()).writeSarOfficerReviewedFailure(any(), any(), any());
     }
 
     @Test
@@ -55,7 +55,7 @@ class AmlWorkItemLifecycleObserverTest {
                 "officer"));
 
         verify(ledgerService, never()).writeSarOfficerReviewed(any(), any(), any());
-        verify(ledgerService, never()).writeSarOfficerReviewedFailure(any(), any());
+        verify(ledgerService, never()).writeSarOfficerReviewedFailure(any(), any(), any());
     }
 
     @Test
@@ -115,7 +115,7 @@ class AmlWorkItemLifecycleObserverTest {
         observer.onWorkItemLifecycle(event(WorkItemStatus.COMPLETED,
                 "aml:investigation:" + caseId, "officer-X"));
 
-        verify(ledgerService).writeSarOfficerReviewedFailure(eq(caseId), eq("officer-X"));
+        verify(ledgerService).writeSarOfficerReviewedFailure(eq(caseId), eq("officer-X"), eq("APPROVED"));
     }
 
     // -- Helpers --

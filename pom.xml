@@ -18,30 +18,10 @@
   <description>Anti-money laundering investigation application — FinCEN-compliant audit, SAR workflow, adaptive investigation paths</description>
   <url>https://github.com/casehubio/aml</url>
 
-  <properties>
-    <!-- Pinned locally so Maven resolves quarkus-bom from central before
-         contacting GitHub Packages for casehub-parent — prevents a Bearer
-         token from leaking into the Maven Central request and causing 403.
-         Must be kept in sync with casehub-parent's quarkus.platform.version. -->
-    <quarkus.platform.version>3.32.2</quarkus.platform.version>
-  </properties>
-
   <modules>
     <module>api</module>
     <module>app</module>
   </modules>
-
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>io.quarkus.platform</groupId>
-        <artifactId>quarkus-bom</artifactId>
-        <version>${quarkus.platform.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
 
   <repositories>
     <repository>

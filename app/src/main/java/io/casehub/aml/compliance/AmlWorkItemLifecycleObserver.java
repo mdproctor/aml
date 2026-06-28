@@ -82,7 +82,7 @@ public class AmlWorkItemLifecycleObserver {
                     caseId, officerId);
             if (!written) {
                 try {
-                    ledgerService.writeSarOfficerReviewedFailure(caseId, officerId);
+                    ledgerService.writeSarOfficerReviewedFailure(caseId, officerId, reviewDecision);
                 } catch (Exception inner) {
                     LOG.errorf(inner,
                             "AUDIT GAP: SAR_OFFICER_REVIEWED failure entry also failed caseId=%s",

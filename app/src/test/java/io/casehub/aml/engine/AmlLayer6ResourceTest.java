@@ -41,6 +41,13 @@ class AmlLayer6ResourceTest {
             Instant.parse("2024-06-01T00:00:00Z"),
             "Structured layering pattern — CORPORATE");
 
+    private static SuspiciousTransaction pepTransaction(final String id) {
+        return new SuspiciousTransaction(id, "ACC-PEP-A", "ACC-PEP-B",
+                new BigDecimal("200000"), "USD",
+                Instant.parse("2024-12-01T00:00:00Z"),
+                "PEP -- high risk");
+    }
+
     @Test
     void post_investigate_returns_202_with_caseId() {
         final String caseIdStr = given().contentType(ContentType.JSON).body(TRANSACTION)
@@ -132,6 +139,65 @@ class AmlLayer6ResourceTest {
                 .body(new SarOutcome(SarVerdict.UPHELD, "SAR upheld by FinCEN", 0.95))
                 .when().post("/api/layer6/investigations/" + caseIdStr + "/outcome")
                 .then().statusCode(204);
+    }
+
+    @Test
+    void officer_approval_surfaces_sar_filed_outcome() {
+        final String caseIdStr = given().contentType(ContentType.JSON)
+                .body(pepTransaction("TXN-L6-OUTCOME-" + UUID.randomUUID()))
+                .when().post("/api/layer6/investigations")
+                .then().statusCode(202)
+                .extract().path("caseId");
+
+        final UUID caseId = UUID.fromString(caseIdStr);
+        awaitAndApproveGate(caseId);
+
+        Awaitility.await().atMost(30, TimeUnit.SECONDS).pollInterval(500, TimeUnit.MILLISECONDS)
+                .until(() -> "completed".equals(
+                        given().when().get("/api/layer6/investigations/" + caseIdStr)
+                                .then().extract().path("status")));
+
+        final WorkItem review = findComplianceReviewWorkItem(caseId);
+        workItemService.completeFromSystem(review.id, "test-compliance-officer", "SAR approved");
+
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).pollInterval(300, TimeUnit.MILLISECONDS)
+                .until(() -> "sar-filed".equals(
+                        given().when().get("/api/layer6/investigations/" + caseIdStr)
+                                .then().extract().path("outcome.type")));
+    }
+
+    @Test
+    void officer_rejection_surfaces_gate_rejected_outcome() {
+        final String caseIdStr = given().contentType(ContentType.JSON)
+                .body(pepTransaction("TXN-L6-REJECT-" + UUID.randomUUID()))
+                .when().post("/api/layer6/investigations")
+                .then().statusCode(202)
+                .extract().path("caseId");
+
+        final UUID caseId = UUID.fromString(caseIdStr);
+        awaitAndApproveGate(caseId);
+
+        Awaitility.await().atMost(30, TimeUnit.SECONDS).pollInterval(500, TimeUnit.MILLISECONDS)
+                .until(() -> "completed".equals(
+                        given().when().get("/api/layer6/investigations/" + caseIdStr)
+                                .then().extract().path("status")));
+
+        final WorkItem review = findComplianceReviewWorkItem(caseId);
+        workItemService.rejectFromSystem(review.id, "test-compliance-officer", "Insufficient evidence");
+
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).pollInterval(300, TimeUnit.MILLISECONDS)
+                .until(() -> "gate-rejected".equals(
+                        given().when().get("/api/layer6/investigations/" + caseIdStr)
+                                .then().extract().path("outcome.type")));
+    }
+
+    private WorkItem findComplianceReviewWorkItem(final UUID caseId) {
+        return QuarkusTransaction.requiringNew().call(() ->
+            defaultEm.createQuery(
+                "SELECT w FROM WorkItem w WHERE w.callerRef = :ref",
+                WorkItem.class)
+                .setParameter("ref", "aml:investigation:" + caseId)
+                .getSingleResult());
     }
 
     private List<WorkItem> findGateWorkItems(final UUID caseId) {

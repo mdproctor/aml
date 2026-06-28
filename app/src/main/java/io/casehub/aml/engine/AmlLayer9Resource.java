@@ -1,7 +1,9 @@
 package io.casehub.aml.engine;
 
-import io.casehub.api.model.CaseStatus;
+import io.casehub.aml.compliance.AmlInvestigationOutcomeService;
+import io.casehub.aml.domain.InvestigationOutcome;
 import io.casehub.aml.domain.SuspiciousTransaction;
+import io.casehub.api.model.CaseStatus;
 import io.casehub.engine.common.internal.model.CaseInstance;
 import io.casehub.engine.common.spi.CaseInstanceRepository;
 import io.casehub.engine.common.spi.cache.CaseInstanceCache;
@@ -16,6 +18,8 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -33,9 +37,14 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 public class AmlLayer9Resource {
 
-    @Inject AmlOversightCoordinator coordinator;
-    @Inject CaseInstanceCache caseInstanceCache;
-    @Inject CaseInstanceRepository caseInstanceRepository;
+    @Inject
+    AmlOversightCoordinator coordinator;
+    @Inject
+    CaseInstanceCache       caseInstanceCache;
+    @Inject
+    CaseInstanceRepository  caseInstanceRepository;
+    @Inject
+    AmlInvestigationOutcomeService outcomeService;
 
     @POST
     public Response startInvestigation(final SuspiciousTransaction transaction) {
@@ -49,13 +58,16 @@ public class AmlLayer9Resource {
         CaseInstance instance = caseInstanceCache.get(caseId);
         if (instance == null) {
             instance = caseInstanceRepository
-                    .findByUuid(caseId, TenancyConstants.DEFAULT_TENANT_ID)
-                    .await().indefinitely();
+                               .findByUuid(caseId, TenancyConstants.DEFAULT_TENANT_ID)
+                               .await().indefinitely();
         }
-        final boolean completed = instance != null && instance.getState() == CaseStatus.COMPLETED;
-        return Response.ok(Map.of(
-            "caseId", caseId,
-            "status", completed ? "completed" : "in-progress"
-        )).build();
+        final boolean              completed = instance != null && instance.getState() == CaseStatus.COMPLETED;
+        final InvestigationOutcome outcome   = completed ? outcomeService.resolve(caseId) : null;
+
+        final Map<String, Object> body = new HashMap<>();
+        body.put("caseId", caseId);
+        body.put("status", completed ? "completed" : "in-progress");
+        body.put("outcome", outcome);
+        return Response.ok(body).build();
     }
 }

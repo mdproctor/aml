@@ -130,9 +130,8 @@ public class AmlLedgerService {
      * commits independently of any surrounding (possibly failing) transaction context.
      */
     @Transactional(TxType.REQUIRES_NEW)
-    public void writeSarOfficerReviewedFailure(final UUID caseId, final String officerId) {
-        // officerId intentionally unused — failure entries are SYSTEM-attributed (aml-orchestrator),
-        // not attributed to the human officer. The observer already logs officerId in its WARN.
+    public void writeSarOfficerReviewedFailure(final UUID caseId, final String officerId,
+            final String reviewDecision) {
         final int sequenceNumber = nextSequenceNumber(caseId);
         final AmlSarOfficerReviewedLedgerEntry entry = new AmlSarOfficerReviewedLedgerEntry();
         entry.id = UUID.randomUUID();
@@ -143,7 +142,7 @@ public class AmlLedgerService {
         entry.actorType = ActorType.SYSTEM;
         entry.actorRole = "ComplianceOfficer-observer-failed";
         entry.occurredAt = Instant.now();
-        entry.reviewDecision = "UNKNOWN";
+        entry.reviewDecision = reviewDecision;
         repository.save(entry, TenancyConstants.DEFAULT_TENANT_ID);
     }
 
@@ -162,7 +161,7 @@ public class AmlLedgerService {
             @Override public UUID writeCaseOpened(SuspiciousTransaction tx, UUID caseId) { return UUID.randomUUID(); }
             @Override public void writeComplianceReviewOpened(UUID caseId, String taskId) {}
             @Override public void writeSarOfficerReviewed(UUID caseId, String officerId, String decision) {}
-            @Override public void writeSarOfficerReviewedFailure(UUID caseId, String officerId) {}
+            @Override public void writeSarOfficerReviewedFailure(UUID caseId, String officerId, String reviewDecision) {}
         };
     }
 
@@ -172,7 +171,7 @@ public class AmlLedgerService {
             @Override public UUID writeCaseOpened(SuspiciousTransaction tx, UUID caseId) { return entryId; }
             @Override public void writeComplianceReviewOpened(UUID caseId, String taskId) {}
             @Override public void writeSarOfficerReviewed(UUID caseId, String officerId, String decision) {}
-            @Override public void writeSarOfficerReviewedFailure(UUID caseId, String officerId) {}
+            @Override public void writeSarOfficerReviewedFailure(UUID caseId, String officerId, String reviewDecision) {}
         };
     }
 }
