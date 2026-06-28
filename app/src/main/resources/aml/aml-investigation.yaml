@@ -29,9 +29,14 @@ spec:
       outputSchema: "{ seniorAnalystReview: . }"
 
     - name: sar-drafting
-      description: "Synthesise specialist findings into SAR narrative and open compliance review"
+      description: "Synthesise specialist findings into SAR narrative"
       inputSchema: "{ transaction: .transaction, entityResolution: .entityResolution, patternAnalysis: .patternAnalysis, osintScreening: .osintScreening }"
-      outputSchema: "{ sarNarrative: .sarNarrative, complianceTaskId: .complianceTaskId }"
+      outputSchema: "{ sarNarrative: .sarNarrative }"
+
+    - name: compliance-review-opening
+      description: "Open compliance officer review WorkItem after MLRO gate approval"
+      inputSchema: "{ transaction: .transaction, entityResolution: .entityResolution, patternAnalysis: .patternAnalysis, osintScreening: .osintScreening, sarNarrative: .sarNarrative }"
+      outputSchema: "{ complianceTaskId: .complianceTaskId }"
 
   ## ─── Goals ──────────────────────────────────────────────────────────────────
   goals:
@@ -92,7 +97,8 @@ spec:
       capability: senior-analyst-review
 
     ## Fires once all specialist findings are present (entity + pattern + osint).
-    ## The SAR-drafting worker creates the compliance WorkItem and writes complianceTaskId.
+    ## SAR-drafting worker synthesises the narrative and declares PlannedAction(SAR_FILING);
+    ## complianceTaskId is set by compliance-review-opening after MLRO gate approval.
     - name: sar-drafting
       on: { contextChange: {} }
       when: >-
@@ -101,3 +107,10 @@ spec:
         .osintScreening != null and
         .sarNarrative == null
       capability: sar-drafting
+
+    ## Fires after MLRO gate approves SAR filing. The compliance-review-opening worker
+    ## creates the compliance officer WorkItem (30-day FinCEN SLA) and writes complianceTaskId.
+    - name: compliance-review-opening
+      on: { contextChange: {} }
+      when: ".sarNarrative != null and .complianceTaskId == null"
+      capability: compliance-review-opening

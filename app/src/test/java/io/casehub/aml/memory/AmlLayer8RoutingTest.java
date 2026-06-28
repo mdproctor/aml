@@ -6,14 +6,21 @@ import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.platform.api.memory.CaseMemoryStore;
 import io.casehub.platform.api.memory.MemoryAttributeKeys;
 import io.casehub.platform.api.memory.MemoryInput;
+import io.casehub.work.runtime.model.WorkItem;
+import io.casehub.work.runtime.service.WorkItemService;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -33,11 +40,35 @@ class AmlLayer8RoutingTest {
     @Inject CaseMemoryStore memoryStore;
     @Inject CaseHubRuntime caseHubRuntime;
 
+    @PersistenceContext
+    EntityManager defaultEm;
+
+    @Inject
+    WorkItemService workItemService;
+
     private static final Duration TIMEOUT             = Duration.ofSeconds(15);
     private static final Duration DRAIN_TIMEOUT       = Duration.ofSeconds(20);
     private static final Duration POLL_INTERVAL       = Duration.ofMillis(100);
     private static final String   TENANT              = TenancyConstants.DEFAULT_TENANT_ID;
     private static final String   SENIOR_ANALYST_WORKER = "senior-analyst-agent";
+
+    private List<WorkItem> findGateWorkItems(final UUID caseId) {
+        return QuarkusTransaction.requiringNew().call(() ->
+            defaultEm.createQuery(
+                "SELECT w FROM WorkItem w WHERE w.callerRef LIKE :pattern",
+                WorkItem.class)
+                .setParameter("pattern", "case:" + caseId + "/gate:%")
+                .getResultList());
+    }
+
+    private void awaitAndApproveGate(final UUID caseId) {
+        await()
+                .atMost(15, TimeUnit.SECONDS)
+                .pollInterval(300, TimeUnit.MILLISECONDS)
+                .until(() -> !findGateWorkItems(caseId).isEmpty());
+        final WorkItem gate = findGateWorkItems(caseId).get(0);
+        workItemService.completeFromSystem(gate.id, "test-mlro", "approved");
+    }
 
     /** Full drain: wait for investigation completion to prevent Quartz contamination. */
     private void drainInvestigation(final UUID caseId) {
@@ -92,6 +123,7 @@ class AmlLayer8RoutingTest {
 
         await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL)
             .until(() -> scheduledWorkerNames(caseId).contains(SENIOR_ANALYST_WORKER));
+        awaitAndApproveGate(caseId);
         drainInvestigation(caseId);
     }
 
@@ -110,6 +142,7 @@ class AmlLayer8RoutingTest {
 
         assertFalse(snapshot.get().contains(SENIOR_ANALYST_WORKER),
             "Non-PEP entity with no history must not trigger senior analyst: " + snapshot.get());
+        awaitAndApproveGate(caseId);
         drainInvestigation(caseId);
     }
 
@@ -133,6 +166,7 @@ class AmlLayer8RoutingTest {
 
         assertFalse(snapshot.get().contains(SENIOR_ANALYST_WORKER),
             "Low-confidence history must not trigger senior analyst: " + snapshot.get());
+        awaitAndApproveGate(caseId);
         drainInvestigation(caseId);
     }
 }

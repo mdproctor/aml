@@ -5,14 +5,21 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import io.casehub.api.engine.CaseHubRuntime;
 import io.casehub.api.model.event.CaseHubEventType;
+import io.casehub.work.runtime.model.WorkItem;
+import io.casehub.work.runtime.service.WorkItemService;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -28,9 +35,33 @@ class AmlLayer5InvestigationTest {
     @Inject
     CaseHubRuntime caseHubRuntime;
 
+    @PersistenceContext
+    EntityManager defaultEm;
+
+    @Inject
+    WorkItemService workItemService;
+
     private static final Duration TIMEOUT      = Duration.ofSeconds(10);
     private static final Duration DRAIN_TIMEOUT = Duration.ofSeconds(15);
     private static final Duration POLL_INTERVAL = Duration.ofMillis(100);
+
+    private List<WorkItem> findGateWorkItems(final UUID caseId) {
+        return QuarkusTransaction.requiringNew().call(() ->
+            defaultEm.createQuery(
+                "SELECT w FROM WorkItem w WHERE w.callerRef LIKE :pattern",
+                WorkItem.class)
+                .setParameter("pattern", "case:" + caseId + "/gate:%")
+                .getResultList());
+    }
+
+    private void awaitAndApproveGate(final UUID caseId) {
+        await()
+                .atMost(15, TimeUnit.SECONDS)
+                .pollInterval(300, TimeUnit.MILLISECONDS)
+                .until(() -> !findGateWorkItems(caseId).isEmpty());
+        final WorkItem gate = findGateWorkItems(caseId).get(0);
+        workItemService.completeFromSystem(gate.id, "test-mlro", "approved");
+    }
 
     /**
      * Wait for an investigation to reach "completed" status via the Layer6 API.
@@ -101,6 +132,7 @@ class AmlLayer5InvestigationTest {
                     && workers.stream().anyMatch(w -> w.startsWith("osint-screening-agent"))
                     && (workers.contains("sar-drafting-agent-senior") || workers.contains("sar-drafting-agent-junior"));
         });
+        awaitAndApproveGate(caseId);
         drainInvestigation(caseId);
     }
 
@@ -113,6 +145,7 @@ class AmlLayer5InvestigationTest {
         final UUID caseId = startInvestigation("TXN-PEP-001",
                 "PEP entity detected — high risk transfer");
 
+        awaitAndApproveGate(caseId);
         drainInvestigation(caseId);
     }
 
@@ -132,6 +165,7 @@ class AmlLayer5InvestigationTest {
 
         assertTrue(!workers.get().contains("senior-analyst-agent"),
                 "Non-PEP transaction must not trigger senior analyst: " + workers.get());
+        awaitAndApproveGate(caseId);
         drainInvestigation(caseId);
     }
 
@@ -151,6 +185,7 @@ class AmlLayer5InvestigationTest {
         final var workers = scheduledWorkerNames(caseId);
         assertTrue(workers.contains("entity-resolution-agent"),
                 "Entity resolution must have fired before pattern/osint");
+        awaitAndApproveGate(caseId);
         drainInvestigation(caseId);
     }
 
@@ -162,6 +197,7 @@ class AmlLayer5InvestigationTest {
 
         await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL).until(() ->
                 scheduledWorkerNames(caseId).stream().anyMatch(w -> w.startsWith("sar-drafting-agent")));
+        awaitAndApproveGate(caseId);
         drainInvestigation(caseId);
     }
 }

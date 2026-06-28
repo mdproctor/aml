@@ -3,7 +3,7 @@ package io.casehub.aml.compliance;
 import io.casehub.aml.ledger.AmlLedgerService;
 import io.casehub.work.runtime.event.WorkItemLifecycleEvent;
 import io.casehub.work.runtime.model.WorkItem;
-import io.casehub.work.runtime.model.WorkItemStatus;
+import io.casehub.work.api.WorkItemStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -67,7 +67,8 @@ class AmlWorkItemLifecycleObserverTest {
                 "/workitems/" + UUID.randomUUID(),
                 UUID.randomUUID().toString(),
                 UUID.randomUUID(), WorkItemStatus.COMPLETED,
-                Instant.now(), "officer", null, null, null, null, null);
+                Instant.now(), "officer", null, null, null, null, null,
+                null, null, null, null);
         observer.onWorkItemLifecycle(event);
 
         verify(ledgerService, never()).writeSarOfficerReviewed(any(), any(), any());

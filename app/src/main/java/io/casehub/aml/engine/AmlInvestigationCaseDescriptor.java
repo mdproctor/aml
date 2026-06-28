@@ -5,6 +5,9 @@ import io.casehub.engine.flow.FlowWorkerFunction;
 import io.casehub.api.model.WorkerExecutionContext;
 import io.casehub.worker.api.Capability;
 import io.casehub.worker.api.Worker;
+import io.casehub.worker.api.PlannedAction;
+import io.casehub.worker.api.WorkerResult;
+import io.casehub.aml.domain.AmlActionType;
 import io.casehub.aml.ComplianceReviewLifecycle;
 import io.casehub.aml.domain.EntityResolutionResult;
 import io.casehub.aml.domain.InvestigationSummary;
@@ -27,8 +30,11 @@ import static io.serverlessworkflow.fluent.func.dsl.FuncDSL.function;
  * for the AML investigation workflow live here. Constructed by
  * {@link AmlInvestigationCaseHub} with its CDI-managed dependencies.
  *
- * <p>All workers use {@code FuncWorkflowBuilder.workflow().tasks(function(...)).build()}
- * per protocol PP-20260531-worker-func-exec.
+ * <p>6 of 8 workers use {@code FlowWorkerFunction} with
+ * {@code FuncWorkflowBuilder.workflow().tasks(function(...)).build()} per protocol
+ * PP-20260531-worker-func-exec. SAR-drafting workers ({@code sar-drafting-agent-junior},
+ * {@code sar-drafting-agent-senior}) use {@code WorkerFunction.Sync} for PlannedAction
+ * support (engine#564 — FlowWorkerExecutor does not yet support PlannedAction).
  *
  * <p>Testable without Quarkus: pass {@code null} for both constructor args for
  * structural tests (worker count, names, capabilities). Worker lambdas capture
@@ -55,7 +61,8 @@ public final class AmlInvestigationCaseDescriptor {
                 osintScreeningWorkerSenior(),
                 seniorAnalystWorker(),
                 sarDraftingWorkerJunior(),
-                sarDraftingWorkerSenior()
+                sarDraftingWorkerSenior(),
+                complianceReviewOpeningWorker()
         );
     }
 
@@ -169,79 +176,98 @@ public final class AmlInvestigationCaseDescriptor {
                 .build();
     }
 
-    /**
-     * Junior SAR drafting worker — minimal narrative, suitable for routine cases.
-     * Opens the compliance officer WorkItem (Layer 2 — 30-day FinCEN SLA).
-     * Runs on a Quartz worker thread; JPA calls via ComplianceReviewLifecycle are safe here.
-     */
-    private Worker sarDraftingWorkerJunior() {
+    private Worker complianceReviewOpeningWorker() {
         return Worker.builder()
-                .name("sar-drafting-agent-junior")
-                .capabilities(List.of(cap("sar-drafting")))
+                .name("compliance-review-opening-agent")
+                .capabilities(List.of(cap("compliance-review-opening")))
                 .function(new FlowWorkerFunction(
-                    workflow("sar-drafting-junior")
+                    workflow("compliance-review-opening")
                         .tasks(
                             function(s -> {
                                 @SuppressWarnings("unchecked")
                                 final Map<String, Object> input = (Map<String, Object>) s;
                                 @SuppressWarnings("unchecked")
-                                final Map<String, Object> txMap = (Map<String, Object>) input.get("transaction");
+                                final Map<String, Object> txMap =
+                                        (Map<String, Object>) input.get("transaction");
                                 final SuspiciousTransaction tx =
                                         objectMapper.convertValue(txMap, SuspiciousTransaction.class);
-                                @SuppressWarnings("unchecked")
-                                final Map<String, Object> osintMap =
-                                        (Map<String, Object>) input.get("osintScreening");
-                                final boolean osintDeclined = osintMap != null
-                                        && Boolean.TRUE.equals(osintMap.get("declined"));
-                                final String sarNarrative = "SAR filed for transaction " + tx.id()
-                                        + ". Amount: " + tx.amount() + " " + tx.currency()
-                                        + (osintDeclined ? " OSINT screening declined." : "");
+                                final String sarNarrative = (String) input.get("sarNarrative");
                                 final UUID caseId = WorkerExecutionContext.current().caseId();
                                 final String complianceTaskId =
-                                        complianceReviewLifecycle.openReview(tx, buildSummary(input, tx, sarNarrative), caseId);
-                                return Map.of("sarNarrative", sarNarrative, "complianceTaskId", complianceTaskId);
+                                        complianceReviewLifecycle.openReview(
+                                                tx, buildSummary(input, tx, sarNarrative), caseId);
+                                return Map.of("complianceTaskId", complianceTaskId);
                             }, Map.class))
                         .build()))
                 .build();
     }
 
-    /**
-     * Senior SAR drafting worker — full narrative including entity type and flag reason.
-     * Used for complex or PEP cases routed via trust-weighted selection.
-     * Opens the compliance officer WorkItem (Layer 2 — 30-day FinCEN SLA).
-     */
+    private Worker sarDraftingWorkerJunior() {
+        return Worker.builder()
+                .name("sar-drafting-agent-junior")
+                .capabilities(List.of(cap("sar-drafting")))
+                .function((final Map<String, Object> input) -> {
+                    @SuppressWarnings("unchecked")
+                    final Map<String, Object> txMap = (Map<String, Object>) input.get("transaction");
+                    final SuspiciousTransaction tx =
+                            objectMapper.convertValue(txMap, SuspiciousTransaction.class);
+                    @SuppressWarnings("unchecked")
+                    final Map<String, Object> entityMap =
+                            (Map<String, Object>) input.get("entityResolution");
+                    final String entityType = entityMap != null
+                            ? (String) entityMap.getOrDefault("entityType", "UNKNOWN") : "UNKNOWN";
+                    @SuppressWarnings("unchecked")
+                    final Map<String, Object> osintMap =
+                            (Map<String, Object>) input.get("osintScreening");
+                    final boolean osintDeclined = osintMap != null
+                            && Boolean.TRUE.equals(osintMap.get("declined"));
+                    final String sarNarrative = "SAR filed for transaction " + tx.id()
+                            + ". Amount: " + tx.amount() + " " + tx.currency()
+                            + (osintDeclined ? " OSINT screening declined." : "");
+                    return WorkerResult.of(
+                            Map.of("sarNarrative", sarNarrative),
+                            PlannedAction.of(
+                                    "SAR filing for transaction " + tx.id(),
+                                    AmlActionType.SAR_FILING.actionType(),
+                                    Map.of("transactionId", tx.id(),
+                                           "amount", tx.amount().toString(),
+                                           "currency", tx.currency(),
+                                           "entityType", entityType)));
+                })
+                .build();
+    }
+
     private Worker sarDraftingWorkerSenior() {
         return Worker.builder()
                 .name("sar-drafting-agent-senior")
                 .capabilities(List.of(cap("sar-drafting")))
-                .function(new FlowWorkerFunction(
-                    workflow("sar-drafting-senior")
-                        .tasks(
-                            function(s -> {
-                                @SuppressWarnings("unchecked")
-                                final Map<String, Object> input = (Map<String, Object>) s;
-                                @SuppressWarnings("unchecked")
-                                final Map<String, Object> txMap = (Map<String, Object>) input.get("transaction");
-                                @SuppressWarnings("unchecked")
-                                final Map<String, Object> entityMap =
-                                        (Map<String, Object>) input.get("entityResolution");
-                                @SuppressWarnings("unchecked")
-                                final Map<String, Object> osintMap =
-                                        (Map<String, Object>) input.get("osintScreening");
-                                final SuspiciousTransaction tx =
-                                        objectMapper.convertValue(txMap, SuspiciousTransaction.class);
-                                final String entityType = entityMap != null
-                                        ? (String) entityMap.getOrDefault("entityType", "UNKNOWN")
-                                        : "UNKNOWN";
-                                final boolean osintDeclined = osintMap != null
-                                        && Boolean.TRUE.equals(osintMap.get("declined"));
-                                final String sarNarrative = buildNarrative(tx, entityType, osintDeclined);
-                                final UUID caseId = WorkerExecutionContext.current().caseId();
-                                final String complianceTaskId =
-                                        complianceReviewLifecycle.openReview(tx, buildSummary(input, tx, sarNarrative), caseId);
-                                return Map.of("sarNarrative", sarNarrative, "complianceTaskId", complianceTaskId);
-                            }, Map.class))
-                        .build()))
+                .function((final Map<String, Object> input) -> {
+                    @SuppressWarnings("unchecked")
+                    final Map<String, Object> txMap = (Map<String, Object>) input.get("transaction");
+                    @SuppressWarnings("unchecked")
+                    final Map<String, Object> entityMap =
+                            (Map<String, Object>) input.get("entityResolution");
+                    @SuppressWarnings("unchecked")
+                    final Map<String, Object> osintMap =
+                            (Map<String, Object>) input.get("osintScreening");
+                    final SuspiciousTransaction tx =
+                            objectMapper.convertValue(txMap, SuspiciousTransaction.class);
+                    final String entityType = entityMap != null
+                            ? (String) entityMap.getOrDefault("entityType", "UNKNOWN")
+                            : "UNKNOWN";
+                    final boolean osintDeclined = osintMap != null
+                            && Boolean.TRUE.equals(osintMap.get("declined"));
+                    final String sarNarrative = buildNarrative(tx, entityType, osintDeclined);
+                    return WorkerResult.of(
+                            Map.of("sarNarrative", sarNarrative),
+                            PlannedAction.of(
+                                    "SAR filing for transaction " + tx.id(),
+                                    AmlActionType.SAR_FILING.actionType(),
+                                    Map.of("transactionId", tx.id(),
+                                           "amount", tx.amount().toString(),
+                                           "currency", tx.currency(),
+                                           "entityType", entityType)));
+                })
                 .build();
     }
 

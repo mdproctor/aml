@@ -200,14 +200,14 @@ C4Container
   }
 
   Container_Boundary(b5, "Layer: casehub-engine (L5)") {
-    Container(yaml, "aml-investigation.yaml CasePlanModel", "YAML (app/resources/aml/)", "5 capabilities · 5 contextChange bindings · 1 goal")
-    Container(casehub, "AmlInvestigationCaseHub", "YamlCaseHub (app/engine/)", "Thin CDI wrapper; delegates 7 worker lambdas to AmlInvestigationCaseDescriptor via @PostConstruct")
+    Container(yaml, "aml-investigation.yaml CasePlanModel", "YAML (app/resources/aml/)", "6 capabilities · 7 contextChange bindings · 1 goal")
+    Container(casehub, "AmlInvestigationCaseHub", "YamlCaseHub (app/engine/)", "Thin CDI wrapper; delegates 8 worker lambdas to AmlInvestigationCaseDescriptor via @PostConstruct")
     Container(engcoord, "AmlEngineCoordinator", "Quarkus CDI (app/engine/)", "Starts engine case; writes CASE_OPENED ledger entry with engine-returned UUID")
   }
 
   Container_Boundary(b6, "Layer: Trust Routing (L6)") {
     Container(policy, "AmlTrustRoutingPolicyProvider", "TrustRoutingPolicyProvider SPI (app/routing/)", "Per-capability thresholds; falls back to hardcoded map when PreferenceProvider returns null")
-    Container(seeder, "AmlTrustScoreSeeder", "Quarkus CDI (app/trust/)", "Seeds 7 workers with Beta(α,β) at @Priority(20) StartupEvent")
+    Container(seeder, "AmlTrustScoreSeeder", "Quarkus CDI (app/trust/)", "Seeds 8 workers with Beta(α,β) at @Priority(20) StartupEvent")
     Container(feedback, "SarOutcomeFeedbackService", "Quarkus CDI (app/trust/)", "SAR verdict → LedgerAttestation → TrustScoreJob recomputes investigation-accuracy")
     Container(attestation, "AmlTrustRoutingAttestation", "JPA JOINED (app/trust/)", "Captures trustScoreAtRouting immutably on WorkerDecisionEvent")
     Container(observer, "AmlTrustRoutingObserver", "Quarkus CDI (app/trust/)", "@ObservesAsync WorkerDecisionEvent — writes attestation before cache drifts")
@@ -1046,8 +1046,8 @@ Not closed here: trust-weighted agent selection (L6). Compliance evidence endpoi
 #### Key files
 
 - `app/src/main/resources/aml/aml-investigation.yaml` — YAML CasePlanModel: 5 capabilities, 5 `contextChange` bindings, 1 goal (`investigation-complete`)
-- `app/src/main/java/io/casehub/aml/engine/AmlInvestigationCaseHub.java` — `@ApplicationScoped extends YamlCaseHub`; thin CDI wrapper; augments YAML definition with 7 workers from `AmlInvestigationCaseDescriptor` in `@PostConstruct`
-- `app/src/main/java/io/casehub/aml/engine/AmlInvestigationCaseDescriptor.java` — plain POJO (no CDI); carries all 7 workers as `WorkerFunction.Flow` (FuncWorkflowBuilder per PP-20260531; SAR workers migrated in aml#66 after engine#559 fixed `WorkerExecutionContext` in `executeFlow`); testable without Quarkus; per protocol PP-20260518
+- `app/src/main/java/io/casehub/aml/engine/AmlInvestigationCaseHub.java` — `@ApplicationScoped extends YamlCaseHub`; thin CDI wrapper; augments YAML definition with 8 workers from `AmlInvestigationCaseDescriptor` in `@PostConstruct`
+- `app/src/main/java/io/casehub/aml/engine/AmlInvestigationCaseDescriptor.java` — plain POJO (no CDI); carries 8 workers (6 as `FlowWorkerFunction`, 2 SAR-drafting workers as `WorkerFunction.Sync` for PlannedAction support per engine#564); FuncWorkflowBuilder per PP-20260531; testable without Quarkus; per protocol PP-20260518
 - `app/src/main/java/io/casehub/aml/engine/AmlEngineCoordinator.java` — starts engine case; writes `CASE_OPENED` ledger entry with engine-returned UUID; returns the UUID
 - `app/src/main/java/io/casehub/aml/engine/AmlLayer5Resource.java` — `POST /api/layer5/investigations`; returns `Layer5InvestigationResponse { UUID caseId, String status }`
 - `app/src/main/java/io/casehub/aml/engine/Layer5InvestigationResponse.java` — response record
@@ -1055,9 +1055,9 @@ Not closed here: trust-weighted agent selection (L6). Compliance evidence endpoi
 
 #### Key wiring
 
-**Worker functions are in `AmlInvestigationCaseDescriptor`.** The descriptor is a plain POJO (no CDI) carrying 7 worker functions. `AmlInvestigationCaseHub` creates the descriptor in `@PostConstruct` using its CDI-injected dependencies and calls `augmentedDefinition.getWorkers().addAll(descriptor.workers())`. The YAML `workers:` section is empty — YAML supplies bindings and capabilities; Java supplies the worker functions. `cap()` helper creates `Capability` objects with passthrough schemas because name-matching is all that is needed for binding dispatch.
+**Worker functions are in `AmlInvestigationCaseDescriptor`.** The descriptor is a plain POJO (no CDI) carrying 8 worker functions. `AmlInvestigationCaseHub` creates the descriptor in `@PostConstruct` using its CDI-injected dependencies and calls `augmentedDefinition.getWorkers().addAll(descriptor.workers())`. The YAML `workers:` section is empty — YAML supplies bindings and capabilities; Java supplies the worker functions. `cap()` helper creates `Capability` objects with passthrough schemas because name-matching is all that is needed for binding dispatch.
 
-All 7 workers use `FlowWorkerFunction` (`io.casehub.engine.flow`, FuncWorkflowBuilder per PP-20260531). SAR drafting workers migrated in aml#66 — engine#559 added `WorkerExecutionContext.set(context)` in `DefaultWorkerExecutor.executeFlow()`. `AmlOversightCaseHub`: 2 of 3 workers migrated to Flow in aml#67 (`entityResolutionWorker`, `investigationSummaryWorker`); `entityLinkProposalWorker` remains `WorkerFunction.Sync` pending PlannedAction support in FlowWorkerExecutor (engine#564). Worker primitives (`Worker`, `Capability`, `WorkerResult`, `PlannedAction`) moved to `io.casehub.worker.api` (engine#543/#567); `Worker` and `Capability` are now records.
+6 of 8 workers use `FlowWorkerFunction` (`io.casehub.engine.flow`, FuncWorkflowBuilder per PP-20260531). SAR drafting workers (`sar-drafting-agent-junior`, `sar-drafting-agent-senior`) use `WorkerFunction.Sync` for PlannedAction support (engine#564 — FlowWorkerExecutor does not yet support PlannedAction). Other workers migrated to Flow in aml#66 after engine#559 added `WorkerExecutionContext.set(context)` in `DefaultWorkerExecutor.executeFlow()`. `AmlOversightCaseHub`: 2 of 3 workers migrated to Flow in aml#67 (`entityResolutionWorker`, `investigationSummaryWorker`); `entityLinkProposalWorker` remains `WorkerFunction.Sync` pending PlannedAction support in FlowWorkerExecutor. Worker primitives (`Worker`, `Capability`, `WorkerResult`, `PlannedAction`) moved to `io.casehub.worker.api` (engine#543/#567); `Worker` and `Capability` are now records.
 
 **`casehub-engine-flow` added as compile dependency** — activates `FlowWorkerExecutor @ApplicationScoped` which displaces `NoOpWorkflowExecutor @DefaultBean`. Required for `FlowWorkerFunction` execution; `quarkus-flow` was already a transitive dependency.
 
@@ -1138,7 +1138,7 @@ quarkus.quartz.store-type=ram
 
 What this layer adds:
 - **Per-capability routing thresholds** — `AmlTrustRoutingPolicyProvider` supplies `TrustRoutingPolicy` per capability: `sar-drafting` threshold 0.75 with `investigation-accuracy` quality floor 0.65; `osint-screening` threshold 0.70; `senior-analyst-review` threshold 0.80
-- **Cold-start Beta seeding** — `AmlTrustScoreSeeder` seeds 7 workers at `@Priority(20) StartupEvent`; `sar-drafting-agent-senior` Beta(9,1) = 90% mean immediately outscores `sar-drafting-agent-junior` Beta(2,8) = 20% mean; idempotency-guarded
+- **Cold-start Beta seeding** — `AmlTrustScoreSeeder` seeds 8 workers at `@Priority(20) StartupEvent`; `sar-drafting-agent-senior` Beta(9,1) = 90% mean immediately outscores `sar-drafting-agent-junior` Beta(2,8) = 20% mean; idempotency-guarded
 - **SAR outcome feedback** — `POST /{caseId}/outcome` writes a `LedgerAttestation` on the `sar-drafting` `WorkerDecisionEntry`; `UPHELD → AttestationVerdict.SOUND`; `WITHDRAWN/FLAGGED → FLAGGED`; next `TrustScoreJob` cycle recomputes `investigation-accuracy`
 - **Routing decision visibility** — `GET /{caseId}` returns which worker was selected per capability and its current trust score from `TrustScoreCache`
 
@@ -1156,7 +1156,7 @@ Not closed here: externally verifiable evidence endpoint (L7). Trust score at ro
 - `api/src/main/java/io/casehub/aml/domain/SarVerdict.java` — enum: `UPHELD`, `WITHDRAWN`, `FLAGGED`
 - `api/src/main/java/io/casehub/aml/domain/SarOutcome.java` — record: `verdict`, `reason`, `investigationAccuracyScore`; compact constructor validates score in `[0.0, 1.0]`
 - `app/src/main/java/io/casehub/aml/routing/AmlTrustRoutingPolicyProvider.java` — `TrustRoutingPolicyProvider` SPI; per-capability `TrustRoutingPolicy` map with PreferenceProvider fallback
-- `app/src/main/java/io/casehub/aml/trust/AmlTrustScoreSeeder.java` — seeds 7 workers with Beta(α,β) at `@Observes @Priority(20) StartupEvent`; calls `trustScoreCache.hydrate()` after seeding
+- `app/src/main/java/io/casehub/aml/trust/AmlTrustScoreSeeder.java` — seeds 8 workers with Beta(α,β) at `@Observes @Priority(20) StartupEvent`; calls `trustScoreCache.hydrate()` after seeding
 - `app/src/main/java/io/casehub/aml/trust/SarOutcomeFeedbackService.java` — writes `LedgerAttestation` on the `sar-drafting` `WorkerDecisionEntry`; silently skips if no matching entry found
 - `app/src/main/java/io/casehub/aml/trust/AmlWorkerDecisionRepository.java` — JPQL queries on `WorkerDecisionEntry` via `@PersistenceContext(unitName = "qhorus")`
 - `app/src/main/java/io/casehub/aml/engine/AmlLayer6Resource.java` — `POST /api/layer6/investigations`, `GET /api/layer6/investigations/{caseId}`, `POST /api/layer6/investigations/{caseId}/outcome`
@@ -1459,9 +1459,9 @@ Per the Arc42Stories spec: only decisions not captured inline elsewhere. Layer-s
 
 | Item | Description | Layer | Tracked |
 |---|---|---|---|
-| Raw worker lambdas in `AmlInvestigationCaseDescriptor` (SAR workers) | ✅ Resolved — all 7 workers use `FlowWorkerFunction` (aml#46 + aml#66). `AmlOversightCaseHub`: 2/3 migrated (aml#67); `entityLinkProposalWorker` blocked on engine#564. Worker primitives migrated to `io.casehub.worker.api` (aml#70). | L5 | casehubio/aml#67 ✅ |
+| Raw worker lambdas in `AmlInvestigationCaseDescriptor` (SAR workers) | 6 of 8 workers use `FlowWorkerFunction`. SAR-drafting workers (junior + senior) use `WorkerFunction.Sync` for `PlannedAction(SAR_FILING)` support (engine#564 blocks Flow support). `AmlOversightCaseHub`: 2/3 migrated (aml#67); `entityLinkProposalWorker` also Sync per engine#564. Worker primitives migrated to `io.casehub.worker.api` (aml#70). | L5 | casehubio/aml#58, #67 ✅ |
 | No fluent Java DSL for `aml-investigation.yaml` | **Resolved** — `AmlInvestigationCaseDescriptor` POJO per PP-20260518; structural tests without Quarkus | L5 | casehubio/aml#45 ✅ |
-| SLA `GAP` on engine async path | `sar-drafting` worker does not write `COMPLIANCE_REVIEW_OPENED` ledger entry; SLA evidence builder has no WorkItem ID | L7 | Deferred |
+| SLA `GAP` on engine async path | ✅ Resolved — `ComplianceReviewLifecycle.openReview()` consolidated WorkItem creation + ledger write (aml#56); `compliance-review-opening` worker calls `openReview()` post-MLRO gate (aml#58) | L7 | casehubio/aml#56 ✅, #58 ✅ |
 | CDI ambiguity workarounds — `quarkus.arc.exclude-types` list growing | **Resolved** — #49: DefaultTestPrincipal/NoOpGroupMembershipProvider excluded, SarOutcomeRequest DTO; #63: QhorusInboundCurrentPrincipal excluded in test only | L5/L6 | casehubio/aml#49 ✅, #63 ✅ |
 | Trust score not captured in engine `WorkerDecisionEntry` | `WorkerDecisionEntry` records selected worker but not the trust score; `AmlTrustRoutingAttestation` is the workaround; tracked upstream | L6/L7 | casehubio/engine#403 |
 | No public WorkItem read API | Evidence SLA builder uses direct `EntityManager.find()` on default PU — internal; upstream gap | L7 | casehubio/work#241 |
@@ -1501,7 +1501,6 @@ Layer 9 oversight harness — `AmlOversightCaseHub` + `AmlOversightCoordinator` 
 
 **Known gaps / deferred:**
 
-- sar-drafting workers still call `openReview()` unconditionally — correct design separates drafting (PlannedAction) from compliance-review-opening (post-MLRO). aml#58.
 - casehub-work SNAPSHOT regression: `TenantScopedPrincipal @RequestScoped` causes null tenancyId on Vert.x threads → WorkerDecisionEntry save failures in Layer 5–8 tests. aml#59.
 
 ---
@@ -1519,12 +1518,12 @@ Layer 9 oversight harness — `AmlOversightCaseHub` + `AmlOversightCoordinator` 
 | `@DefaultBean` displacement | CDI pattern where `@ApplicationScoped` (no `@DefaultBean`) takes priority over `@ApplicationScoped @DefaultBean` baseline; used to layer implementations without deleting the previous one |
 | Accountability gap | A formal requirement — compliance, audit, or user-visible — not met before a given layer ships; documented in §9.4 so the reader knows what each layer still lacks |
 | ACM (Adaptive Case Management) | Coordination paradigm where goals are declared and the system finds the path from accumulated context; contrasts with workflow (fixed steps at design time) |
-| `AmlInvestigationCaseDescriptor` | Plain POJO (no CDI) carrying all 7 AML investigation worker lambdas; testable without Quarkus; per protocol PP-20260518 |
+| `AmlInvestigationCaseDescriptor` | Plain POJO (no CDI) carrying all 8 AML investigation worker lambdas; testable without Quarkus; per protocol PP-20260518 |
 | `AmlInvestigationCaseHub` | Thin `YamlCaseHub` CDI wrapper; creates `AmlInvestigationCaseDescriptor` in `@PostConstruct` and delegates `getDefinition()` to the augmented YAML-loaded definition |
 | `AmlInvestigationLedgerEntry` | JPA entity extending `LedgerEntry` via JOINED inheritance; `@DiscriminatorValue("AML_INVESTIGATION")`; two event types: CASE_OPENED and COMPLIANCE_REVIEW_OPENED |
 | `AmlTrustRoutingAttestation` | JPA entity extending `LedgerEntry`; captures `trustScoreAtRouting` and `thresholdApplied` immutably when a routing decision is made; written by `AmlTrustRoutingObserver` |
 | `AmlTrustRoutingPolicyProvider` | `TrustRoutingPolicyProvider` SPI implementation; supplies per-capability `TrustRoutingPolicy` records with trust threshold, minimum observations, borderline margin, blend factor, and quality floors |
-| `AmlTrustScoreSeeder` | Seeds 7 workers with Beta(α,β) initial trust scores at `@Priority(20) StartupEvent`; idempotency-guarded; calls `trustScoreCache.hydrate()` after seeding |
+| `AmlTrustScoreSeeder` | Seeds 8 workers with Beta(α,β) initial trust scores at `@Priority(20) StartupEvent`; idempotency-guarded; calls `trustScoreCache.hydrate()` after seeding |
 | `AuditChainRequirement` | Evidence record for `FINCEN-31CFR1020.320-AUDIT-CHAIN`; includes `chainVerified`, `treeRoot`, and Merkle inclusion proofs per ledger event |
 | Beta(α,β) | Beta distribution parameterization used for cold-start trust seeding; `α` = prior successes, `β` = prior failures; mean = `α/(α+β)` |
 | Binding | A condition + capability pair in a CasePlanModel; when condition is satisfied against current CaseContext, engine dispatches work to an agent with the specified capability |
@@ -1576,7 +1575,7 @@ Layer 9 oversight harness — `AmlOversightCaseHub` + `AmlOversightCoordinator` 
 - Specific commit hashes — navigable via `git log --grep="#N" --oneline` in each layer entry
 
 **Genuinely missing:**
-- Layer 6 Beta seed values per worker: LAYER-LOG.md has all 7 workers with exact Beta parameters; §9.4 L6 Key wiring paragraph mentions the senior/junior contrast but does not list all 7 seeds. Should be added.
+- Layer 6 Beta seed values per worker: LAYER-LOG.md has all 8 workers with exact Beta parameters; §9.4 L6 Key wiring paragraph mentions the senior/junior contrast but does not list all 8 seeds. Should be added.
 - Known gaps between sync and async investigation paths (documented in LAYER-LOG.md Layer 7 §Known gaps) are partially covered in §12 technical debt but the full structural explanation (why the engine path produces `GAP` for SLA) could be in §9.3 C5.
 
 ### 2. Navigability — easier or harder than LAYER-LOG.md + DESIGN.md?
@@ -1615,6 +1614,6 @@ Layer 9 oversight harness — `AmlOversightCaseHub` + `AmlOversightCoordinator` 
 
 **L5 — yes.** 8-step pattern covers YAML, lambda workers, startup ordering, and `WORKER_SCHEDULED` vs `WORKER_EXECUTION_COMPLETED` polling. Three gotchas are explicit.
 
-**L6 — yes, with one gap.** Pattern covers TrustBootstrapSource avoidance, idempotency guard, and Flyway re-numbering. The specific Beta seed values for all 7 workers are not in the Pattern — an LLM building trust routing in a new domain would need to choose appropriate seeds based on domain knowledge.
+**L6 — yes, with one gap.** Pattern covers TrustBootstrapSource avoidance, idempotency guard, and Flyway re-numbering. The specific Beta seed values for all 8 workers are not in the Pattern — an LLM building trust routing in a new domain would need to choose appropriate seeds based on domain knowledge.
 
 **L7 — yes, with the known async-path gap.** Pattern covers two-mapper requirement, `@ObservesAsync` over `@Observes`, `EntityManager.persist()` over `save()`, and `@Path` namespace. The SLA `GAP` on the engine async path is documented as a known gap in both §12 and the L7 Gotchas — an LLM is warned, not surprised.

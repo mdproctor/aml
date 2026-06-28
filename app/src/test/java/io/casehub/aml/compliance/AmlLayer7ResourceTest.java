@@ -2,7 +2,9 @@ package io.casehub.aml.compliance;
 
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.trust.AmlTrustAttestationRepository;
+import io.casehub.work.runtime.model.WorkItem;
 import io.casehub.work.runtime.service.WorkItemService;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import jakarta.inject.Inject;
@@ -43,6 +45,27 @@ class AmlLayer7ResourceTest {
     @PersistenceContext(unitName = "qhorus")
     EntityManager qhorusEm;
 
+    @PersistenceContext
+    EntityManager defaultEm;
+
+    private List<WorkItem> findGateWorkItems(final UUID caseId) {
+        return QuarkusTransaction.requiringNew().call(() ->
+            defaultEm.createQuery(
+                "SELECT w FROM WorkItem w WHERE w.callerRef LIKE :pattern",
+                WorkItem.class)
+                .setParameter("pattern", "case:" + caseId + "/gate:%")
+                .getResultList());
+    }
+
+    private void awaitAndApproveGate(final UUID caseId) {
+        Awaitility.await()
+                .atMost(15, TimeUnit.SECONDS)
+                .pollInterval(300, TimeUnit.MILLISECONDS)
+                .until(() -> !findGateWorkItems(caseId).isEmpty());
+        final WorkItem gate = findGateWorkItems(caseId).get(0);
+        workItemService.completeFromSystem(gate.id, "test-mlro", "approved");
+    }
+
     @Test
     void getComplianceEvidence_afterInvestigation_returnsAllRequirements() {
         // Use Layer 5 endpoint — same engine path as Layer 6, proven stable in isolation.
@@ -56,11 +79,13 @@ class AmlLayer7ResourceTest {
             .then().statusCode(200)
             .extract().path("caseId");
 
-        // Wait for workers to complete by polling the trust attestation repository directly.
-        // Avoids HTTP polling of the compliance evidence endpoint during active engine writes
-        // (concurrent Merkle frontier writes in H2 can leave the ledger EntityManager connection
-        // in a poisoned state, causing spurious 500s on the compliance endpoint mid-investigation).
+        // Gate must be approved BEFORE waiting for sar-drafting attestation: the sar-drafting
+        // worker returns PlannedAction(SAR_FILING), blocking at the oversight gate.
+        // WorkerDecisionEvent (which triggers the attestation write) fires on worker
+        // completion, which requires gate approval first.
         UUID caseUUID = UUID.fromString(caseId);
+        awaitAndApproveGate(caseUUID);
+
         Awaitility.await()
             .atMost(30, TimeUnit.SECONDS)
             .pollInterval(500, TimeUnit.MILLISECONDS)
@@ -68,8 +93,6 @@ class AmlLayer7ResourceTest {
                 .anyMatch(a -> "sar-drafting".equals(a.capabilityTag)));
 
         // Full drain: wait for Layer6 "completed" status to ensure ALL Quartz jobs finish.
-        // Without this, sar-drafting Quartz job writes to ledger after the test returns,
-        // causing Merkle frontier constraint violations that corrupt subsequent tests.
         Awaitility.await()
             .atMost(20, TimeUnit.SECONDS)
             .pollInterval(200, TimeUnit.MILLISECONDS)
@@ -119,7 +142,9 @@ class AmlLayer7ResourceTest {
 
         UUID caseUUID = UUID.fromString(caseId);
 
-        // Wait for sar-drafting attestation to appear
+        // Gate approval must precede sar-drafting attestation wait (same pattern as test 1).
+        awaitAndApproveGate(caseUUID);
+
         Awaitility.await().atMost(30, TimeUnit.SECONDS).pollInterval(500, TimeUnit.MILLISECONDS)
             .until(() -> attestationRepo.findByInvestigationCaseId(caseUUID).stream()
                 .anyMatch(a -> "sar-drafting".equals(a.capabilityTag)));
@@ -192,9 +217,12 @@ class AmlLayer7ResourceTest {
 
         UUID caseUUID = UUID.fromString(caseId);
 
+        awaitAndApproveGate(caseUUID);
+
         Awaitility.await().atMost(30, TimeUnit.SECONDS).pollInterval(500, TimeUnit.MILLISECONDS)
             .until(() -> attestationRepo.findByInvestigationCaseId(caseUUID).stream()
                 .anyMatch(a -> "sar-drafting".equals(a.capabilityTag)));
+
         Awaitility.await().atMost(20, TimeUnit.SECONDS).pollInterval(200, TimeUnit.MILLISECONDS)
             .until(() -> "completed".equals(
                 given().when().get("/api/layer6/investigations/" + caseId)

@@ -61,4 +61,13 @@ class AmlTrustScoreSeederTest {
         final var scoreAfter = trustRepo.findCapabilityScore("sar-drafting-agent-senior", "sar-drafting");
         assertEquals(scoreBefore.get().trustScore, scoreAfter.get().trustScore, 0.0001);
     }
+
+    @Test
+    void compliance_review_opening_seeded_with_high_trust() {
+        final var score = trustRepo.findCapabilityScore(
+                "compliance-review-opening-agent", "compliance-review-opening");
+        assertTrue(score.isPresent(),
+                "CAPABILITY score must exist for compliance-review-opening-agent");
+        assertEquals(0.90, score.get().trustScore, 0.01);
+    }
 }

@@ -1,12 +1,17 @@
 package io.casehub.aml.engine;
 
+import io.casehub.aml.domain.AmlGroups;
 import io.casehub.aml.domain.SarOutcome;
 import io.casehub.aml.domain.SarVerdict;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.work.runtime.model.WorkItem;
+import io.casehub.work.runtime.service.WorkItemService;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
+import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.awaitility.Awaitility;
@@ -42,6 +47,12 @@ class AmlLayer6InvestigationTest {
     @PersistenceContext(unitName = "qhorus")
     EntityManager em;
 
+    @PersistenceContext
+    EntityManager defaultEm;
+
+    @Inject
+    WorkItemService workItemService;
+
     @Test
     void full_trust_routing_flow_corporate_case() {
         final SuspiciousTransaction tx = new SuspiciousTransaction(
@@ -59,7 +70,10 @@ class AmlLayer6InvestigationTest {
 
         final UUID caseId = UUID.fromString(caseIdStr);
 
-        // Step 2: Poll until completed (engine runs async on Quartz)
+        // Step 2: Await and approve MLRO gate
+        awaitAndApproveGate(caseId);
+
+        // Step 3: Poll until completed (engine runs async on Quartz)
         Awaitility.await()
                 .atMost(30, TimeUnit.SECONDS)
                 .pollInterval(500, TimeUnit.MILLISECONDS)
@@ -67,7 +81,7 @@ class AmlLayer6InvestigationTest {
                         given().when().get("/api/layer6/investigations/" + caseIdStr)
                                 .then().extract().path("status")));
 
-        // Step 3: Verify senior sar-drafting agent was selected
+        // Step 4: Verify senior sar-drafting agent was selected
         final io.restassured.response.Response getResponse =
                 given().when().get("/api/layer6/investigations/" + caseIdStr)
                         .then().extract().response();
@@ -83,13 +97,13 @@ class AmlLayer6InvestigationTest {
                 "Senior agent must be selected (trust 0.90 > threshold 0.75)");
         assertNotNull(sarDecision.get().get("trustScore"), "Trust score must be in response");
 
-        // Step 4: Record SAR outcome (positive)
+        // Step 5: Record SAR outcome (positive)
         given().contentType(ContentType.JSON)
                 .body(new SarOutcome(SarVerdict.UPHELD, "SAR upheld by FinCEN unit", 0.94))
                 .when().post("/api/layer6/investigations/" + caseIdStr + "/outcome")
                 .then().statusCode(204);
 
-        // Step 5: Verify LedgerAttestation persisted with SOUND verdict
+        // Step 6: Verify LedgerAttestation persisted with SOUND verdict
         final List<LedgerAttestation> attestations = em.createQuery(
                 "SELECT a FROM LedgerAttestation a WHERE a.subjectId = :sid",
                 LedgerAttestation.class)
@@ -100,5 +114,26 @@ class AmlLayer6InvestigationTest {
         assertEquals("sar-drafting", attestations.get(0).capabilityTag);
         assertEquals("investigation-accuracy", attestations.get(0).trustDimension);
         assertEquals(0.94, attestations.get(0).dimensionScore, 0.001);
+    }
+
+    private List<WorkItem> findGateWorkItems(final UUID caseId) {
+        return QuarkusTransaction.requiringNew().call(() ->
+            defaultEm.createQuery(
+                "SELECT w FROM WorkItem w WHERE w.callerRef LIKE :pattern",
+                WorkItem.class)
+                .setParameter("pattern", "case:" + caseId + "/gate:%")
+                .getResultList());
+    }
+
+    private void awaitAndApproveGate(final UUID caseId) {
+        Awaitility.await()
+                .atMost(15, TimeUnit.SECONDS)
+                .pollInterval(300, TimeUnit.MILLISECONDS)
+                .until(() -> !findGateWorkItems(caseId).isEmpty());
+        final List<WorkItem> gateItems = findGateWorkItems(caseId);
+        assertEquals(1, gateItems.size(), "Exactly one SAR_FILING gate WorkItem");
+        assertEquals(AmlGroups.MLRO, gateItems.get(0).candidateGroups,
+                "candidateGroups must be aml-mlro (SAR_FILING type)");
+        workItemService.completeFromSystem(gateItems.get(0).id, "test-mlro", "approved");
     }
 }

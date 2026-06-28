@@ -28,26 +28,26 @@ class AmlInvestigationCaseHubTest {
     }
 
     @Test
-    void hasFiveCapabilities() {
+    void hasSixCapabilities() {
         final var names = caseHub.getDefinition().getCapabilities()
                 .stream().map(c -> c.name()).toList();
-        assertEquals(5, names.size());
+        assertEquals(6, names.size());
         assertTrue(names.containsAll(List.of(
                 "entity-resolution", "pattern-analysis", "osint-screening",
-                "senior-analyst-review", "sar-drafting")));
+                "senior-analyst-review", "sar-drafting", "compliance-review-opening")));
     }
 
     @Test
-    void hasSixBindings() {
+    void hasSevenBindings() {
         // senior-analyst-required split into two bindings (prior-context + resolution)
         // to prevent double-dispatch race in async Quartz execution
         final var names = caseHub.getDefinition().getBindings()
                 .stream().map(b -> b.getName()).toList();
-        assertEquals(6, names.size());
+        assertEquals(7, names.size());
         assertTrue(names.containsAll(List.of(
                 "entity-resolution", "pattern-analysis", "osint-screening",
                 "senior-analyst-required-prior-context", "senior-analyst-required-resolution",
-                "sar-drafting")));
+                "sar-drafting", "compliance-review-opening")));
     }
 
     @Test
@@ -61,14 +61,15 @@ class AmlInvestigationCaseHubTest {
     }
 
     @Test
-    void hasSevenWorkers() {
+    void hasEightWorkers() {
         final var workers = caseHub.getDefinition().getWorkers();
-        assertEquals(7, workers.size(), "Exactly 7 workers expected — size catches double-augmentation");
+        assertEquals(8, workers.size(), "Exactly 8 workers expected — size catches double-augmentation");
         final var names = Set.copyOf(workers.stream().map(w -> w.name()).toList());
         assertEquals(Set.of(
                 "entity-resolution-agent", "pattern-analysis-agent",
                 "osint-screening-agent", "osint-screening-agent-senior",
                 "senior-analyst-agent",
-                "sar-drafting-agent-junior", "sar-drafting-agent-senior"), names);
+                "sar-drafting-agent-junior", "sar-drafting-agent-senior",
+                "compliance-review-opening-agent"), names);
     }
 }

@@ -2,10 +2,15 @@ package io.casehub.aml.trust;
 
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.engine.AmlEngineCoordinator;
+import io.casehub.work.runtime.model.WorkItem;
+import io.casehub.work.runtime.service.WorkItemService;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -24,10 +29,35 @@ import static org.junit.jupiter.api.Assertions.*;
  * interference with persisted attestation entries.
  */
 @QuarkusTest
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class AmlTrustRoutingAttestationTest {
 
     @Inject AmlEngineCoordinator coordinator;
     @Inject AmlTrustAttestationRepository attestationRepo;
+
+    @PersistenceContext
+    EntityManager defaultEm;
+
+    @Inject
+    WorkItemService workItemService;
+
+    private List<WorkItem> findGateWorkItems(final UUID caseId) {
+        return QuarkusTransaction.requiringNew().call(() ->
+            defaultEm.createQuery(
+                "SELECT w FROM WorkItem w WHERE w.callerRef LIKE :pattern",
+                WorkItem.class)
+                .setParameter("pattern", "case:" + caseId + "/gate:%")
+                .getResultList());
+    }
+
+    private void awaitAndApproveGate(final UUID caseId) {
+        Awaitility.await()
+                .atMost(15, TimeUnit.SECONDS)
+                .pollInterval(300, TimeUnit.MILLISECONDS)
+                .until(() -> !findGateWorkItems(caseId).isEmpty());
+        final WorkItem gate = findGateWorkItems(caseId).get(0);
+        workItemService.completeFromSystem(gate.id, "test-mlro", "approved");
+    }
 
     private void drain(final UUID caseId) {
         Awaitility.await().atMost(Duration.ofSeconds(20)).pollInterval(Duration.ofMillis(100))
@@ -37,6 +67,7 @@ class AmlTrustRoutingAttestationTest {
     }
 
     @Test
+    @Order(1)
     void workerDispatch_writesAttestationPerCapability() {
         UUID caseId = coordinator.startInvestigation(pep("TXN-ATT-001-" + UUID.randomUUID()));
 
@@ -55,12 +86,20 @@ class AmlTrustRoutingAttestationTest {
             assertNotNull(a.selectedWorkerId, "selectedWorkerId must be set");
             assertTrue(a.thresholdApplied > 0.0, "thresholdApplied must be positive");
         }
+        awaitAndApproveGate(caseId);
         drain(caseId);
     }
 
     @Test
+    @Order(2)
     void workerDispatch_sarDraftingAttestation_hasNonNullScore_whenCacheSeeded() {
         UUID caseId = coordinator.startInvestigation(pep("TXN-ATT-002-" + UUID.randomUUID()));
+
+        // Gate must be approved BEFORE checking sar-drafting attestation: the sar-drafting
+        // worker returns PlannedAction(SAR_FILING), blocking at the oversight gate.
+        // WorkerDecisionEvent (which triggers the attestation write) fires on worker
+        // completion, which requires gate approval first.
+        awaitAndApproveGate(caseId);
 
         Awaitility.await().atMost(15, TimeUnit.SECONDS).until(() ->
             attestationRepo.findByInvestigationCaseId(caseId).stream()

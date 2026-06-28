@@ -2,6 +2,7 @@ package io.casehub.aml.engine;
 
 import io.casehub.engine.flow.FlowWorkerFunction;
 import io.casehub.worker.api.Worker;
+import io.casehub.worker.api.WorkerFunction;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -20,11 +21,11 @@ class AmlInvestigationCaseDescriptorTest {
             new AmlInvestigationCaseDescriptor(null, null);
 
     @Test
-    void workers_returnsSevenDistinctWorkers() {
+    void workers_returnsEightDistinctWorkers() {
         final List<Worker> workers = descriptor.workers();
-        assertEquals(7, workers.size(), "Descriptor must declare exactly 7 workers");
+        assertEquals(8, workers.size(), "Descriptor must declare exactly 8 workers");
         final Set<String> names = workers.stream().map(Worker::name).collect(Collectors.toSet());
-        assertEquals(7, names.size(), "All worker names must be distinct");
+        assertEquals(8, names.size(), "All worker names must be distinct");
         assertEquals(Set.of(
                 "entity-resolution-agent",
                 "pattern-analysis-agent",
@@ -32,7 +33,8 @@ class AmlInvestigationCaseDescriptorTest {
                 "osint-screening-agent-senior",
                 "senior-analyst-agent",
                 "sar-drafting-agent-junior",
-                "sar-drafting-agent-senior"), names);
+                "sar-drafting-agent-senior",
+                "compliance-review-opening-agent"), names);
     }
 
     @Test
@@ -57,6 +59,7 @@ class AmlInvestigationCaseDescriptorTest {
         assertEquals("senior-analyst-review", capByWorker.get("senior-analyst-agent"));
         assertEquals("sar-drafting",        capByWorker.get("sar-drafting-agent-junior"));
         assertEquals("sar-drafting",        capByWorker.get("sar-drafting-agent-senior"));
+        assertEquals("compliance-review-opening", capByWorker.get("compliance-review-opening-agent"));
     }
 
     @Test
@@ -69,23 +72,27 @@ class AmlInvestigationCaseDescriptorTest {
 
     @Test
     void worker_execution_model_classification_is_exhaustive() {
-        // All workers use WorkerFunction.Flow (FuncWorkflowBuilder) per PP-20260531-worker-func-exec.
-        // Any new worker must be explicitly classified here — this prevents silent omissions.
-        final Set<String> allWorkers = Set.of(
+        final Set<String> FLOW_WORKERS = Set.of(
                 "entity-resolution-agent",
                 "pattern-analysis-agent",
                 "osint-screening-agent",
                 "osint-screening-agent-senior",
                 "senior-analyst-agent",
+                "compliance-review-opening-agent");
+
+        final Set<String> SYNC_WORKERS = Set.of(
                 "sar-drafting-agent-junior",
                 "sar-drafting-agent-senior");
 
         for (final Worker w : descriptor.workers()) {
-            if (allWorkers.contains(w.name())) {
+            if (FLOW_WORKERS.contains(w.name())) {
                 assertInstanceOf(FlowWorkerFunction.class, w.function(),
-                        "Worker " + w.name() + " must use FlowWorkerFunction (FuncWorkflowBuilder).");
+                        "Worker " + w.name() + " must use FlowWorkerFunction.");
+            } else if (SYNC_WORKERS.contains(w.name())) {
+                assertInstanceOf(WorkerFunction.Sync.class, w.function(),
+                        "Worker " + w.name() + " must use WorkerFunction.Sync (PlannedAction support).");
             } else {
-                fail("Worker " + w.name() + " is unclassified — add it to allWorkers in this test.");
+                fail("Worker " + w.name() + " is unclassified — add it to FLOW_WORKERS or SYNC_WORKERS.");
             }
         }
     }
