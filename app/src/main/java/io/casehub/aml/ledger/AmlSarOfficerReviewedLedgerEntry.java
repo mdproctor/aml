@@ -26,8 +26,18 @@ public class AmlSarOfficerReviewedLedgerEntry extends LedgerEntry {
     @Column(name = "review_decision", nullable = false, length = 20)
     public String reviewDecision;
 
+    /** Free-text reason when decision is REJECTED. Nullable — approved SARs have no rejection reason. */
+    @Column(name = "rejection_reason", length = 1000)
+    public String rejectionReason;
+
     @Override
     protected byte[] domainContentBytes() {
-        return (reviewDecision != null ? reviewDecision : "").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        if (rejectionReason == null) {
+            return (reviewDecision != null ? reviewDecision : "")
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+        return String.join("|",
+                reviewDecision != null ? reviewDecision : "",
+                rejectionReason).getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 }

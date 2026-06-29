@@ -36,8 +36,8 @@ class AmlWorkItemLifecycleObserverTest {
                 "compliance-officer-001"));
 
         verify(ledgerService).writeSarOfficerReviewed(eq(caseId), eq("compliance-officer-001"),
-                eq("APPROVED"));
-        verify(ledgerService, never()).writeSarOfficerReviewedFailure(any(), any(), any());
+                eq("APPROVED"), eq(null));
+        verify(ledgerService, never()).writeSarOfficerReviewedFailure(any(), any(), any(), any());
     }
 
     @Test
@@ -46,7 +46,7 @@ class AmlWorkItemLifecycleObserverTest {
                 "compliance-officer-001"));
 
         verify(ledgerService).writeSarOfficerReviewed(eq(caseId), eq("compliance-officer-001"),
-                eq("REJECTED"));
+                eq("REJECTED"), eq(null));
     }
 
     @Test
@@ -54,8 +54,8 @@ class AmlWorkItemLifecycleObserverTest {
         observer.onWorkItemLifecycle(event(WorkItemStatus.IN_PROGRESS, "aml:investigation:" + caseId,
                 "officer"));
 
-        verify(ledgerService, never()).writeSarOfficerReviewed(any(), any(), any());
-        verify(ledgerService, never()).writeSarOfficerReviewedFailure(any(), any(), any());
+        verify(ledgerService, never()).writeSarOfficerReviewed(any(), any(), any(), any());
+        verify(ledgerService, never()).writeSarOfficerReviewedFailure(any(), any(), any(), any());
     }
 
     @Test
@@ -71,7 +71,7 @@ class AmlWorkItemLifecycleObserverTest {
                 null, null, null, null);
         observer.onWorkItemLifecycle(event);
 
-        verify(ledgerService, never()).writeSarOfficerReviewed(any(), any(), any());
+        verify(ledgerService, never()).writeSarOfficerReviewed(any(), any(), any(), any());
     }
 
     @Test
@@ -79,7 +79,7 @@ class AmlWorkItemLifecycleObserverTest {
         observer.onWorkItemLifecycle(event(WorkItemStatus.COMPLETED,
                 "aml:investigation/TXN-001", "officer"));
 
-        verify(ledgerService, never()).writeSarOfficerReviewed(any(), any(), any());
+        verify(ledgerService, never()).writeSarOfficerReviewed(any(), any(), any(), any());
     }
 
     @Test
@@ -87,7 +87,7 @@ class AmlWorkItemLifecycleObserverTest {
         observer.onWorkItemLifecycle(event(WorkItemStatus.COMPLETED,
                 "devtown:pr-review:" + UUID.randomUUID(), "actor"));
 
-        verify(ledgerService, never()).writeSarOfficerReviewed(any(), any(), any());
+        verify(ledgerService, never()).writeSarOfficerReviewed(any(), any(), any(), any());
     }
 
     @Test
@@ -95,7 +95,7 @@ class AmlWorkItemLifecycleObserverTest {
         observer.onWorkItemLifecycle(event(WorkItemStatus.COMPLETED,
                 "aml:investigation:not-a-uuid", "officer"));
 
-        verify(ledgerService, never()).writeSarOfficerReviewed(any(), any(), any());
+        verify(ledgerService, never()).writeSarOfficerReviewed(any(), any(), any(), any());
     }
 
     @Test
@@ -104,27 +104,43 @@ class AmlWorkItemLifecycleObserverTest {
                 "aml:investigation:" + caseId, null));
 
         verify(ledgerService).writeSarOfficerReviewed(eq(caseId), eq("unknown-officer"),
-                eq("APPROVED"));
+                eq("APPROVED"), eq(null));
     }
 
     @Test
     void ledgerWriteFails_writesFailureEntry() {
         doThrow(new RuntimeException("DB error"))
-            .when(ledgerService).writeSarOfficerReviewed(any(), any(), any());
+            .when(ledgerService).writeSarOfficerReviewed(any(), any(), any(), any());
 
         observer.onWorkItemLifecycle(event(WorkItemStatus.COMPLETED,
                 "aml:investigation:" + caseId, "officer-X"));
 
-        verify(ledgerService).writeSarOfficerReviewedFailure(eq(caseId), eq("officer-X"), eq("APPROVED"));
+        verify(ledgerService).writeSarOfficerReviewedFailure(eq(caseId), eq("officer-X"), eq("APPROVED"), eq(null));
+    }
+
+    @Test
+    void rejected_captures_rejection_reason_from_event_detail() {
+        observer.onWorkItemLifecycle(event(WorkItemStatus.REJECTED,
+                "aml:investigation:" + caseId, "compliance-officer-001",
+                "Insufficient evidence for SAR filing"));
+
+        verify(ledgerService).writeSarOfficerReviewed(eq(caseId),
+                eq("compliance-officer-001"), eq("REJECTED"),
+                eq("Insufficient evidence for SAR filing"));
     }
 
     // -- Helpers --
 
     private WorkItemLifecycleEvent event(WorkItemStatus status, String callerRef, String actor) {
+        return event(status, callerRef, actor, null);
+    }
+
+    private WorkItemLifecycleEvent event(WorkItemStatus status, String callerRef,
+            String actor, String detail) {
         WorkItem wi = new WorkItem();
         wi.id = UUID.randomUUID();
         wi.status = status;
         wi.callerRef = callerRef;
-        return WorkItemLifecycleEvent.of(status.name(), wi, actor, null);
+        return WorkItemLifecycleEvent.of(status.name(), wi, actor, detail);
     }
 }

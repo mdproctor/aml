@@ -72,17 +72,19 @@ public class AmlWorkItemLifecycleObserver {
         final String officerId = event.actor() != null ? event.actor() : "unknown-officer";
         final String reviewDecision = event.status() == WorkItemStatus.COMPLETED
                 ? "APPROVED" : "REJECTED";
+        final String rejectionReason = event.status() == WorkItemStatus.REJECTED
+                ? event.detail() : null;
 
         boolean written = false;
         try {
-            ledgerService.writeSarOfficerReviewed(caseId, officerId, reviewDecision);
+            ledgerService.writeSarOfficerReviewed(caseId, officerId, reviewDecision, rejectionReason);
             written = true;
         } catch (Exception e) {
             LOG.warnf(e, "Failed to write SAR_OFFICER_REVIEWED for caseId=%s officer=%s",
                     caseId, officerId);
             if (!written) {
                 try {
-                    ledgerService.writeSarOfficerReviewedFailure(caseId, officerId, reviewDecision);
+                    ledgerService.writeSarOfficerReviewedFailure(caseId, officerId, reviewDecision, rejectionReason);
                 } catch (Exception inner) {
                     LOG.errorf(inner,
                             "AUDIT GAP: SAR_OFFICER_REVIEWED failure entry also failed caseId=%s",

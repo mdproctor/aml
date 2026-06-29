@@ -63,7 +63,7 @@ public class AmlInvestigationOutcomeService {
                 .filter(AmlSarOfficerReviewedLedgerEntry.class::isInstance)
                 .map(AmlSarOfficerReviewedLedgerEntry.class::cast)
                 .min(HUMAN_FIRST_LATEST_SEQ)
-                .map(e -> InvestigationOutcome.fromReviewDecision(e.reviewDecision, null))
+                .map(e -> InvestigationOutcome.fromReviewDecision(e.reviewDecision, e.rejectionReason))
                 .orElse(null);
     }
 }

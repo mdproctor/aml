@@ -102,7 +102,7 @@ public class AmlLedgerService {
      */
     @Transactional(TxType.REQUIRED)
     public void writeSarOfficerReviewed(final UUID caseId, final String officerId,
-            final String reviewDecision) {
+            final String reviewDecision, final String rejectionReason) {
         final UUID causedBy = repository.findBySubjectId(caseId, TenancyConstants.DEFAULT_TENANT_ID).stream()
                 .filter(AmlComplianceReviewLedgerEntry.class::isInstance)
                 .map(e -> e.id)
@@ -120,6 +120,7 @@ public class AmlLedgerService {
         entry.occurredAt = Instant.now();
         entry.causedByEntryId = causedBy;
         entry.reviewDecision = reviewDecision;
+        entry.rejectionReason = rejectionReason;
         repository.save(entry, TenancyConstants.DEFAULT_TENANT_ID);
     }
 
@@ -131,7 +132,7 @@ public class AmlLedgerService {
      */
     @Transactional(TxType.REQUIRES_NEW)
     public void writeSarOfficerReviewedFailure(final UUID caseId, final String officerId,
-            final String reviewDecision) {
+            final String reviewDecision, final String rejectionReason) {
         final int sequenceNumber = nextSequenceNumber(caseId);
         final AmlSarOfficerReviewedLedgerEntry entry = new AmlSarOfficerReviewedLedgerEntry();
         entry.id = UUID.randomUUID();
@@ -143,6 +144,7 @@ public class AmlLedgerService {
         entry.actorRole = "ComplianceOfficer-observer-failed";
         entry.occurredAt = Instant.now();
         entry.reviewDecision = reviewDecision;
+        entry.rejectionReason = rejectionReason;
         repository.save(entry, TenancyConstants.DEFAULT_TENANT_ID);
     }
 
@@ -160,8 +162,8 @@ public class AmlLedgerService {
         return new AmlLedgerService() {
             @Override public UUID writeCaseOpened(SuspiciousTransaction tx, UUID caseId) { return UUID.randomUUID(); }
             @Override public void writeComplianceReviewOpened(UUID caseId, String taskId) {}
-            @Override public void writeSarOfficerReviewed(UUID caseId, String officerId, String decision) {}
-            @Override public void writeSarOfficerReviewedFailure(UUID caseId, String officerId, String reviewDecision) {}
+            @Override public void writeSarOfficerReviewed(UUID caseId, String officerId, String decision, String rejectionReason) {}
+            @Override public void writeSarOfficerReviewedFailure(UUID caseId, String officerId, String reviewDecision, String rejectionReason) {}
         };
     }
 
@@ -170,8 +172,8 @@ public class AmlLedgerService {
         return new AmlLedgerService() {
             @Override public UUID writeCaseOpened(SuspiciousTransaction tx, UUID caseId) { return entryId; }
             @Override public void writeComplianceReviewOpened(UUID caseId, String taskId) {}
-            @Override public void writeSarOfficerReviewed(UUID caseId, String officerId, String decision) {}
-            @Override public void writeSarOfficerReviewedFailure(UUID caseId, String officerId, String reviewDecision) {}
+            @Override public void writeSarOfficerReviewed(UUID caseId, String officerId, String decision, String rejectionReason) {}
+            @Override public void writeSarOfficerReviewedFailure(UUID caseId, String officerId, String reviewDecision, String rejectionReason) {}
         };
     }
 }
