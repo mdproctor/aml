@@ -2,7 +2,7 @@ package io.casehub.aml.compliance;
 
 import java.util.UUID;
 
-public record AmlErasureResult(
+public record ActorErasureResult(
         String erasedActorId,
         boolean mappingFound,
         long affectedEntryCount,

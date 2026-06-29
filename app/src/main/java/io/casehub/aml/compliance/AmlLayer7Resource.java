@@ -48,7 +48,27 @@ class AmlGdprErasureResource {
     AmlErasureService erasureService;
 
     @POST
-    public AmlErasureResult eraseActor(@PathParam("actorId") String actorId) {
+    public ActorErasureResult eraseActor(@PathParam("actorId") String actorId) {
         return erasureService.erase(actorId, ErasureReason.GDPR_ART_17_REQUEST);
+    }
+}
+
+/**
+ * Layer 7: Entity memory erasure endpoint.
+ *
+ * <p>POST /api/entities/{entityId}/erasure — erases all CaseMemoryStore records
+ * for an entity, writes audit ledger entry with receipt.
+ */
+@ApplicationScoped
+@Path("/api/entities/{entityId}/erasure")
+@Produces(MediaType.APPLICATION_JSON)
+class AmlEntityErasureResource {
+
+    @Inject
+    AmlErasureService erasureService;
+
+    @POST
+    public EntityErasureResult eraseEntity(@PathParam("entityId") String entityId) {
+        return erasureService.eraseEntity(entityId, ErasureReason.GDPR_ART_17_REQUEST);
     }
 }

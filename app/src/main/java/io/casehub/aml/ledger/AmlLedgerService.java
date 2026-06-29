@@ -11,6 +11,7 @@ import jakarta.transaction.Transactional.TxType;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.TenancyConstants;
+import io.casehub.ledger.api.model.ErasureReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 
@@ -148,6 +149,36 @@ public class AmlLedgerService {
         repository.save(entry, TenancyConstants.DEFAULT_TENANT_ID);
     }
 
+    /**
+     * Write an ENTITY_ERASURE entry when an entity is erased per GDPR Art.17 request.
+     *
+     * <p>The {@code entityId} parameter identifies the erased entity (e.g., a suspicious transaction ID,
+     * account ID, or beneficial owner ID). The subjectId is derived as a UUID namespace from the entityId
+     * to ensure all erasure events for the same entity are grouped under the same subject chain.
+     *
+     * <p>Returns the entry UUID for independent verification by the caller.
+     */
+    public UUID writeEntityErasure(final String entityId, final ErasureReason reason,
+            final int memoriesErased, final String actorId, final ActorType actorType) {
+        final UUID subjectId = UUID.nameUUIDFromBytes(
+                ("aml-entity-erasure:" + entityId).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        final int sequenceNumber = nextSequenceNumber(subjectId);
+        final AmlEntityErasureLedgerEntry entry = new AmlEntityErasureLedgerEntry();
+        entry.id = UUID.randomUUID();
+        entry.subjectId = subjectId;
+        entry.sequenceNumber = sequenceNumber;
+        entry.entryType = LedgerEntryType.EVENT;
+        entry.actorId = actorId;
+        entry.actorType = actorType;
+        entry.actorRole = "GdprComplianceOfficer";
+        entry.occurredAt = Instant.now();
+        entry.erasedEntityId = entityId;
+        entry.erasureReason = reason;
+        entry.memoriesErased = memoriesErased;
+        repository.save(entry, TenancyConstants.DEFAULT_TENANT_ID);
+        return entry.id;
+    }
+
     // NOTE: sequential, not concurrent-safe. Safe for Layer 4 where writes per caseId
     // are sequential. Layer 5+ parallel specialist ledger entries would need a DB-level
     // sequence or unique constraint on (subjectId, sequenceNumber).
@@ -164,6 +195,8 @@ public class AmlLedgerService {
             @Override public void writeComplianceReviewOpened(UUID caseId, String taskId) {}
             @Override public void writeSarOfficerReviewed(UUID caseId, String officerId, String decision, String rejectionReason) {}
             @Override public void writeSarOfficerReviewedFailure(UUID caseId, String officerId, String reviewDecision, String rejectionReason) {}
+            @Override public UUID writeEntityErasure(String entityId, ErasureReason reason,
+                    int memoriesErased, String actorId, ActorType actorType) { return UUID.randomUUID(); }
         };
     }
 
@@ -174,6 +207,8 @@ public class AmlLedgerService {
             @Override public void writeComplianceReviewOpened(UUID caseId, String taskId) {}
             @Override public void writeSarOfficerReviewed(UUID caseId, String officerId, String decision, String rejectionReason) {}
             @Override public void writeSarOfficerReviewedFailure(UUID caseId, String officerId, String reviewDecision, String rejectionReason) {}
+            @Override public UUID writeEntityErasure(String entityId, ErasureReason reason,
+                    int memoriesErased, String actorId, ActorType actorType) { return entryId; }
         };
     }
 }
