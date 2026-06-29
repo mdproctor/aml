@@ -49,6 +49,7 @@ public class AmlLayer9Resource {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
         final InvestigationResolution r = resolution.get();
-        return Response.ok(new Layer9InvestigationResponse(caseId, r.status(), r.outcome())).build();
+        return Response.ok(new Layer9InvestigationResponse(
+                caseId, r.status(), r.outcome(), r.failureContext())).build();
     }
 }

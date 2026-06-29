@@ -68,7 +68,7 @@ public class AmlLayer6Resource {
         final InvestigationResolution r = resolution.get();
         if (r.status() != InvestigationStatus.COMPLETED) {
             return Response.ok(new Layer6InvestigationResponse(
-                    caseId, r.status(), List.of(), null)).build();
+                    caseId, r.status(), List.of(), null, r.failureContext())).build();
         }
         final List<WorkerDecisionEntry> entries = workerDecisionRepo.findAllByCaseId(caseId);
         final List<WorkerRoutingDecision> decisions = entries.stream()
@@ -81,7 +81,7 @@ public class AmlLayer6Resource {
                 })
                 .toList();
         return Response.ok(new Layer6InvestigationResponse(
-                caseId, r.status(), decisions, r.outcome())).build();
+                caseId, r.status(), decisions, r.outcome(), null)).build();
     }
 
     @POST

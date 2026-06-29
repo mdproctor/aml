@@ -47,7 +47,7 @@ public class AmlWorkItemLifecycleObserver {
         }
 
         // Guard 2: workItem snapshot must be present (null in cross-cluster wire events)
-        final WorkItem workItem = (WorkItem) event.source();
+        final WorkItem workItem = event.workItem();
         if (workItem == null) {
             LOG.warnf("WorkItemLifecycleEvent has no WorkItem snapshot — cannot write SAR_OFFICER_REVIEWED");
             return;
