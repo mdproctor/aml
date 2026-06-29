@@ -1,17 +1,12 @@
 package io.casehub.aml.engine;
 
-import io.casehub.aml.compliance.AmlInvestigationOutcomeService;
-import io.casehub.aml.domain.InvestigationOutcome;
+import io.casehub.aml.domain.InvestigationResolution;
+import io.casehub.aml.domain.InvestigationStatus;
 import io.casehub.aml.domain.SarOutcome;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.trust.AmlWorkerDecisionRepository;
-import io.casehub.api.model.CaseStatus;
-import io.casehub.engine.common.internal.model.CaseInstance;
-import io.casehub.engine.common.spi.CaseInstanceRepository;
-import io.casehub.engine.common.spi.cache.CaseInstanceCache;
 import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.model.WorkerDecisionEntry;
-import io.casehub.platform.api.identity.TenancyConstants;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
@@ -26,6 +21,7 @@ import jakarta.ws.rs.core.Response;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.UUID;
 
@@ -44,10 +40,6 @@ public class AmlLayer6Resource {
     @Inject
     TrustScoreSource               trustScoreSource;
     @Inject
-    CaseInstanceCache              caseInstanceCache;
-    @Inject
-    CaseInstanceRepository         caseInstanceRepository;
-    @Inject
     AmlInvestigationOutcomeService outcomeService;
 
     @POST
@@ -59,43 +51,37 @@ public class AmlLayer6Resource {
     /**
      * Returns the investigation status and routing decisions for a completed case.
      *
-     * <p>Completion is determined by {@link CaseStatus#COMPLETED}. The cache is checked first;
-     * if the cache has evicted the entry (TTL expiry or JVM restart), the endpoint falls back
-     * to {@link CaseInstanceRepository} so that completed cases always return {@code "completed"}
-     * regardless of cache lifetime.
+     * <p>Completion is determined by the engine's {@code CaseStatus.COMPLETED} flag. The endpoint
+     * returns 404 if the caseId has never been used.
      *
      * <p>The {@code trustScore} in each {@link WorkerRoutingDecision} reflects the score from
      * {@link TrustScoreSource} at response time, not the score used at routing time.
      */
     @GET
     @Path("/{caseId}")
-    public Layer6InvestigationResponse getInvestigation(@PathParam("caseId") UUID caseId) {
-        CaseInstance instance = caseInstanceCache.get(caseId);
-        if (instance == null) {
-            instance = caseInstanceRepository
-                               .findByUuid(caseId, TenancyConstants.DEFAULT_TENANT_ID)
-                               .await().indefinitely();
+    public Response getInvestigation(@PathParam("caseId") UUID caseId) {
+        final Optional<InvestigationResolution> resolution =
+                outcomeService.resolveInvestigation(caseId);
+        if (resolution.isEmpty()) {
+            return Response.status(Response.Status.NOT_FOUND).build();
         }
-        final boolean completed = instance != null && instance.getState() == CaseStatus.COMPLETED;
-
-        if (!completed) {
-            return new Layer6InvestigationResponse(caseId, "in-progress", List.of(), null);
+        final InvestigationResolution r = resolution.get();
+        if (r.status() != InvestigationStatus.COMPLETED) {
+            return Response.ok(new Layer6InvestigationResponse(
+                    caseId, r.status(), List.of(), null)).build();
         }
-
         final List<WorkerDecisionEntry> entries = workerDecisionRepo.findAllByCaseId(caseId);
         final List<WorkerRoutingDecision> decisions = entries.stream()
-                                                             .map(e -> {
-                                                                 final OptionalDouble score =
-                                                                         trustScoreSource.capabilityScore(e.workerId, e.capabilityTag);
-                                                                 return new WorkerRoutingDecision(
-                                                                         e.capabilityTag,
-                                                                         e.workerId,
-                                                                         score.isPresent() ? score.getAsDouble() : null);
-                                                             })
-                                                             .toList();
-
-        final InvestigationOutcome outcome = outcomeService.resolve(caseId);
-        return new Layer6InvestigationResponse(caseId, "completed", decisions, outcome);
+                .map(e -> {
+                    final OptionalDouble score =
+                            trustScoreSource.capabilityScore(e.workerId, e.capabilityTag);
+                    return new WorkerRoutingDecision(
+                            e.capabilityTag, e.workerId,
+                            score.isPresent() ? score.getAsDouble() : null);
+                })
+                .toList();
+        return Response.ok(new Layer6InvestigationResponse(
+                caseId, r.status(), decisions, r.outcome())).build();
     }
 
     @POST

@@ -59,4 +59,10 @@ class AmlLayer9ResourceTest {
                 .then().statusCode(200)
                 .body("status", equalTo("completed"));
     }
+
+    @Test
+    void get_nonexistent_investigation_returns_404() {
+        given().when().get("/api/layer9/investigations/" + UUID.randomUUID())
+                .then().statusCode(404);
+    }
 }

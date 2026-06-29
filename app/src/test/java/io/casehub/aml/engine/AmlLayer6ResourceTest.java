@@ -209,6 +209,12 @@ class AmlLayer6ResourceTest {
                 .getResultList());
     }
 
+    @Test
+    void get_nonexistent_investigation_returns_404() {
+        given().when().get("/api/layer6/investigations/" + UUID.randomUUID())
+                .then().statusCode(404);
+    }
+
     private void awaitAndApproveGate(final UUID caseId) {
         Awaitility.await()
                 .atMost(15, TimeUnit.SECONDS)

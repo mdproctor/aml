@@ -2,11 +2,9 @@ package io.casehub.aml.engine;
 
 import io.casehub.aml.domain.InvestigationOutcome;
 import io.casehub.aml.domain.InvestigationStatus;
-import java.util.List;
 import java.util.UUID;
 
-public record Layer6InvestigationResponse(
+public record Layer9InvestigationResponse(
         UUID caseId,
         InvestigationStatus status,
-        List<WorkerRoutingDecision> routingDecisions,
         InvestigationOutcome outcome) {}

@@ -1,8 +1,11 @@
 package io.casehub.aml;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.casehub.aml.domain.InvestigationStatus;
 import io.quarkus.jackson.ObjectMapperCustomizer;
 import jakarta.inject.Singleton;
 
@@ -19,8 +22,14 @@ public class AmlJacksonConfig implements ObjectMapperCustomizer {
     })
     interface SpecialistOutcomeMixin {}
 
+    interface InvestigationStatusMixin {
+        @JsonValue String toWireFormat();
+        @JsonCreator static InvestigationStatus fromWireFormat(String value) { return null; }
+    }
+
     @Override
     public void customize(ObjectMapper mapper) {
         mapper.addMixIn(SpecialistOutcome.class, SpecialistOutcomeMixin.class);
+        mapper.addMixIn(InvestigationStatus.class, InvestigationStatusMixin.class);
     }
 }
