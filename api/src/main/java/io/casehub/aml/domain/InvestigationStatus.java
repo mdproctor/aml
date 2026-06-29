@@ -2,7 +2,10 @@ package io.casehub.aml.domain;
 
 public enum InvestigationStatus {
     IN_PROGRESS,
-    COMPLETED;
+    COMPLETED,
+    FAILED,
+    CANCELLED,
+    SUSPENDED;
 
     public String toWireFormat() {
         return name().toLowerCase().replace('_', '-');

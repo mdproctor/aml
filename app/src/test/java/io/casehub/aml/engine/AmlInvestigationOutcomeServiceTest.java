@@ -144,18 +144,72 @@ class AmlInvestigationOutcomeServiceTest {
         assertEquals("gate-rejected", outcome.type());
     }
 
-    private static CaseInstance completedInstance(final UUID caseId) {
+    @Test
+    void resolveInvestigation_faulted_returns_failed() {
+        final UUID caseId = UUID.randomUUID();
+        final CaseInstance instance = instanceWithState(caseId, CaseStatus.FAULTED);
+        final AmlInvestigationOutcomeService service = serviceWith(List.of(), instance, null);
+        final Optional<InvestigationResolution> result = service.resolveInvestigation(caseId);
+        assertTrue(result.isPresent());
+        assertEquals(InvestigationStatus.FAILED, result.get().status());
+        assertNull(result.get().outcome());
+    }
+
+    @Test
+    void resolveInvestigation_cancelled_returns_cancelled() {
+        final UUID caseId = UUID.randomUUID();
+        final CaseInstance instance = instanceWithState(caseId, CaseStatus.CANCELLED);
+        final AmlInvestigationOutcomeService service = serviceWith(List.of(), instance, null);
+        final Optional<InvestigationResolution> result = service.resolveInvestigation(caseId);
+        assertTrue(result.isPresent());
+        assertEquals(InvestigationStatus.CANCELLED, result.get().status());
+        assertNull(result.get().outcome());
+    }
+
+    @Test
+    void resolveInvestigation_suspended_returns_suspended() {
+        final UUID caseId = UUID.randomUUID();
+        final CaseInstance instance = instanceWithState(caseId, CaseStatus.SUSPENDED);
+        final AmlInvestigationOutcomeService service = serviceWith(List.of(), instance, null);
+        final Optional<InvestigationResolution> result = service.resolveInvestigation(caseId);
+        assertTrue(result.isPresent());
+        assertEquals(InvestigationStatus.SUSPENDED, result.get().status());
+        assertNull(result.get().outcome());
+    }
+
+    @Test
+    void resolveInvestigation_starting_returns_in_progress() {
+        final UUID caseId = UUID.randomUUID();
+        final CaseInstance instance = instanceWithState(caseId, CaseStatus.STARTING);
+        final AmlInvestigationOutcomeService service = serviceWith(List.of(), instance, null);
+        final Optional<InvestigationResolution> result = service.resolveInvestigation(caseId);
+        assertTrue(result.isPresent());
+        assertEquals(InvestigationStatus.IN_PROGRESS, result.get().status());
+    }
+
+    @Test
+    void resolveInvestigation_waiting_returns_in_progress() {
+        final UUID caseId = UUID.randomUUID();
+        final CaseInstance instance = instanceWithState(caseId, CaseStatus.WAITING);
+        final AmlInvestigationOutcomeService service = serviceWith(List.of(), instance, null);
+        final Optional<InvestigationResolution> result = service.resolveInvestigation(caseId);
+        assertTrue(result.isPresent());
+        assertEquals(InvestigationStatus.IN_PROGRESS, result.get().status());
+    }
+
+    private static CaseInstance instanceWithState(UUID caseId, CaseStatus state) {
         final CaseInstance instance = new CaseInstance();
         instance.setUuid(caseId);
-        instance.setState(CaseStatus.COMPLETED);
+        instance.setState(state);
         return instance;
     }
 
+    private static CaseInstance completedInstance(final UUID caseId) {
+        return instanceWithState(caseId, CaseStatus.COMPLETED);
+    }
+
     private static CaseInstance inProgressInstance(final UUID caseId) {
-        final CaseInstance instance = new CaseInstance();
-        instance.setUuid(caseId);
-        instance.setState(CaseStatus.RUNNING);
-        return instance;
+        return instanceWithState(caseId, CaseStatus.RUNNING);
     }
 
     private static AmlSarOfficerReviewedLedgerEntry officerEntry(final String decision,

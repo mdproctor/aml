@@ -50,8 +50,17 @@ public class AmlInvestigationOutcomeService {
         if (instance == null) {
             return Optional.empty();
         }
-        if (instance.getState() != CaseStatus.COMPLETED) {
-            return Optional.of(new InvestigationResolution(InvestigationStatus.IN_PROGRESS, null));
+
+        InvestigationStatus status = switch (instance.getState()) {
+            case STARTING, RUNNING, WAITING -> InvestigationStatus.IN_PROGRESS;
+            case COMPLETED -> InvestigationStatus.COMPLETED;
+            case FAULTED -> InvestigationStatus.FAILED;
+            case CANCELLED -> InvestigationStatus.CANCELLED;
+            case SUSPENDED -> InvestigationStatus.SUSPENDED;
+        };
+
+        if (status != InvestigationStatus.COMPLETED) {
+            return Optional.of(new InvestigationResolution(status, null));
         }
         final InvestigationOutcome outcome = resolveOutcome(caseId);
         return Optional.of(new InvestigationResolution(InvestigationStatus.COMPLETED, outcome));
