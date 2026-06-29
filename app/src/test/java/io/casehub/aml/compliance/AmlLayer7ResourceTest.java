@@ -119,8 +119,10 @@ class AmlLayer7ResourceTest {
             .body("trustRouting.status", equalTo("CLOSED"))
             .body("trustRouting.decisions", not(empty()))
             .body("trustRouting.decisions.capabilityTag", hasItem("sar-drafting"))
-            // GDPR erasure: wired and endpoint documented
-            .body("gdprErasure.erasureCapabilityWired", is(true))
+            // GDPR erasure: tokenisation and erasure receipt enabled
+            .body("gdprErasure.status", equalTo("CLOSED"))
+            .body("gdprErasure.tokenisationEnabled", is(true))
+            .body("gdprErasure.erasureReceiptEnabled", is(true))
             .body("gdprErasure.erasureEndpoint", equalTo("POST /api/actors/{actorId}/erasure"));
     }
 

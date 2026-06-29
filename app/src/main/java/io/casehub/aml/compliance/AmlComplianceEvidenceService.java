@@ -8,7 +8,9 @@ import io.casehub.aml.trust.AmlTrustAttestationRepository;
 import io.casehub.aml.trust.AmlTrustRoutingAttestation;
 import io.casehub.aml.trust.AmlWorkerDecisionRepository;
 import io.casehub.ledger.model.WorkerDecisionEntry;
+import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.casehub.ledger.runtime.repository.ErasureReceiptRepository;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
 import io.casehub.ledger.runtime.service.model.InclusionProof;
@@ -38,6 +40,8 @@ public class AmlComplianceEvidenceService {
     private final AmlWorkerDecisionRepository workerDecisionRepo;
     private final EntityManager em;
     private final AmlAttestationReconciler reconciler;
+    private final LedgerConfig ledgerConfig;
+    private final ErasureReceiptRepository erasureReceiptRepo;
 
     @Inject
     public AmlComplianceEvidenceService(
@@ -46,13 +50,17 @@ public class AmlComplianceEvidenceService {
             AmlTrustAttestationRepository attestationRepo,
             AmlWorkerDecisionRepository workerDecisionRepo,
             EntityManager em,
-            AmlAttestationReconciler reconciler) {
+            AmlAttestationReconciler reconciler,
+            LedgerConfig ledgerConfig,
+            ErasureReceiptRepository erasureReceiptRepo) {
         this.ledgerRepo = ledgerRepo;
         this.verificationService = verificationService;
         this.attestationRepo = attestationRepo;
         this.workerDecisionRepo = workerDecisionRepo;
         this.em = em;
         this.reconciler = reconciler;
+        this.ledgerConfig = ledgerConfig;
+        this.erasureReceiptRepo = erasureReceiptRepo;
     }
 
     /**
@@ -280,12 +288,30 @@ public class AmlComplianceEvidenceService {
     // -- GDPR erasure ----------------------------------------------------------
 
     private GdprErasureRequirement buildGdprErasure() {
+        boolean tokenisationEnabled = ledgerConfig.identity().tokenisation().enabled();
+        boolean receiptEnabled = ledgerConfig.erasureReceipt().enabled();
+
+        long receiptCount = 0L;
+        try {
+            receiptCount = erasureReceiptRepo.countByTenant(
+                    io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID);
+        } catch (Exception ignored) {
+        }
+
+        RequirementStatus status;
+        if (tokenisationEnabled && receiptEnabled) {
+            status = RequirementStatus.CLOSED;
+        } else if (tokenisationEnabled || receiptEnabled) {
+            status = RequirementStatus.PARTIAL;
+        } else {
+            status = RequirementStatus.GAP;
+        }
+
         return new GdprErasureRequirement(
                 GdprErasureRequirement.REQUIREMENT_ID,
                 GdprErasureRequirement.CITATION,
                 GdprErasureRequirement.MECHANISM,
-                true,  // erasureCapabilityWired — LedgerErasureService is on classpath
-                true,  // pseudonymizationActive
+                status, tokenisationEnabled, receiptEnabled, receiptCount,
                 GdprErasureRequirement.ERASURE_ENDPOINT);
     }
 

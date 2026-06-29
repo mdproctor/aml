@@ -29,7 +29,7 @@ class AmlLayer7ErasureTest {
         given().contentType(ContentType.JSON).when()
             .post("/api/actors/{actorId}/erasure", "aml-orchestrator")
             .then().statusCode(200)
-            .body("rawActorId", equalTo("aml-orchestrator"))
+            .body("erasedActorId", equalTo("aml-orchestrator"))
             .body("mappingFound", is(false))
             .body("affectedEntryCount", equalTo(0));
     }

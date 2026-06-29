@@ -9,6 +9,8 @@ import io.casehub.aml.trust.AmlTrustRoutingAttestation;
 import io.casehub.aml.trust.AmlWorkerDecisionRepository;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.model.WorkerDecisionEntry;
+import io.casehub.ledger.runtime.config.LedgerConfig;
+import io.casehub.ledger.runtime.repository.ErasureReceiptRepository;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
 import io.casehub.ledger.runtime.service.model.InclusionProof;
@@ -37,6 +39,11 @@ class AmlComplianceEvidenceServiceTest {
     @Mock AmlWorkerDecisionRepository workerDecisionRepo;
     @Mock EntityManager em;
     @Mock AmlAttestationReconciler mockReconciler;
+    @Mock LedgerConfig ledgerConfig;
+    @Mock LedgerConfig.IdentityConfig identityConfig;
+    @Mock LedgerConfig.IdentityConfig.TokenisationConfig tokenisationConfig;
+    @Mock LedgerConfig.ErasureReceiptConfig erasureReceiptConfig;
+    @Mock ErasureReceiptRepository erasureReceiptRepo;
 
     AmlComplianceEvidenceService service;
 
@@ -49,9 +56,16 @@ class AmlComplianceEvidenceServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+        when(ledgerConfig.identity()).thenReturn(identityConfig);
+        when(identityConfig.tokenisation()).thenReturn(tokenisationConfig);
+        when(ledgerConfig.erasureReceipt()).thenReturn(erasureReceiptConfig);
+        when(tokenisationConfig.enabled()).thenReturn(true);
+        when(erasureReceiptConfig.enabled()).thenReturn(true);
+        when(erasureReceiptRepo.countByTenant(any())).thenReturn(0L);
         service = new AmlComplianceEvidenceService(
-            ledgerRepo, verificationService, attestationRepo,
-            workerDecisionRepo, em, mockReconciler);
+                ledgerRepo, verificationService, attestationRepo,
+                workerDecisionRepo, em, mockReconciler,
+                ledgerConfig, erasureReceiptRepo);
     }
 
     @Test
@@ -91,7 +105,9 @@ class AmlComplianceEvidenceServiceTest {
         assertNotNull(evidence.sla().workItemId());
         assertEquals(RequirementStatus.CLOSED, evidence.trustRouting().status());
         assertEquals(2, evidence.trustRouting().decisions().size());
-        assertTrue(evidence.gdprErasure().erasureCapabilityWired());
+        assertEquals(RequirementStatus.CLOSED, evidence.gdprErasure().status());
+        assertTrue(evidence.gdprErasure().tokenisationEnabled());
+        assertTrue(evidence.gdprErasure().erasureReceiptEnabled());
     }
 
     @Test
@@ -282,5 +298,67 @@ class AmlComplianceEvidenceServiceTest {
 
         assertEquals(RequirementStatus.PARTIAL, service.assembleEvidence(caseId).trustRouting().status());
         assertTrue(service.assembleEvidence(caseId).trustRouting().decisions().get(0).reconstructed());
+    }
+
+    @Test
+    void gdprErasure_both_enabled_returns_closed() {
+        when(tokenisationConfig.enabled()).thenReturn(true);
+        when(erasureReceiptConfig.enabled()).thenReturn(true);
+        when(erasureReceiptRepo.countByTenant(any())).thenReturn(3L);
+        setupMinimalLedgerEntries();
+
+        ComplianceEvidence evidence = service.assembleEvidence(caseId);
+
+        assertEquals(RequirementStatus.CLOSED, evidence.gdprErasure().status());
+        assertTrue(evidence.gdprErasure().tokenisationEnabled());
+        assertTrue(evidence.gdprErasure().erasureReceiptEnabled());
+        assertEquals(3L, evidence.gdprErasure().erasureReceiptCount());
+    }
+
+    @Test
+    void gdprErasure_tokenisation_only_returns_partial() {
+        when(tokenisationConfig.enabled()).thenReturn(true);
+        when(erasureReceiptConfig.enabled()).thenReturn(false);
+        when(erasureReceiptRepo.countByTenant(any())).thenReturn(0L);
+        setupMinimalLedgerEntries();
+
+        ComplianceEvidence evidence = service.assembleEvidence(caseId);
+
+        assertEquals(RequirementStatus.PARTIAL, evidence.gdprErasure().status());
+        assertTrue(evidence.gdprErasure().tokenisationEnabled());
+        assertFalse(evidence.gdprErasure().erasureReceiptEnabled());
+    }
+
+    @Test
+    void gdprErasure_neither_enabled_returns_gap() {
+        when(tokenisationConfig.enabled()).thenReturn(false);
+        when(erasureReceiptConfig.enabled()).thenReturn(false);
+        when(erasureReceiptRepo.countByTenant(any())).thenReturn(0L);
+        setupMinimalLedgerEntries();
+
+        ComplianceEvidence evidence = service.assembleEvidence(caseId);
+
+        assertEquals(RequirementStatus.GAP, evidence.gdprErasure().status());
+    }
+
+    @Test
+    void gdprErasure_db_failure_degrades_gracefully() {
+        when(tokenisationConfig.enabled()).thenReturn(true);
+        when(erasureReceiptConfig.enabled()).thenReturn(true);
+        when(erasureReceiptRepo.countByTenant(any())).thenThrow(new RuntimeException("DB down"));
+        setupMinimalLedgerEntries();
+
+        ComplianceEvidence evidence = service.assembleEvidence(caseId);
+
+        assertEquals(RequirementStatus.CLOSED, evidence.gdprErasure().status());
+        assertEquals(0L, evidence.gdprErasure().erasureReceiptCount());
+    }
+
+    private void setupMinimalLedgerEntries() {
+        var opened = caseOpenedEntry(caseId, caseOpenedId);
+        when(ledgerRepo.findBySubjectId(eq(caseId), any())).thenReturn(List.of(opened));
+        when(workerDecisionRepo.findAllByCaseId(caseId)).thenReturn(List.of());
+        when(attestationRepo.findByInvestigationCaseId(caseId)).thenReturn(List.of());
+        when(mockReconciler.reconcileIfNeeded(eq(caseId), any(), any())).thenReturn(List.of());
     }
 }

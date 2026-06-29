@@ -1,7 +1,6 @@
 package io.casehub.aml.compliance;
 
 import io.casehub.ledger.api.model.ErasureReason;
-import io.casehub.ledger.runtime.privacy.LedgerErasureService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -46,11 +45,10 @@ public class AmlLayer7Resource {
 class AmlGdprErasureResource {
 
     @Inject
-    LedgerErasureService erasureService;
+    AmlErasureService erasureService;
 
     @POST
-    public LedgerErasureService.ErasureResult eraseActor(
-            @PathParam("actorId") String actorId) {
+    public AmlErasureResult eraseActor(@PathParam("actorId") String actorId) {
         return erasureService.erase(actorId, ErasureReason.GDPR_ART_17_REQUEST);
     }
 }
