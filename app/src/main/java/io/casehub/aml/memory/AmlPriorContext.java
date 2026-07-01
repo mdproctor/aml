@@ -1,14 +1,14 @@
 package io.casehub.aml.memory;
 
-import io.casehub.platform.api.memory.Memory;
-import io.casehub.platform.api.memory.MemoryAttributeKeys;
+import io.casehub.memory.Memory;
+import io.casehub.memory.MemoryAttributeKeys;
 
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Prior entity context retrieved from {@link io.casehub.platform.api.memory.CaseMemoryStore}
+ * Prior entity context retrieved from {@link io.casehub.memory.CaseMemoryStore}
  * before an AML investigation starts.
  *
  * <p>Populated by {@link AmlMemoryService#queryPriorContext(io.casehub.aml.domain.SuspiciousTransaction)}

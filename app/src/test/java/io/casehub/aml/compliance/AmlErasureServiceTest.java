@@ -6,7 +6,7 @@ import io.casehub.ledger.runtime.privacy.LedgerErasureService;
 import io.casehub.ledger.runtime.privacy.LedgerErasureService.ErasureResult;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.CurrentPrincipal;
-import io.casehub.platform.api.memory.CaseMemoryStore;
+import io.casehub.memory.CaseMemoryStore;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
