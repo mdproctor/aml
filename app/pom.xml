@@ -16,6 +16,17 @@
   <description>AML Quarkus application — REST resources, JPA entities, Flyway migrations, foundation wiring</description>
 
   <dependencies>
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-memory-api</artifactId>
+      <version>0.2-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-memory</artifactId>
+      <version>0.2-SNAPSHOT</version>
+      <scope>runtime</scope>
+    </dependency>
 
     <!-- AML domain model -->
     <dependency>
@@ -152,14 +163,14 @@
     <!-- Layer 8: JPA-backed CaseMemoryStore (prod) — @ApplicationScoped, displaces NoOpCaseMemoryStore -->
     <dependency>
       <groupId>io.casehub</groupId>
-      <artifactId>casehub-platform-memory-jpa</artifactId>
+      <artifactId>casehub-memory-jpa</artifactId>
       <version>${casehub.version}</version>
     </dependency>
 
     <!-- Layer 8: in-memory CaseMemoryStore (test isolation) — @Alternative @Priority(1) -->
     <dependency>
       <groupId>io.casehub</groupId>
-      <artifactId>casehub-platform-memory-inmem</artifactId>
+      <artifactId>casehub-memory-inmem</artifactId>
       <version>${casehub.version}</version>
       <scope>test</scope>
     </dependency>
