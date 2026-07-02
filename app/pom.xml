@@ -85,6 +85,13 @@
       <artifactId>casehub-qhorus</artifactId>
     </dependency>
 
+    <!-- Reusable building blocks — trust routing utilities -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-blocks</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
+
     <!-- ================================================================ -->
     <!-- Layer 5: adaptive investigation path (casehub-engine)            -->
     <!-- ================================================================ -->

@@ -1,6 +1,6 @@
 package io.casehub.aml.memory;
 
-import io.casehub.aml.routing.IntPreference;
+import io.casehub.blocks.routing.IntPreference;
 import io.casehub.platform.api.preferences.PreferenceKey;
 
 public final class AmlMemoryPolicyKeys {

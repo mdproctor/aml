@@ -5,7 +5,7 @@ import io.casehub.aml.domain.PatternAnalysisResult;
 import io.casehub.aml.domain.SarOutcome;
 import io.casehub.aml.domain.SarVerdict;
 import io.casehub.aml.domain.SuspiciousTransaction;
-import io.casehub.aml.routing.IntPreference;
+import io.casehub.blocks.routing.IntPreference;
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.memory.CaseMemoryStore;
 import io.casehub.memory.Memory;
