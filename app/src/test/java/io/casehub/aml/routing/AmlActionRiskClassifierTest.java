@@ -1,7 +1,7 @@
 package io.casehub.aml.routing;
 
-import io.casehub.blocks.oversight.ClassificationContext;
-import io.casehub.blocks.oversight.RiskDecision;
+import io.casehub.api.spi.ClassificationContext;
+import io.casehub.api.spi.RiskDecision;
 import io.casehub.worker.api.PlannedAction;
 import io.casehub.aml.domain.AmlActionType;
 import io.casehub.aml.domain.AmlGroups;

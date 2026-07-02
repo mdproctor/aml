@@ -2,8 +2,8 @@ package io.casehub.aml.routing;
 
 import io.casehub.api.spi.routing.TrustRoutingPolicy;
 import io.casehub.api.spi.routing.TrustRoutingPolicyProvider;
-import io.casehub.blocks.routing.TrustRoutingPolicyKeys;
-import io.casehub.blocks.routing.TrustRoutingPolicyResolver;
+import io.casehub.api.spi.routing.TrustRoutingPolicyKeys;
+import io.casehub.api.spi.routing.TrustRoutingPolicyResolver;
 import io.casehub.platform.api.preferences.PreferenceProvider;
 import io.casehub.platform.api.preferences.SettingsScope;
 import jakarta.enterprise.context.ApplicationScoped;
