@@ -24,8 +24,8 @@ import static io.serverlessworkflow.fluent.func.dsl.FuncDSL.function;
  * committing the worker's output to the case context.
  *
  * <p>PEP entities and high-risk scores (riskScore ≥ 0.8) trigger a
- * {@link io.casehub.api.spi.RiskDecision.GateRequired}; low-risk CORPORATE cases return
- * {@link io.casehub.api.spi.RiskDecision.Autonomous} and proceed without a gate.
+ * {@link io.casehub.blocks.oversight.RiskDecision.GateRequired}; low-risk CORPORATE cases return
+ * {@link io.casehub.blocks.oversight.RiskDecision.Autonomous} and proceed without a gate.
  */
 @ApplicationScoped
 public class AmlOversightCaseHub extends YamlCaseHub {
