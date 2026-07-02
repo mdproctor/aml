@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
- * CDI observer that writes SAR outcome facts to {@link io.casehub.memory.CaseMemoryStore}
+ * CDI observer that writes SAR outcome facts to {@link io.casehub.neocortex.memory.CaseMemoryStore}
  * when a SAR verdict is recorded.
  *
  * <p>Observes {@link io.casehub.aml.engine.SarOutcomeRecordedEvent} (fired by

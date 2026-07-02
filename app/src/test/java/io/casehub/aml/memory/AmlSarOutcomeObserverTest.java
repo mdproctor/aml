@@ -6,9 +6,9 @@ import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.engine.AmlEngineCoordinator;
 import io.casehub.aml.engine.SarOutcomeRecordedEvent;
 import io.casehub.platform.api.identity.TenancyConstants;
-import io.casehub.memory.CaseMemoryStore;
-import io.casehub.memory.MemoryAttributeKeys;
-import io.casehub.memory.MemoryQuery;
+import io.casehub.neocortex.memory.CaseMemoryStore;
+import io.casehub.neocortex.memory.MemoryAttributeKeys;
+import io.casehub.neocortex.memory.MemoryQuery;
 import io.casehub.work.runtime.model.WorkItem;
 import io.casehub.work.runtime.service.WorkItemService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -82,9 +82,9 @@ class AmlSarOutcomeObserverTest {
         sarOutcomeEvent.fire(new SarOutcomeRecordedEvent(
             caseId, new SarOutcome(SarVerdict.UPHELD, "SAR upheld", 0.92)));
 
-        List<io.casehub.memory.Memory> originMemories = memoryStore.query(
+        List<io.casehub.neocortex.memory.Memory> originMemories = memoryStore.query(
             MemoryQuery.forEntities(List.of(tx.originAccountId()), AmlMemoryDomains.ENTITY_RISK, TENANT));
-        List<io.casehub.memory.Memory> destMemories = memoryStore.query(
+        List<io.casehub.neocortex.memory.Memory> destMemories = memoryStore.query(
             MemoryQuery.forEntities(List.of(tx.destinationAccountId()), AmlMemoryDomains.ENTITY_RISK, TENANT));
 
         assertFalse(originMemories.isEmpty(), "Origin account must have SAR outcome memory");
@@ -104,7 +104,7 @@ class AmlSarOutcomeObserverTest {
         sarOutcomeEvent.fire(new SarOutcomeRecordedEvent(
             caseId, new SarOutcome(SarVerdict.WITHDRAWN, "SAR withdrawn", 0.10)));
 
-        List<io.casehub.memory.Memory> memories = memoryStore.query(
+        List<io.casehub.neocortex.memory.Memory> memories = memoryStore.query(
             MemoryQuery.forEntities(List.of(tx.originAccountId()), AmlMemoryDomains.ENTITY_RISK, TENANT));
 
         assertFalse(memories.isEmpty(), "WITHDRAWN must still write a reversal memory");

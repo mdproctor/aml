@@ -1,9 +1,9 @@
 package io.casehub.aml.memory;
 
-import io.casehub.memory.MemoryDomain;
+import io.casehub.neocortex.memory.MemoryDomain;
 
 /**
- * {@link io.casehub.memory.MemoryDomain} constants for the AML investigation domain.
+ * {@link io.casehub.neocortex.memory.MemoryDomain} constants for the AML investigation domain.
  *
  * <p>Domain isolation ensures targeted queries and scoped GDPR erasure: querying one domain
  * never returns facts from another, and {@code erase()} calls can be scoped to a single domain.

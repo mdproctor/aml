@@ -18,13 +18,13 @@
   <dependencies>
     <dependency>
       <groupId>io.casehub</groupId>
-      <artifactId>casehub-memory-api</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <artifactId>casehub-neocortex-memory-api</artifactId>
+      <version>${casehub.version}</version>
     </dependency>
     <dependency>
       <groupId>io.casehub</groupId>
-      <artifactId>casehub-memory</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <artifactId>casehub-neocortex-memory</artifactId>
+      <version>${casehub.version}</version>
       <scope>runtime</scope>
     </dependency>
 
@@ -170,14 +170,14 @@
     <!-- Layer 8: JPA-backed CaseMemoryStore (prod) — @ApplicationScoped, displaces NoOpCaseMemoryStore -->
     <dependency>
       <groupId>io.casehub</groupId>
-      <artifactId>casehub-memory-jpa</artifactId>
+      <artifactId>casehub-neocortex-memory-jpa</artifactId>
       <version>${casehub.version}</version>
     </dependency>
 
     <!-- Layer 8: in-memory CaseMemoryStore (test isolation) — @Alternative @Priority(1) -->
     <dependency>
       <groupId>io.casehub</groupId>
-      <artifactId>casehub-memory-inmem</artifactId>
+      <artifactId>casehub-neocortex-memory-inmem</artifactId>
       <version>${casehub.version}</version>
       <scope>test</scope>
     </dependency>
