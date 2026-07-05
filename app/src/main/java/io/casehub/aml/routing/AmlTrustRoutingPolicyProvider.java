@@ -19,6 +19,11 @@ public class AmlTrustRoutingPolicyProvider implements TrustRoutingPolicyProvider
 
     private final PreferenceProvider preferenceProvider;
 
+    @Override
+    public String id() {
+        return "aml";
+    }
+
     @Inject
     public AmlTrustRoutingPolicyProvider(final PreferenceProvider preferenceProvider) {
         this.preferenceProvider = preferenceProvider;
