@@ -2,12 +2,14 @@ package io.casehub.aml.routing;
 
 import io.casehub.api.spi.ClassificationContext;
 import io.casehub.api.spi.RiskDecision;
+import io.casehub.api.spi.routing.StaticSetStrategy;
 import io.casehub.worker.api.PlannedAction;
 import io.casehub.aml.domain.AmlActionType;
 import io.casehub.aml.domain.AmlGroups;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -204,7 +206,8 @@ class AmlActionRiskClassifierTest {
     void gateRequired_missingContext_usesTypeGroups() {
         final RiskDecision result = classify(AmlActionType.ENTITY_LINK_CREATION, Map.of());
         final RiskDecision.GateRequired gate = assertInstanceOf(RiskDecision.GateRequired.class, result);
-        assertEquals(AmlActionType.ENTITY_LINK_CREATION.candidateGroups(), gate.candidateGroups());
+        final StaticSetStrategy strategy = assertInstanceOf(StaticSetStrategy.class, gate.candidateGroups());
+        assertEquals(Set.copyOf(AmlActionType.ENTITY_LINK_CREATION.candidateGroups()), strategy.values());
     }
 
     @Test
@@ -228,8 +231,9 @@ class AmlActionRiskClassifierTest {
 
     private void assertGateRequired(final RiskDecision result, final String expectedGroup, final boolean expectedReversible) {
         final RiskDecision.GateRequired gate = assertInstanceOf(RiskDecision.GateRequired.class, result);
-        assertTrue(gate.candidateGroups().contains(expectedGroup),
-            "Expected group " + expectedGroup + " in " + gate.candidateGroups());
+        final StaticSetStrategy strategy = assertInstanceOf(StaticSetStrategy.class, gate.candidateGroups());
+        assertTrue(strategy.values().contains(expectedGroup),
+            "Expected group " + expectedGroup + " in " + strategy.values());
         assertEquals(expectedReversible, gate.reversible());
         assertNotNull(gate.reason());
         assertFalse(gate.reason().isBlank());

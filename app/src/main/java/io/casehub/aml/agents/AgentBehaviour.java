@@ -1,7 +1,7 @@
 package io.casehub.aml.agents;
 
 import io.casehub.aml.domain.SpecialistOutcome;
-import io.casehub.qhorus.runtime.message.Message;
+import io.casehub.qhorus.api.message.Message;
 
 public interface AgentBehaviour {
     String capability();

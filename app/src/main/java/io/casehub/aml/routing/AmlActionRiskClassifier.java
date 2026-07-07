@@ -5,10 +5,12 @@ import io.casehub.api.spi.ClassificationContext;
 import io.casehub.api.spi.RiskClassifier;
 import io.casehub.worker.api.PlannedAction;
 import io.casehub.api.spi.RiskDecision;
+import io.casehub.api.spi.routing.StaticSetStrategy;
 import io.casehub.aml.domain.AmlActionType;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * AML-specific {@link ActionRiskClassifier} — discovered by casehub-engine via
@@ -70,13 +72,13 @@ public class AmlActionRiskClassifier implements ActionRiskClassifier {
 
     private RiskDecision.GateRequired gate(final AmlActionType type) {
         return new RiskDecision.GateRequired(
-            type.reason(), type.reversible(), type.candidateGroups(),
+            type.reason(), type.reversible(), StaticSetStrategy.of(Set.copyOf(type.candidateGroups())),
             type.expiresIn(), type.scope());
     }
 
     private RiskDecision.GateRequired missingContext(final AmlActionType type) {
         return new RiskDecision.GateRequired(
             "Risk assessment unavailable — human review required",
-            type.reversible(), type.candidateGroups(), null, type.scope());
+            type.reversible(), StaticSetStrategy.of(Set.copyOf(type.candidateGroups())), null, type.scope());
     }
 }

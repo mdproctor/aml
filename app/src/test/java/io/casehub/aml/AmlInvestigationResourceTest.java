@@ -3,13 +3,16 @@ package io.casehub.aml;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
 
 import jakarta.inject.Inject;
 
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.message.Message;
+import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.runtime.message.MessageService;
+import io.casehub.work.runtime.model.WorkItem;
+import io.casehub.work.runtime.service.WorkItemService;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
@@ -18,6 +21,8 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
@@ -25,6 +30,7 @@ class AmlInvestigationResourceTest {
 
     @Inject ChannelService channelService;
     @Inject MessageService messageService;
+    @Inject WorkItemService workItemService;
 
     private static final String VALID_TX = """
             {
@@ -55,19 +61,14 @@ class AmlInvestigationResourceTest {
                 .body("complianceReviewTaskId",        notNullValue())
         .extract().path("complianceReviewTaskId");
 
-        Instant claimDeadline = Instant.parse(
-                given()
-                .when()
-                        .get("/workitems/" + taskId)
-                .then()
-                        .statusCode(200)
-                        .body("candidateGroups", equalTo("compliance-officers"))
-                        .body("claimDeadline", notNullValue())
-                .extract().path("claimDeadline"));
+        WorkItem workItem = workItemService.findById(UUID.fromString(taskId))
+                .orElseThrow(() -> new AssertionError("WorkItem not found: " + taskId));
+        assertEquals("compliance-officers", workItem.candidateGroups);
+        assertNotNull(workItem.claimDeadline, "claimDeadline must not be null");
 
         Instant now = Instant.now();
-        assertTrue(claimDeadline.isAfter(now), "claimDeadline must be in the future");
-        assertTrue(claimDeadline.isBefore(now.plus(31, ChronoUnit.DAYS)),
+        assertTrue(workItem.claimDeadline.isAfter(now), "claimDeadline must be in the future");
+        assertTrue(workItem.claimDeadline.isBefore(now.plus(31, ChronoUnit.DAYS)),
                 "claimDeadline must be within the 30-day FinCEN SLA window");
     }
 
@@ -133,10 +134,10 @@ class AmlInvestigationResourceTest {
         // but COMMAND/DONE/DECLINE are not EVENT, so they are included.
         // @ApplicationScoped InMemoryMessageStore accumulates across test methods in the same
         // Quarkus test session (GE-20260512-e552f7), so "at least one" is the correct assertion.
-        final List<Message> messages = messageService.pollAfter(channel.get().id, 0L, 200);
+        final List<Message> messages = messageService.pollAfter(channel.get().id(), 0L, 200);
         assertTrue(
-                messages.stream().anyMatch(m -> expected == m.messageType),
+                messages.stream().anyMatch(m -> expected == m.messageType()),
                 "Channel '" + channelName + "' must contain at least one " + expected + " message"
-                        + " — found: " + messages.stream().map(m -> m.messageType.name()).toList());
+                        + " — found: " + messages.stream().map(m -> m.messageType().name()).toList());
     }
 }

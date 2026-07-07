@@ -3,7 +3,7 @@ package io.casehub.aml.memory;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.engine.SarOutcomeRecordedEvent;
 import io.casehub.aml.ledger.AmlCaseOpenedLedgerEntry;
-import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;

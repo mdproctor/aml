@@ -2,8 +2,8 @@ package io.casehub.aml.ledger;
 
 import io.casehub.aml.AmlInvestigationApplicationService;
 import io.casehub.aml.domain.SuspiciousTransaction;
-import io.casehub.ledger.runtime.model.LedgerEntry;
-import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;

@@ -12,7 +12,7 @@ import io.casehub.aml.domain.SpecialistOutcome;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.DefaultEntityResolutionService;
 import io.casehub.aml.memory.AmlMemoryService;
-import io.casehub.qhorus.runtime.message.Message;
+import io.casehub.qhorus.api.message.Message;
 
 import java.util.Map;
 
@@ -56,11 +56,11 @@ public class EntityResolutionBehaviour implements AgentBehaviour {
      * <p>Returns null if the command is null, the content is missing, or any parsing step fails.
      */
     private SuspiciousTransaction deserializeTransaction(final Message command) {
-        if (command == null || command.content == null) {
+        if (command == null || command.content() == null) {
             return null;
         }
         try {
-            final Map<String, Object> payload = objectMapper.readValue(command.content, MAP_TYPE);
+            final Map<String, Object> payload = objectMapper.readValue(command.content(), MAP_TYPE);
             final Object inputDataRaw = payload.get("inputData");
             if (!(inputDataRaw instanceof Map<?, ?> inputDataMap)) {
                 return null;

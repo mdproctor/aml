@@ -1,6 +1,6 @@
 package io.casehub.aml.ledger;
 
-import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
@@ -19,7 +19,7 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "aml_compliance_review_ledger_entry")
 @DiscriminatorValue("AML_COMPLIANCE_REVIEW")
-public class AmlComplianceReviewLedgerEntry extends LedgerEntry {
+public class AmlComplianceReviewLedgerEntry extends JpaLedgerEntry {
 
     /** WorkItem UUID of the SAR review task assigned to the compliance officer. */
     @Column(name = "task_id", nullable = false, length = 255)

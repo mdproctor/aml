@@ -1,6 +1,6 @@
 package io.casehub.aml.trust;
 
-import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
 import jakarta.persistence.*;
 import java.util.UUID;
 
@@ -13,7 +13,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "aml_trust_routing_attestation")
 @DiscriminatorValue("AML_TRUST_ROUTING")
-public class AmlTrustRoutingAttestation extends LedgerEntry {
+public class AmlTrustRoutingAttestation extends JpaLedgerEntry {
 
     @Column(name = "capability_tag", nullable = false, length = 100)
     public String capabilityTag;

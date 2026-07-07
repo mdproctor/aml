@@ -59,7 +59,6 @@ public class ComplianceReviewLifecycle {
         WorkItem workItem = creator.apply(WorkItemCreateRequest.builder()
                 .title("Compliance review — SAR for transaction " + transaction.id())
                 .description(summary.sarNarrative() + osintNote)
-                .category("aml-compliance")
                 .priority(WorkItemPriority.HIGH)
                 .candidateGroups("compliance-officers")
                 .createdBy("aml-system")

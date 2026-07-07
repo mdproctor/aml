@@ -8,8 +8,8 @@ import jakarta.inject.Inject;
 
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.gateway.ChannelRef;
-import io.casehub.qhorus.runtime.channel.Channel;
-import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 
@@ -46,19 +46,19 @@ public class AgentChannelRegistry {
             Channel channel = channelService.findByName(behaviour.capability())
                     .orElseGet(() -> channelService.create(ChannelCreateRequest.builder(behaviour.capability())
                             .description(ORCHESTRATOR).semantic(ChannelSemantic.APPEND)
-                            .adminInstances(ORCHESTRATOR).build()));
+                            .adminInstances(java.util.List.of(ORCHESTRATOR)).build()));
 
-            ChannelRef ref = new ChannelRef(channel.id, channel.name);
+            ChannelRef ref = new ChannelRef(channel.id(), channel.name());
             // Per protocol: open() before registerBackend()
             push.setChannelRef(ref);
             push.open(ref, java.util.Map.of());
-            channelGateway.registerBackend(channel.id, push, push.backendId());
+            channelGateway.registerBackend(channel.id(), push, push.backendId());
         }
     }
 
     public ChannelRef channelFor(String capability) {
         Channel channel = channelService.findByName(capability)
                 .orElseThrow(() -> new IllegalStateException("No channel for capability: " + capability));
-        return new ChannelRef(channel.id, channel.name);
+        return new ChannelRef(channel.id(), channel.name());
     }
 }

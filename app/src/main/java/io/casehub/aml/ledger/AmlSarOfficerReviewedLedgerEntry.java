@@ -1,6 +1,6 @@
 package io.casehub.aml.ledger;
 
-import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
@@ -20,7 +20,7 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "aml_sar_officer_reviewed_ledger_entry")
 @DiscriminatorValue("AML_SAR_OFFICER_REVIEWED")
-public class AmlSarOfficerReviewedLedgerEntry extends LedgerEntry {
+public class AmlSarOfficerReviewedLedgerEntry extends JpaLedgerEntry {
 
     /** "APPROVED" or "REJECTED" — the officer's explicit SAR verdict. */
     @Column(name = "review_decision", nullable = false, length = 20)

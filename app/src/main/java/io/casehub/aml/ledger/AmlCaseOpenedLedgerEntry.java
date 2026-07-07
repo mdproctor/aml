@@ -1,6 +1,6 @@
 package io.casehub.aml.ledger;
 
-import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
@@ -19,7 +19,7 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "aml_case_opened_ledger_entry")
 @DiscriminatorValue("AML_CASE_OPENED")
-public class AmlCaseOpenedLedgerEntry extends LedgerEntry {
+public class AmlCaseOpenedLedgerEntry extends JpaLedgerEntry {
 
     /** External transaction reference — e.g. {@code "TXN-2024-001"}. */
     @Column(name = "transaction_id", nullable = false, length = 255)

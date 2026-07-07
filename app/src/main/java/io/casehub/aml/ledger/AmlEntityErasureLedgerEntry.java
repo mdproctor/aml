@@ -10,12 +10,12 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
 import io.casehub.ledger.api.model.ErasureReason;
-import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
 
 @Entity
 @Table(name = "aml_entity_erasure_entry")
 @DiscriminatorValue("AML_ENTITY_ERASURE")
-public class AmlEntityErasureLedgerEntry extends LedgerEntry {
+public class AmlEntityErasureLedgerEntry extends JpaLedgerEntry {
 
     @Column(name = "erased_entity_id", nullable = false)
     public String erasedEntityId;

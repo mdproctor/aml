@@ -17,8 +17,8 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.runtime.channel.Channel;
-import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.MessageService;
 
@@ -68,14 +68,14 @@ public class QhorusAmlInvestigator implements AmlInvestigator {
         final Channel channel = channelService.findByName(capability)
                 .orElseGet(() -> channelService.create(ChannelCreateRequest.builder(capability)
                         .description(ORCHESTRATOR).semantic(ChannelSemantic.APPEND)
-                        .adminInstances(ORCHESTRATOR).build()));
+                        .adminInstances(java.util.List.of(ORCHESTRATOR)).build()));
 
         final String correlationId = UUID.randomUUID().toString();
 
         // Send COMMAND — creates formal obligation record in qhorus.
         // subjectId=caseId links this message-level entry to the AML domain ledger chain.
         final var commandResult = messageService.dispatch(MessageDispatch.builder()
-                .channelId(channel.id)
+                .channelId(channel.id())
                 .sender(ORCHESTRATOR)
                 .type(MessageType.COMMAND)
                 .content(transaction.id())
@@ -102,7 +102,7 @@ public class QhorusAmlInvestigator implements AmlInvestigator {
         };
 
         messageService.dispatch(MessageDispatch.builder()
-                .channelId(channel.id)
+                .channelId(channel.id())
                 .sender(capability)
                 .type(replyType)
                 .content(content)

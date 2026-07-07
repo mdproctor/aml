@@ -5,7 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import io.casehub.aml.domain.OsintResult;
 import io.casehub.aml.domain.SpecialistOutcome;
-import io.casehub.qhorus.runtime.message.Message;
+import io.casehub.qhorus.api.message.Message;
 
 @ApplicationScoped
 @DefaultBean

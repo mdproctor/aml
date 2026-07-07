@@ -1,6 +1,6 @@
 package io.casehub.aml.trust;
 
-import io.casehub.ledger.api.model.ActorTrustScore.ScoreType;
+import io.casehub.ledger.api.model.ScoreType;
 import io.casehub.ledger.api.spi.TrustScoreSource;
 import io.casehub.ledger.runtime.repository.ActorTrustScoreRepository;
 import io.quarkus.test.junit.QuarkusTest;

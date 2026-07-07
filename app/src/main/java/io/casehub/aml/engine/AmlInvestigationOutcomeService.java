@@ -13,7 +13,7 @@ import io.casehub.engine.common.internal.model.CaseInstance;
 import io.casehub.engine.common.spi.CaseInstanceRepository;
 import io.casehub.engine.common.spi.EventLogRepository;
 import io.casehub.engine.common.spi.cache.CaseInstanceCache;
-import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.TenancyConstants;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -54,8 +54,7 @@ public class AmlInvestigationOutcomeService {
         CaseInstance instance = caseInstanceCache.get(caseId);
         if (instance == null) {
             instance = caseInstanceRepository
-                    .findByUuid(caseId, TenancyConstants.DEFAULT_TENANT_ID)
-                    .await().indefinitely();
+                    .findByUuid(caseId, TenancyConstants.DEFAULT_TENANT_ID);
         }
         if (instance == null) {
             return Optional.empty();
@@ -97,8 +96,7 @@ public class AmlInvestigationOutcomeService {
                         CaseHubEventType.WORKER_OUTCOME_FAILED,
                         CaseHubEventType.ACTION_GATE_REJECTED,
                         CaseHubEventType.ACTION_GATE_EXPIRED),
-                TenancyConstants.DEFAULT_TENANT_ID)
-                .await().indefinitely();
+                TenancyConstants.DEFAULT_TENANT_ID);
 
         String triggerGoalName = null;
         String triggerGoalKind = null;

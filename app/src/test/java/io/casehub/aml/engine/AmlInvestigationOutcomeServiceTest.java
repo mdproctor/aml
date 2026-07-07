@@ -14,11 +14,11 @@ import io.casehub.engine.common.internal.model.CaseInstance;
 import io.casehub.engine.common.spi.CaseInstanceRepository;
 import io.casehub.engine.common.spi.EventLogRepository;
 import io.casehub.engine.common.spi.cache.CaseInstanceCache;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
-import io.casehub.ledger.runtime.model.LedgerEntry;
-import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.api.model.LedgerAttestation;
+import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.platform.api.identity.ActorType;
-import io.smallrye.mutiny.Uni;
+
 import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -402,61 +402,60 @@ class AmlInvestigationOutcomeServiceTest {
         };
         final CaseInstanceRepository caseRepo = new CaseInstanceRepository() {
             @Override
-            public Uni<CaseInstance> findByUuid(UUID uuid, String tenancyId) {
-                return Uni.createFrom().item(repoResult);
+            public CaseInstance findByUuid(UUID uuid, String tenancyId) {
+                return repoResult;
             }
 
             @Override
-            public Uni<CaseInstance> save(CaseInstance i, String t) {
-                return Uni.createFrom().nullItem();
+            public CaseInstance save(CaseInstance i, String t) {
+                return null;
             }
 
             @Override
-            public Uni<CaseInstance> update(CaseInstance i, String t) {
-                return Uni.createFrom().nullItem();
+            public CaseInstance update(CaseInstance i, String t) {
+                return null;
             }
 
             @Override
-            public Uni<Void> updateStateAndAppendEvent(CaseInstance i, EventLog e, String t) {
-                return Uni.createFrom().voidItem();
+            public void updateStateAndAppendEvent(CaseInstance i, EventLog e, String t) {
             }
         };
         final EventLogRepository eventLogRepo = new EventLogRepository() {
             @Override
-            public Uni<Void> append(EventLog e, String t) { return Uni.createFrom().voidItem(); }
+            public void append(EventLog e, String t) { }
 
             @Override
-            public Uni<Long> appendAndReturnId(EventLog e, String t) { return Uni.createFrom().item(1L); }
+            public Long appendAndReturnId(EventLog e, String t) { return 1L; }
 
             @Override
-            public Uni<EventLog> findById(Long id, String t) { return Uni.createFrom().nullItem(); }
+            public EventLog findById(Long id, String t) { return null; }
 
             @Override
-            public Uni<List<EventLog>> findSchedulingEvents(UUID c, String w, Instant a, String t) {
-                return Uni.createFrom().item(List.of());
+            public List<EventLog> findSchedulingEvents(UUID c, String w, Instant a, String t) {
+                return List.of();
             }
 
             @Override
-            public Uni<List<EventLog>> findByCaseAndTypes(UUID c, Collection<CaseHubEventType> types, String t) {
-                return Uni.createFrom().item(eventLogs.stream()
+            public List<EventLog> findByCaseAndTypes(UUID c, Collection<CaseHubEventType> types, String t) {
+                return eventLogs.stream()
                         .filter(e -> types.contains(e.getEventType()))
-                        .toList());
+                        .toList();
             }
 
             @Override
-            public Uni<List<EventLog>> findByCaseAndWorkerAndType(UUID c, String w, CaseHubEventType t, String ten) {
-                return Uni.createFrom().item(List.of());
+            public List<EventLog> findByCaseAndWorkerAndType(UUID c, String w, CaseHubEventType t, String ten) {
+                return List.of();
             }
 
             @Override
-            public Uni<List<EventLog>> findByWorkerAndType(String w, CaseHubEventType t, String ten) {
-                return Uni.createFrom().item(List.of());
+            public List<EventLog> findByWorkerAndType(String w, CaseHubEventType t, String ten) {
+                return List.of();
             }
 
             @Override
-            public Uni<List<EventLog>> findByCaseWithFilters(UUID c, Collection<CaseHubEventType> et,
+            public List<EventLog> findByCaseWithFilters(UUID c, Collection<CaseHubEventType> et,
                     Collection<EventStreamType> st, String t) {
-                return Uni.createFrom().item(List.of());
+                return List.of();
             }
         };
         return new AmlInvestigationOutcomeService(repo, cache, caseRepo, eventLogRepo);

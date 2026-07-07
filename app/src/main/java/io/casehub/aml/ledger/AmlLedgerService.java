@@ -13,7 +13,7 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.ledger.api.model.ErasureReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.ledger.api.spi.LedgerEntryRepository;
 
 /**
  * Layer 4/8: writes AML domain-level ledger entries for each investigation lifecycle event.
