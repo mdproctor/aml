@@ -7,6 +7,9 @@ import io.casehub.aml.trust.AmlAttestationReconciler;
 import io.casehub.aml.trust.AmlTrustAttestationRepository;
 import io.casehub.aml.trust.AmlTrustRoutingAttestation;
 import io.casehub.aml.trust.AmlWorkerDecisionRepository;
+import io.casehub.blocks.routing.RequirementStatus;
+import io.casehub.blocks.routing.RoutingDecisionRecord;
+import io.casehub.blocks.routing.TrustRoutingRequirement;
 import io.casehub.ledger.model.WorkerDecisionEntry;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.api.model.LedgerEntry;
@@ -249,6 +252,14 @@ public class AmlComplianceEvidenceService {
 
     // -- Trust routing ---------------------------------------------------------
 
+    private static final String TRUST_ROUTING_REQUIREMENT_ID = "FATF-R20-TRUST-ROUTING";
+    private static final String TRUST_ROUTING_CITATION =
+        "FATF Recommendation 20 — Experienced analysts on complex cases";
+    private static final String TRUST_ROUTING_MECHANISM =
+        "Layer 6: TrustWeightedAgentStrategy reads AmlTrustRoutingPolicyProvider thresholds. " +
+        "Layer 7: AmlTrustRoutingAttestation captures trustScoreAtRouting at WorkerDecisionEvent " +
+        "time before TrustScoreCache can drift. Workaround for casehubio/engine#403.";
+
     private TrustRoutingRequirement buildTrustRouting(UUID caseId) {
         List<WorkerDecisionEntry> dispatched = workerDecisionRepo.findAllByCaseId(caseId);
         Set<String> dispatchedCaps = dispatched.stream()
@@ -264,8 +275,7 @@ public class AmlComplianceEvidenceService {
         List<RoutingDecisionRecord> decisions = attestations.stream()
                 .map(a -> new RoutingDecisionRecord(
                         a.capabilityTag, a.selectedWorkerId,
-                        a.trustScoreAtRouting, a.thresholdApplied, a.id,
-                        a.reconstructed, a.observerFailed))
+                        a.trustScoreAtRouting, a.thresholdApplied, a.id))
                 .toList();
 
         RequirementStatus status;
@@ -279,9 +289,9 @@ public class AmlComplianceEvidenceService {
         }
 
         return new TrustRoutingRequirement(
-                TrustRoutingRequirement.REQUIREMENT_ID,
-                TrustRoutingRequirement.CITATION,
-                TrustRoutingRequirement.MECHANISM,
+                TRUST_ROUTING_REQUIREMENT_ID,
+                TRUST_ROUTING_CITATION,
+                TRUST_ROUTING_MECHANISM,
                 status, decisions);
     }
 

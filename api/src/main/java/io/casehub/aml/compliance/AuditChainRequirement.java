@@ -1,5 +1,7 @@
 package io.casehub.aml.compliance;
 
+import io.casehub.blocks.routing.RequirementStatus;
+
 import java.util.List;
 
 public record AuditChainRequirement(

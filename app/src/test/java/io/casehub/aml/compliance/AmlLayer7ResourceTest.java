@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Layer 7: integration test for the compliance evidence REST endpoint.
@@ -243,8 +244,10 @@ class AmlLayer7ResourceTest {
         // First read after deletion: reconciler fills the gap, status = PARTIAL (reconstructed=true)
         given().when().get("/api/investigations/{caseId}/compliance-evidence", caseId)
             .then().statusCode(200)
-            .body("trustRouting.status", equalTo("PARTIAL"))
-            .body("trustRouting.decisions.reconstructed", hasItem(true));
+            .body("trustRouting.status", equalTo("PARTIAL"));
+        // reconstructed flag is on the entity, not the RoutingDecisionRecord DTO — verify via repo
+        assertTrue(attestationRepo.findByInvestigationCaseId(caseUUID).stream()
+            .anyMatch(a -> a.reconstructed), "At least one attestation must be reconstructed");
 
         // Second read: count reconstructed entries — should not increase (idempotent)
         long countBefore = attestationRepo.findByInvestigationCaseId(caseUUID).stream()

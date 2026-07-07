@@ -1,5 +1,7 @@
 package io.casehub.aml.compliance;
 
+import io.casehub.blocks.routing.RequirementStatus;
+
 public record GdprErasureRequirement(
         String id,
         String citation,

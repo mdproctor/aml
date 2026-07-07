@@ -160,4 +160,48 @@ class AmlLayer9ResourceTest {
                 .then().statusCode(200)
                 .body("outcome", nullValue());
     }
+
+    @Test
+    void post_suspend_returns_409_for_completed_case() {
+        final String caseIdStr = given().contentType(ContentType.JSON).body(CORPORATE_TX)
+                .when().post("/api/layer9/investigations")
+                .then().statusCode(202)
+                .extract().path("caseId");
+
+        Awaitility.await().atMost(15, TimeUnit.SECONDS).pollInterval(200, TimeUnit.MILLISECONDS)
+                .until(() -> "completed".equals(
+                        given().when().get("/api/layer9/investigations/" + caseIdStr)
+                                .then().extract().path("status")));
+
+        given().when().post("/api/layer9/investigations/" + caseIdStr + "/suspend")
+                .then().statusCode(409);
+    }
+
+    @Test
+    void post_suspend_returns_404_for_nonexistent_case() {
+        given().when().post("/api/layer9/investigations/" + UUID.randomUUID() + "/suspend")
+                .then().statusCode(404);
+    }
+
+    @Test
+    void post_resume_returns_409_for_completed_case() {
+        final String caseIdStr = given().contentType(ContentType.JSON).body(CORPORATE_TX)
+                .when().post("/api/layer9/investigations")
+                .then().statusCode(202)
+                .extract().path("caseId");
+
+        Awaitility.await().atMost(15, TimeUnit.SECONDS).pollInterval(200, TimeUnit.MILLISECONDS)
+                .until(() -> "completed".equals(
+                        given().when().get("/api/layer9/investigations/" + caseIdStr)
+                                .then().extract().path("status")));
+
+        given().when().post("/api/layer9/investigations/" + caseIdStr + "/resume")
+                .then().statusCode(409);
+    }
+
+    @Test
+    void post_resume_returns_404_for_nonexistent_case() {
+        given().when().post("/api/layer9/investigations/" + UUID.randomUUID() + "/resume")
+                .then().statusCode(404);
+    }
 }

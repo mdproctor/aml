@@ -16,6 +16,20 @@
   <description>AML domain model and service SPIs — pure Java, no Quarkus, no JPA</description>
 
   <dependencies>
+    <!-- Engine API — CandidateSetStrategy, StaticSetStrategy used by AmlActionType -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-engine-api</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
+
+    <!-- Blocks — shared compliance record types (RequirementStatus, RoutingDecisionRecord, TrustRoutingRequirement) -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-blocks</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
+
     <!-- Test dependencies -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>

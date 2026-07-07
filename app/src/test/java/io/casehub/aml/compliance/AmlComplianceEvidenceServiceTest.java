@@ -7,6 +7,7 @@ import io.casehub.aml.trust.AmlAttestationReconciler;
 import io.casehub.aml.trust.AmlTrustAttestationRepository;
 import io.casehub.aml.trust.AmlTrustRoutingAttestation;
 import io.casehub.aml.trust.AmlWorkerDecisionRepository;
+import io.casehub.blocks.routing.RequirementStatus;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.model.WorkerDecisionEntry;
 import io.casehub.ledger.runtime.config.LedgerConfig;
@@ -278,7 +279,6 @@ class AmlComplianceEvidenceServiceTest {
             workerDecision(caseId, "entity-resolution", "agent-A")));
 
         assertEquals(RequirementStatus.PARTIAL, service.assembleEvidence(caseId).trustRouting().status());
-        assertTrue(service.assembleEvidence(caseId).trustRouting().decisions().get(0).observerFailed());
     }
 
     @Test
@@ -297,7 +297,6 @@ class AmlComplianceEvidenceServiceTest {
             workerDecision(caseId, "entity-resolution", "agent-A")));
 
         assertEquals(RequirementStatus.PARTIAL, service.assembleEvidence(caseId).trustRouting().status());
-        assertTrue(service.assembleEvidence(caseId).trustRouting().decisions().get(0).reconstructed());
     }
 
     @Test
