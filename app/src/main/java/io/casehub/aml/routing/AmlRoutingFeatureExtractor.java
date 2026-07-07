@@ -22,7 +22,7 @@ public class AmlRoutingFeatureExtractor implements RoutingFeatureExtractor {
         Map<String, Object> features = new LinkedHashMap<>();
         JsonNode prior = root.path("priorEntityContext");
         if (!prior.isMissingNode()) {
-            putIfPresent(features, "knownHighRisk", prior, JsonNode::asBoolean);
+            putBoolIfPresent(features, "knownHighRisk", prior);
             putIntIfPresent(features, "entityRiskCount", prior);
             putIntIfPresent(features, "networkCount", prior);
             putIntIfPresent(features, "patternCount", prior);
@@ -69,11 +69,10 @@ public class AmlRoutingFeatureExtractor implements RoutingFeatureExtractor {
         return null;
     }
 
-    private static void putIfPresent(Map<String, Object> map, String key,
-                                     JsonNode parent, java.util.function.Function<JsonNode, Object> converter) {
+    private static void putBoolIfPresent(Map<String, Object> map, String key, JsonNode parent) {
         JsonNode child = parent.path(key);
-        if (!child.isMissingNode()) {
-            map.put(key, converter.apply(child));
+        if (!child.isMissingNode() && child.isBoolean()) {
+            map.put(key, child.asBoolean());
         }
     }
 
