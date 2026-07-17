@@ -25,7 +25,7 @@ export class AmlInvestigationOverview extends LitElement {
         amount: this.item.number('amount'),
         currency: this.item.text('currency'),
         flagReason: this.item.text('flagReason'),
-        createdAt: this.item.text('createdAt'),
+        createdAt: this.item.date('createdAt').toISOString(),
       } as InvestigationSummaryResponse;
     }
     return this.item;

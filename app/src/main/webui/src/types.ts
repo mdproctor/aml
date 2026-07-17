@@ -23,6 +23,7 @@ export interface InvestigationSummaryResponse {
   amount: number;
   currency: string;
   flagReason: string;
+  riskScore: number; // 0.0 to 1.0
   createdAt: string; // ISO 8601 timestamp
 }
 
@@ -149,6 +150,23 @@ export interface GateMetrics {
   byActionType: Record<string, number>;
   byStatus: Record<string, number>;
   averageApprovalTimeSeconds: number | null;
+}
+
+export interface InterventionMetrics {
+  escalationCount: number;
+  manualOverrideCount: number;
+  declineRoutingCount: number;
+  gateRejectionCount: number;
+  averageResponseTimeSeconds: number;
+  recentInterventions: RecentIntervention[];
+}
+
+export interface RecentIntervention {
+  type: string;
+  caseId: string;
+  reason: string;
+  actor: string;
+  occurredAt: string;
 }
 
 /**
@@ -285,6 +303,7 @@ export interface InvestigationSummary {
   amount: number;
   currency: string;
   flagReason: string;
+  riskScore: number;
   createdAt: string;
 }
 

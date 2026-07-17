@@ -5,12 +5,12 @@
 
 export const INVESTIGATIONS = {
   items: [
-    { caseId: 'c1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6', status: 'completed', outcomeType: 'SAR_FILED', transactionId: 'TXN-2024-001', originAccount: 'ACC-CORP-7721', destinationAccount: 'ACC-SHELL-0092', amount: 245000, currency: 'USD', flagReason: 'Structured layering — 12 sub-threshold deposits over 48h', createdAt: '2024-11-15T09:23:00Z' },
-    { caseId: 'd2b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7', status: 'completed', outcomeType: 'CLEARED', transactionId: 'TXN-2024-002', originAccount: 'ACC-RETAIL-1103', destinationAccount: 'ACC-SAVINGS-4456', amount: 89500, currency: 'EUR', flagReason: 'Large cash deposit — single transaction over threshold', createdAt: '2024-11-16T14:45:00Z' },
-    { caseId: 'e3c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8', status: 'in_progress', outcomeType: null, transactionId: 'TXN-2024-003', originAccount: 'ACC-PEP-8834', destinationAccount: 'ACC-TRUST-2201', amount: 1200000, currency: 'GBP', flagReason: 'PEP — politically exposed person, high-value transfer', createdAt: '2024-11-17T08:12:00Z' },
-    { caseId: 'f4d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f9', status: 'failed', outcomeType: null, transactionId: 'TXN-2024-004', originAccount: 'ACC-CORP-3310', destinationAccount: 'ACC-OFFSHORE-7788', amount: 567000, currency: 'USD', flagReason: 'Rapid cross-border transfer pattern — 5 jurisdictions in 24h', createdAt: '2024-11-18T16:30:00Z' },
-    { caseId: 'a5e6f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a0', status: 'completed', outcomeType: 'SAR_FILED', transactionId: 'TXN-2024-005', originAccount: 'ACC-SMURFER-2291', destinationAccount: 'ACC-CONSOLIDATION-5500', amount: 49900, currency: 'USD', flagReason: 'Smurfing — 10 deposits of $4,990 across branches', createdAt: '2024-11-19T11:00:00Z' },
-    { caseId: 'b6f7a8b9-c0d1-e2f3-a4b5-c6d7e8f9a0b1', status: 'suspended', outcomeType: null, transactionId: 'TXN-2024-006', originAccount: 'ACC-ESTATE-9912', destinationAccount: 'ACC-NOMINEE-3344', amount: 3400000, currency: 'CHF', flagReason: 'Beneficial ownership obscured — nominee structure', createdAt: '2024-11-20T07:45:00Z' },
+    { caseId: 'c1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6', status: 'completed', outcomeType: 'SAR_FILED', transactionId: 'TXN-2024-001', originAccount: 'ACC-CORP-7721', destinationAccount: 'ACC-SHELL-0092', amount: 245000, currency: 'USD', flagReason: 'Structured layering — 12 sub-threshold deposits over 48h', riskScore: 0.89, createdAt: '2024-11-15T09:23:00Z' },
+    { caseId: 'd2b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7', status: 'completed', outcomeType: 'CLEARED', transactionId: 'TXN-2024-002', originAccount: 'ACC-RETAIL-1103', destinationAccount: 'ACC-SAVINGS-4456', amount: 89500, currency: 'EUR', flagReason: 'Large cash deposit — single transaction over threshold', riskScore: 0.42, createdAt: '2024-11-16T14:45:00Z' },
+    { caseId: 'e3c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8', status: 'in_progress', outcomeType: null, transactionId: 'TXN-2024-003', originAccount: 'ACC-PEP-8834', destinationAccount: 'ACC-TRUST-2201', amount: 1200000, currency: 'GBP', flagReason: 'PEP — politically exposed person, high-value transfer', riskScore: 0.95, createdAt: '2024-11-17T08:12:00Z' },
+    { caseId: 'f4d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f9', status: 'failed', outcomeType: null, transactionId: 'TXN-2024-004', originAccount: 'ACC-CORP-3310', destinationAccount: 'ACC-OFFSHORE-7788', amount: 567000, currency: 'USD', flagReason: 'Rapid cross-border transfer pattern — 5 jurisdictions in 24h', riskScore: 0.78, createdAt: '2024-11-18T16:30:00Z' },
+    { caseId: 'a5e6f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a0', status: 'completed', outcomeType: 'SAR_FILED', transactionId: 'TXN-2024-005', originAccount: 'ACC-SMURFER-2291', destinationAccount: 'ACC-CONSOLIDATION-5500', amount: 49900, currency: 'USD', flagReason: 'Smurfing — 10 deposits of $4,990 across branches', riskScore: 0.82, createdAt: '2024-11-19T11:00:00Z' },
+    { caseId: 'b6f7a8b9-c0d1-e2f3-a4b5-c6d7e8f9a0b1', status: 'suspended', outcomeType: null, transactionId: 'TXN-2024-006', originAccount: 'ACC-ESTATE-9912', destinationAccount: 'ACC-NOMINEE-3344', amount: 3400000, currency: 'CHF', flagReason: 'Beneficial ownership obscured — nominee structure', riskScore: 0.91, createdAt: '2024-11-20T07:45:00Z' },
   ],
   total: 6,
   page: 0,
@@ -27,18 +27,20 @@ export const LAYER6_RESPONSE = {
     { capabilityTag: 'sar-drafting', selectedWorker: 'sar-drafting-agent-senior', trustScore: 0.91 },
     { capabilityTag: 'senior-analyst-review', selectedWorker: 'senior-analyst-agent', trustScore: 0.88 },
   ],
-  outcome: { outcomeType: 'SAR_FILED', resolution: 'SAR filed with FinCEN — reference FIN-2024-00847' },
+  outcome: { type: 'SAR_FILED', reason: 'SAR filed with FinCEN — reference FIN-2024-00847' },
   failureContext: null,
 };
 
 export const PRIOR_CONTEXT = {
+  hasHistory: true,
   knownHighRisk: true,
-  historyCount: 3,
-  lastInvestigationDate: '2024-08-20T00:00:00Z',
+  entityRiskCount: 3,
+  networkCount: 2,
+  patternCount: 4,
   facts: [
-    { key: 'Previous SARs', value: '2 filed (2023-Q4, 2024-Q1)' },
-    { key: 'Entity risk level', value: 'HIGH — shell company network' },
-    { key: 'Jurisdiction flags', value: 'Cayman Islands, Cyprus' },
+    { domain: 'ENTITY_RISK', text: '2 previous SARs filed (2023-Q4, 2024-Q1)', createdAt: '2024-08-20T00:00:00Z', confidence: '0.92' },
+    { domain: 'NETWORK', text: 'Shell company network — Cayman Islands, Cyprus jurisdictions', createdAt: '2024-07-15T00:00:00Z', confidence: '0.87' },
+    { domain: 'PATTERN', text: 'Recurring structured deposits below CTR threshold', createdAt: '2024-09-10T00:00:00Z', confidence: '0.95' },
   ],
 };
 
@@ -63,16 +65,18 @@ export const FINDINGS = {
 
 export const GATES = {
   gates: [
-    { actionType: 'sar.filing', gatePolicy: 'ALWAYS', status: 'APPROVED', candidateGroups: 'aml-mlro', approvedBy: 'mlro-officer-001', approvedAt: '2024-11-15T14:30:00Z', expiresAt: null },
-    { actionType: 'entity.link.creation', gatePolicy: 'RISK_SCORE_THRESHOLD', status: 'APPROVED', candidateGroups: 'aml-compliance', approvedBy: 'compliance-analyst-003', approvedAt: '2024-11-15T10:15:00Z', expiresAt: null },
+    { workItemId: 'wi-gate-001', actionType: 'sar.filing', gatePolicy: 'ALWAYS', reversible: false, description: 'SAR filing requires MLRO approval before submission to FinCEN', candidateGroups: ['aml-mlro'], status: 'COMPLETED', approvedBy: 'mlro-officer-001', approvedAt: '2024-11-15T14:30:00Z', expiresAt: null },
+    { workItemId: 'wi-gate-002', actionType: 'entity.link.creation', gatePolicy: 'RISK_SCORE_THRESHOLD', reversible: true, description: 'Entity link proposals above risk threshold require compliance review', candidateGroups: ['aml-compliance'], status: 'COMPLETED', approvedBy: 'compliance-analyst-003', approvedAt: '2024-11-15T10:15:00Z', expiresAt: null },
   ],
 };
 
 export const COMPLIANCE_EVIDENCE = {
-  auditChain: { requirementId: 'FINCEN-AUDIT-001', citation: 'FinCEN 31 CFR §1020.320', mechanism: 'Tamper-evident ledger with Merkle inclusion proofs', status: 'CLOSED', events: [{ eventType: 'CASE_OPENED', timestamp: '2024-11-15T09:23:00Z' }, { eventType: 'COMPLIANCE_REVIEW_OPENED', timestamp: '2024-11-15T14:00:00Z' }, { eventType: 'SAR_OFFICER_REVIEWED', timestamp: '2024-11-15T14:30:00Z' }] },
-  sla: { requirementId: 'FINCEN-SLA-001', citation: 'FinCEN 30-day filing requirement', mechanism: 'WorkItem with claimDeadline + auto-escalation', status: 'CLOSED', workItemId: 'wi-001', slaMet: true, claimDeadline: '2024-12-15T09:23:00Z', completedAt: '2024-11-15T14:30:00Z' },
-  trustRouting: { requirementId: 'FATF-TRUST-001', citation: 'FATF Recommendation 15 — trust-weighted agent selection', mechanism: 'Bayesian Beta trust scoring with SAR outcome attestations', status: 'CLOSED', decisions: [{ capabilityTag: 'sar-drafting', workerId: 'sar-drafting-agent-senior', trustScoreAtRouting: 0.91, thresholdApplied: 0.80, evidenceEntryId: 'ev-001' }] },
-  gdprErasure: { requirementId: 'GDPR-ART17-001', citation: 'GDPR Article 17 — Right to Erasure', mechanism: 'LedgerErasureService + identity tokenisation', status: 'CLOSED', tokenisationEnabled: true, erasureReceiptCount: 0 },
+  caseId: 'c1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6',
+  generatedAt: '2024-11-15T15:00:00Z',
+  auditChain: { id: 'FINCEN-AUDIT-001', citation: 'FinCEN 31 CFR §1020.320', mechanism: 'Tamper-evident ledger with Merkle inclusion proofs', status: 'MET', treeRoot: 'sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6', chainVerified: true, events: [{ entryId: 'ae-001', eventType: 'CASE_OPENED', actorId: 'aml-orchestrator', actorRole: 'SYSTEM', occurredAt: '2024-11-15T09:23:00Z', causedByEntryId: null, digest: 'sha256:7f3a8b2c...', inclusionProof: { entryIndex: 0, treeSize: 7, leafHash: 'sha256:7f3a8b2c9d4e5f6a1b2c3d4e5f6a7b8c', siblings: [{ hash: 'sha256:4e9d1f7a2b3c4d5e', position: 'RIGHT' }], treeRoot: 'sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6' } }, { entryId: 'ae-006', eventType: 'COMPLIANCE_REVIEW_OPENED', actorId: 'aml-orchestrator', actorRole: 'SYSTEM', occurredAt: '2024-11-15T14:00:00Z', causedByEntryId: 'ae-005', digest: 'sha256:9e8f7d6c...', inclusionProof: { entryIndex: 5, treeSize: 7, leafHash: 'sha256:9e8f7d6c5b4a3f2e', siblings: [{ hash: 'sha256:3c4d5e6f7a8b9c0d', position: 'LEFT' }], treeRoot: 'sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6' } }, { entryId: 'ae-007', eventType: 'SAR_OFFICER_REVIEWED', actorId: 'mlro-officer-001', actorRole: 'HUMAN', occurredAt: '2024-11-15T14:30:00Z', causedByEntryId: 'ae-006', digest: 'sha256:3c4d5e6f...', inclusionProof: { entryIndex: 6, treeSize: 7, leafHash: 'sha256:3c4d5e6f7a8b9c0d', siblings: [{ hash: 'sha256:9e8f7d6c5b4a3f2e', position: 'RIGHT' }], treeRoot: 'sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6' } }] },
+  sla: { id: 'FINCEN-SLA-001', citation: 'FinCEN 30-day filing requirement', mechanism: 'WorkItem with claimDeadline + auto-escalation', status: 'MET', workItemId: 'wi-001', claimDeadline: '2024-12-15T09:23:00Z', completedAt: '2024-11-15T14:30:00Z', slaMet: true, candidateGroups: ['compliance-officers'], escalationPolicy: 'Escalate to head of compliance after 30 days' },
+  trustRouting: { id: 'FATF-TRUST-001', citation: 'FATF Recommendation 15 — trust-weighted agent selection', mechanism: 'Bayesian Beta trust scoring with SAR outcome attestations', status: 'MET' },
+  gdprErasure: { id: 'GDPR-ART17-001', citation: 'GDPR Article 17 — Right to Erasure', mechanism: 'LedgerErasureService + identity tokenisation', status: 'MET', tokenisationEnabled: true, erasureReceiptEnabled: true, erasureReceiptCount: 0, erasureEndpoint: '/api/investigations/{caseId}/erasure' },
   signature: 'sha256:a1b2c3d4e5f6...',
 };
 
@@ -110,6 +114,21 @@ export const GATE_METRICS = {
   byActionType: { 'sar.filing': 287, 'entity.link.creation': 34, 'law.enforcement.referral': 12, 'account.restriction': 9 },
   byStatus: { APPROVED: 318, REJECTED: 14, EXPIRED: 10 },
   averageApprovalTimeSeconds: 4320,
+};
+
+export const INTERVENTION_METRICS = {
+  escalationCount: 27,
+  manualOverrideCount: 14,
+  declineRoutingCount: 43,
+  gateRejectionCount: 14,
+  averageResponseTimeSeconds: 2160,
+  recentInterventions: [
+    { type: 'ESCALATION', caseId: 'e3c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8', reason: 'Compliance officer SLA breach — 30-day deadline exceeded', actor: 'system', occurredAt: '2024-11-18T14:00:00Z' },
+    { type: 'DECLINE_REROUTE', caseId: 'f4d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f9', reason: 'OSINT agent declined — PEP clearance level insufficient', actor: 'osint-screening-agent', occurredAt: '2024-11-18T10:15:00Z' },
+    { type: 'GATE_REJECTION', caseId: 'a5e6f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a0', reason: 'MLRO rejected SAR filing — insufficient evidence', actor: 'mlro-officer-001', occurredAt: '2024-11-17T16:45:00Z' },
+    { type: 'MANUAL_OVERRIDE', caseId: 'c1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6', reason: 'Senior analyst overrode pattern-analysis routing — requested senior agent', actor: 'senior-analyst-agent', occurredAt: '2024-11-16T11:30:00Z' },
+    { type: 'ESCALATION', caseId: 'b6f7a8b9-c0d1-e2f3-a4b5-c6d7e8f9a0b1', reason: 'Investigation suspended — beneficial ownership chain unresolvable', actor: 'system', occurredAt: '2024-11-20T09:00:00Z' },
+  ],
 };
 
 export const INCLUSION_PROOF = {

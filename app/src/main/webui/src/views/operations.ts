@@ -10,6 +10,7 @@ import type {
   TrustScoreMetrics,
   AgentTrustScore,
   GateMetrics,
+  InterventionMetrics,
 } from '../types.js';
 
 type TabId = 'throughput' | 'trust-scores' | 'gates' | 'intervention';
@@ -49,6 +50,9 @@ export class AmlOperationsView extends LitElement {
   @state() private _gateError: string | null = null;
 
   // Intervention state
+  @state() private _interventionMetrics: InterventionMetrics | null = null;
+  @state() private _interventionLoading = false;
+  @state() private _interventionError: string | null = null;
   @state() private _suspendCaseId = '';
   @state() private _resumeCaseId = '';
   @state() private _escalateWorkItemId = '';
@@ -259,6 +263,117 @@ export class AmlOperationsView extends LitElement {
       font-style: italic;
       margin-top: var(--pages-space-2, 8px);
     }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: var(--pages-space-4, 16px);
+      margin-bottom: var(--pages-space-6, 24px);
+    }
+
+    .metric-card {
+      border: 1px solid var(--pages-neutral-4, #d4d4d4);
+      border-radius: 8px;
+      padding: var(--pages-space-4, 16px);
+      text-align: center;
+    }
+
+    .metric-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--pages-neutral-12, #0a0a0a);
+    }
+
+    .metric-label {
+      font-size: var(--pages-font-size-sm, 13px);
+      font-weight: 600;
+      color: var(--pages-neutral-9, #262626);
+      margin-top: var(--pages-space-1, 4px);
+    }
+
+    .metric-desc {
+      font-size: 11px;
+      color: var(--pages-neutral-7, #525252);
+      margin-top: var(--pages-space-1, 4px);
+    }
+
+    .intervention-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--pages-space-2, 8px);
+      margin-bottom: var(--pages-space-6, 24px);
+    }
+
+    .intervention-item {
+      border: 1px solid var(--pages-neutral-4, #d4d4d4);
+      border-radius: 8px;
+      padding: var(--pages-space-3, 12px) var(--pages-space-4, 16px);
+    }
+
+    .intervention-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--pages-space-1, 4px);
+    }
+
+    .intervention-type {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+
+    .intervention-type.escalation {
+      background: var(--pages-error-3, #fee2e2);
+      color: var(--pages-error-9, #dc2626);
+    }
+
+    .intervention-type.decline_reroute {
+      background: var(--pages-warning-3, #fef3c7);
+      color: var(--pages-warning-9, #d97706);
+    }
+
+    .intervention-type.gate_rejection {
+      background: var(--pages-accent-3, #dbeafe);
+      color: var(--pages-accent-9, #3b82f6);
+    }
+
+    .intervention-type.manual_override {
+      background: var(--pages-neutral-3, #e5e5e5);
+      color: var(--pages-neutral-9, #262626);
+    }
+
+    .intervention-date {
+      font-size: 11px;
+      color: var(--pages-neutral-7, #525252);
+    }
+
+    .intervention-reason {
+      font-size: var(--pages-font-size-sm, 13px);
+      color: var(--pages-neutral-11, #0a0a0a);
+    }
+
+    .intervention-meta {
+      font-size: 11px;
+      color: var(--pages-neutral-7, #525252);
+      margin-top: var(--pages-space-1, 4px);
+    }
+
+    .loading {
+      padding: var(--pages-space-6, 24px);
+      text-align: center;
+      color: var(--pages-neutral-7, #525252);
+    }
+
+    .error {
+      padding: var(--pages-space-4, 16px);
+      background: var(--pages-error-1, #fef2f2);
+      color: var(--pages-error-9, #dc2626);
+      border-radius: 8px;
+    }
   `;
 
   override connectedCallback(): void {
@@ -283,7 +398,7 @@ export class AmlOperationsView extends LitElement {
         this._fetchGateMetrics();
         break;
       case 'intervention':
-        // No data fetch for intervention tab
+        this._fetchInterventionMetrics();
         break;
     }
   }
@@ -333,6 +448,22 @@ export class AmlOperationsView extends LitElement {
       this._gateError = error instanceof Error ? error.message : String(error);
     } finally {
       this._gateLoading = false;
+    }
+  }
+
+  private async _fetchInterventionMetrics(): Promise<void> {
+    this._interventionLoading = true;
+    this._interventionError = null;
+    try {
+      const response = await fetch('/api/metrics/interventions');
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      this._interventionMetrics = await response.json();
+    } catch (error) {
+      this._interventionError = error instanceof Error ? error.message : String(error);
+    } finally {
+      this._interventionLoading = false;
     }
   }
 
@@ -591,7 +722,64 @@ export class AmlOperationsView extends LitElement {
   // ========== Intervention Tab ==========
 
   private _renderInterventionTab() {
+    if (this._interventionLoading) {
+      return html`<div class="loading">Loading intervention metrics...</div>`;
+    }
+    if (this._interventionError) {
+      return html`<div class="error">${this._interventionError}</div>`;
+    }
+
+    const m = this._interventionMetrics;
+    const avgMins = m ? Math.round(m.averageResponseTimeSeconds / 60) : 0;
+
     return html`
+      ${m ? html`
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-value">${m.escalationCount}</div>
+            <div class="metric-label">Escalations</div>
+            <div class="metric-desc">SLA breach auto-escalations</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">${m.declineRoutingCount}</div>
+            <div class="metric-label">DECLINE Re-routes</div>
+            <div class="metric-desc">Agent declined — out of clearance</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">${m.gateRejectionCount}</div>
+            <div class="metric-label">Gate Rejections</div>
+            <div class="metric-desc">MLRO / compliance rejected</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">${m.manualOverrideCount}</div>
+            <div class="metric-label">Manual Overrides</div>
+            <div class="metric-desc">Analyst overrode routing</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value">${avgMins}m</div>
+            <div class="metric-label">Avg Response</div>
+            <div class="metric-desc">Time to resolve intervention</div>
+          </div>
+        </div>
+
+        ${m.recentInterventions.length > 0 ? html`
+          <h3>Recent Interventions</h3>
+          <div class="intervention-list">
+            ${m.recentInterventions.map(i => html`
+              <div class="intervention-item">
+                <div class="intervention-header">
+                  <span class="intervention-type ${i.type.toLowerCase()}">${i.type.replace('_', ' ')}</span>
+                  <span class="intervention-date">${new Date(i.occurredAt).toLocaleDateString()}</span>
+                </div>
+                <div class="intervention-reason">${i.reason}</div>
+                <div class="intervention-meta">Case: ${i.caseId.slice(0, 8)}… · Actor: ${i.actor}</div>
+              </div>
+            `)}
+          </div>
+        ` : nothing}
+      ` : nothing}
+
+      <h3 style="margin-top: var(--pages-space-6, 24px)">Operational Actions</h3>
       <div class="action-grid">
         ${this._renderSuspendInvestigation()}
         ${this._renderResumeInvestigation()}

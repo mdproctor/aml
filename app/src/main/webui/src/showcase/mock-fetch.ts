@@ -5,7 +5,7 @@
 import {
   INVESTIGATIONS, LAYER6_RESPONSE, PRIOR_CONTEXT, FINDINGS, GATES,
   COMPLIANCE_EVIDENCE, AUDIT_TRAIL, THROUGHPUT_METRICS, TRUST_SCORE_METRICS,
-  GATE_METRICS, INCLUSION_PROOF,
+  GATE_METRICS, INTERVENTION_METRICS, INCLUSION_PROOF,
 } from './mock-data.js';
 
 type RouteHandler = (url: URL, params: Record<string, string>) => unknown;
@@ -56,15 +56,19 @@ const routes: Array<{ pattern: RegExp; handler: RouteHandler }> = [
     handler: () => GATE_METRICS,
   },
   {
+    pattern: /^\/api\/metrics\/interventions$/,
+    handler: () => INTERVENTION_METRICS,
+  },
+  {
     pattern: /^\/api\/layer6\/investigations\/([^/]+)\/(suspend|resume)$/,
     handler: (_url, params) => ({ status: 'ok', action: params['2'] }),
   },
   {
     pattern: /^\/workitems\/inbox$/,
     handler: () => ([
-      { id: 'wi-001', title: 'Compliance review — SAR for TXN-2024-001', status: 'PENDING', priority: 'HIGH', candidateGroups: 'compliance-officers', callerRef: 'aml:investigation:c1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6', createdAt: '2024-11-15T14:00:00Z', claimDeadline: '2024-12-15T14:00:00Z' },
-      { id: 'wi-002', title: 'Compliance review — SAR for TXN-2024-005', status: 'ASSIGNED', priority: 'HIGH', candidateGroups: 'compliance-officers', assigneeId: 'officer-001', callerRef: 'aml:investigation:a5e6f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a0', createdAt: '2024-11-19T11:30:00Z', claimDeadline: '2024-12-19T11:30:00Z' },
-      { id: 'wi-003', title: 'Compliance review — SAR for TXN-2024-003', status: 'PENDING', priority: 'CRITICAL', candidateGroups: 'compliance-officers', callerRef: 'aml:investigation:e3c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8', createdAt: '2024-11-17T09:00:00Z', claimDeadline: '2024-12-17T09:00:00Z' },
+      { item: { id: 'wi-001', title: 'Compliance review — SAR for TXN-2024-001', status: 'PENDING', priority: 'HIGH', category: 'SAR Review', candidateGroups: 'compliance-officers', assigneeId: null, callerRef: 'aml:investigation:c1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6', createdAt: '2024-11-15T14:00:00Z', claimDeadline: '2024-12-15T14:00:00Z', expiresAt: null }, childCount: 0, completedCount: null, requiredCount: null, groupStatus: null },
+      { item: { id: 'wi-002', title: 'Compliance review — SAR for TXN-2024-005', status: 'ASSIGNED', priority: 'HIGH', category: 'SAR Review', candidateGroups: 'compliance-officers', assigneeId: 'officer-001', callerRef: 'aml:investigation:a5e6f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a0', createdAt: '2024-11-19T11:30:00Z', claimDeadline: '2024-12-19T11:30:00Z', expiresAt: null }, childCount: 0, completedCount: null, requiredCount: null, groupStatus: null },
+      { item: { id: 'wi-003', title: 'Compliance review — SAR for TXN-2024-003', status: 'PENDING', priority: 'CRITICAL', category: 'SAR Review', candidateGroups: 'compliance-officers', assigneeId: null, callerRef: 'aml:investigation:e3c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8', createdAt: '2024-11-17T09:00:00Z', claimDeadline: '2024-12-17T09:00:00Z', expiresAt: null }, childCount: 0, completedCount: null, requiredCount: null, groupStatus: null },
     ]),
   },
   {
@@ -82,6 +86,33 @@ const routes: Array<{ pattern: RegExp; handler: RouteHandler }> = [
   { pattern: /^\/queues$/, handler: () => [] },
   { pattern: /^\/queues\/summary$/, handler: () => ({ queues: [] }) },
 ];
+
+// Mock EventSource — SSE endpoints bypass fetch interceptor, so we stub EventSource
+// to prevent 404 errors on /workitems/events in showcase mode.
+class MockEventSource {
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSED = 2;
+  readonly CONNECTING = 0;
+  readonly OPEN = 1;
+  readonly CLOSED = 2;
+  readyState = MockEventSource.OPEN;
+  url: string;
+  onopen: ((ev: Event) => void) | null = null;
+  onmessage: ((ev: MessageEvent) => void) | null = null;
+  onerror: ((ev: Event) => void) | null = null;
+  withCredentials = false;
+
+  constructor(url: string | URL) {
+    this.url = typeof url === 'string' ? url : url.href;
+    setTimeout(() => this.onopen?.(new Event('open')), 10);
+  }
+  addEventListener() {}
+  removeEventListener() {}
+  dispatchEvent() { return true; }
+  close() { this.readyState = MockEventSource.CLOSED; }
+}
+(window as any).EventSource = MockEventSource;
 
 const originalFetch = window.fetch.bind(window);
 
