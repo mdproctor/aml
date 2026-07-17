@@ -10,8 +10,26 @@ import type {
 export class AmlInvestigationOverview extends LitElement {
   @property({ attribute: false }) item: any = null;
 
-  get caseId(): string { return this.item?.caseId ?? ''; }
-  get caseData(): InvestigationSummaryResponse | null { return this.item; }
+  get caseId(): string { return this.item?.text?.('caseId') ?? this.item?.caseId ?? ''; }
+  get caseData(): InvestigationSummaryResponse | null {
+    if (!this.item) return null;
+    if (this.item.text) {
+      // TypedRow — extract fields
+      return {
+        caseId: this.item.text('caseId'),
+        status: this.item.text('status'),
+        outcomeType: this.item.text('outcomeType'),
+        transactionId: this.item.text('transactionId'),
+        originAccount: this.item.text('originAccount'),
+        destinationAccount: this.item.text('destinationAccount'),
+        amount: this.item.number('amount'),
+        currency: this.item.text('currency'),
+        flagReason: this.item.text('flagReason'),
+        createdAt: this.item.text('createdAt'),
+      } as InvestigationSummaryResponse;
+    }
+    return this.item;
+  }
 
   @state() private _layer6Data: Layer6InvestigationResponse | null = null;
   @state() private _layer6Loading = false;

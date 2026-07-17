@@ -9,7 +9,7 @@ import type {
 export class AmlFindingsPanel extends LitElement {
   @property({ attribute: false }) item: any = null;
 
-  get caseId(): string { return this.item?.caseId ?? ''; }
+  get caseId(): string { return this.item?.text?.('caseId') ?? this.item?.caseId ?? ''; }
 
   @state() private _findings: InvestigationFindingsResponse | null = null;
   @state() private _loading = false;

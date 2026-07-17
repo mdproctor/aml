@@ -71,7 +71,7 @@ export class AmlApp extends LitElement {
     }
 
     .sidebar {
-      width: 240px;
+      width: 160px;
       background: var(--pages-neutral-2, #f5f5f5);
       border-right: 1px solid var(--pages-neutral-4, #d4d4d4);
       display: flex;

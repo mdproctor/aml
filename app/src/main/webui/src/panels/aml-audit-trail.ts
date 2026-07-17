@@ -20,7 +20,7 @@ interface VerificationResult {
 export class AmlAuditTrailPanel extends LitElement {
   @property({ attribute: false }) item: any = null;
 
-  get caseId(): string { return this.item?.caseId ?? ''; }
+  get caseId(): string { return this.item?.text?.('caseId') ?? this.item?.caseId ?? ''; }
 
   @state() private _entries: AuditTrailEntry[] = [];
   @state() private _loading = false;

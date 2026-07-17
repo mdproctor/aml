@@ -16,7 +16,7 @@ import type {
 export class AmlRoutingPanel extends LitElement {
   @property({ attribute: false }) item: any = null;
 
-  get caseId(): string { return this.item?.caseId ?? ''; }
+  get caseId(): string { return this.item?.text?.('caseId') ?? this.item?.caseId ?? ''; }
 
   @state() private _routingData: Layer6InvestigationResponse | null = null;
   @state() private _routingLoading = false;
