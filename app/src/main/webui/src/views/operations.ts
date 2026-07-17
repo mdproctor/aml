@@ -1,7 +1,10 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import type { ColumnDef } from '@casehubio/blocks-ui-data-table';
-import '@casehubio/blocks-ui-data-table';
+import type { TableColumnConfig } from '@casehubio/pages-table';
+import type { TypedRow } from '@casehubio/pages-data/dist/dataset/types.js';
+import { fromRows } from '@casehubio/pages-data/dist/dataset/conversion.js';
+import { ColumnType, columnId } from '@casehubio/pages-data/dist/dataset/types.js';
+import '@casehubio/pages-table';
 import type {
   ThroughputMetrics,
   TrustScoreMetrics,
@@ -401,30 +404,24 @@ export class AmlOperationsView extends LitElement {
       ([reason, count]) => ({ reason, count })
     );
 
-    const statusColumns: ColumnDef<StatusRow>[] = [
-      {
-        key: 'status',
-        header: 'Status',
-        getValue: (row) => row.status,
-      },
-      {
-        key: 'count',
-        header: 'Count',
-        getValue: (row) => String(row.count),
-      },
+    const statusColumnConfig: TableColumnConfig[] = [
+      { id: columnId('status'), label: 'Status', sortable: true },
+      { id: columnId('count'), label: 'Count', sortable: true },
     ];
 
-    const flagReasonColumns: ColumnDef<FlagReasonRow>[] = [
-      {
-        key: 'reason',
-        header: 'Flag Reason',
-        getValue: (row) => row.reason,
-      },
-      {
-        key: 'count',
-        header: 'Count',
-        getValue: (row) => String(row.count),
-      },
+    const statusColumnDefs = [
+      { id: columnId('status'), type: ColumnType.TEXT, getValue: (row: StatusRow) => row.status },
+      { id: columnId('count'), type: ColumnType.TEXT, getValue: (row: StatusRow) => String(row.count) },
+    ];
+
+    const flagReasonColumnConfig: TableColumnConfig[] = [
+      { id: columnId('reason'), label: 'Flag Reason', sortable: true },
+      { id: columnId('count'), label: 'Count', sortable: true },
+    ];
+
+    const flagReasonColumnDefs = [
+      { id: columnId('reason'), type: ColumnType.TEXT, getValue: (row: FlagReasonRow) => row.reason },
+      { id: columnId('count'), type: ColumnType.TEXT, getValue: (row: FlagReasonRow) => String(row.count) },
     ];
 
     return html`
@@ -438,28 +435,28 @@ export class AmlOperationsView extends LitElement {
       <div class="section">
         <div class="section-title">By Status</div>
         <div class="table-container">
-          <pages-data-table
-            .columns=${statusColumns}
-            .rows=${statusRows}
-            .getRowKey=${(row: StatusRow) => row.status}
-            mode="static"
+          <pages-table
+            .dataSet=${fromRows(statusRows, statusColumnDefs)}
+            .columnConfig=${statusColumnConfig}
+            .getRowKey=${(row: TypedRow) => row.text(columnId('status'))}
+            mode="auto"
+            client-sort
             emptyMessage="No status data"
-            sortable
-          ></pages-data-table>
+          ></pages-table>
         </div>
       </div>
 
       <div class="section">
         <div class="section-title">By Flag Reason</div>
         <div class="table-container">
-          <pages-data-table
-            .columns=${flagReasonColumns}
-            .rows=${flagReasonRows}
-            .getRowKey=${(row: FlagReasonRow) => row.reason}
-            mode="static"
+          <pages-table
+            .dataSet=${fromRows(flagReasonRows, flagReasonColumnDefs)}
+            .columnConfig=${flagReasonColumnConfig}
+            .getRowKey=${(row: TypedRow) => row.text(columnId('reason'))}
+            mode="auto"
+            client-sort
             emptyMessage="No flag reason data"
-            sortable
-          ></pages-data-table>
+          ></pages-table>
         </div>
       </div>
     `;
@@ -485,48 +482,45 @@ export class AmlOperationsView extends LitElement {
       return html`<div>No trust score data available</div>`;
     }
 
-    const trustColumns: ColumnDef<AgentTrustScore>[] = [
-      {
-        key: 'agentId',
-        header: 'Agent ID',
-        getValue: (row) => row.agentId,
-      },
-      {
-        key: 'capabilityTag',
-        header: 'Capability Tag',
-        getValue: (row) => row.capabilityTag,
-      },
-      {
-        key: 'score',
-        header: 'Score',
-        getValue: (row) => row.score !== null ? row.score.toFixed(3) : '—',
-      },
+    const trustColumnConfig: TableColumnConfig[] = [
+      { id: columnId('agentId'), label: 'Agent ID', sortable: true },
+      { id: columnId('capabilityTag'), label: 'Capability Tag', sortable: true },
+      { id: columnId('score'), label: 'Score', sortable: true },
+    ];
+
+    const trustColumnDefs = [
+      { id: columnId('agentId'), type: ColumnType.TEXT, getValue: (row: AgentTrustScore) => row.agentId },
+      { id: columnId('capabilityTag'), type: ColumnType.TEXT, getValue: (row: AgentTrustScore) => row.capabilityTag },
+      { id: columnId('score'), type: ColumnType.TEXT, getValue: (row: AgentTrustScore) => row.score !== null ? row.score.toFixed(3) : '—' },
     ];
 
     return html`
       <div class="section">
         <div class="section-title">Agent Trust Scores</div>
         <div class="table-container">
-          <pages-data-table
-            .columns=${trustColumns}
-            .rows=${this._trustMetrics.scores}
-            .getRowKey=${(row: AgentTrustScore) => `${row.agentId}-${row.capabilityTag}`}
-            .getRowClass=${this._getTrustRowClass.bind(this)}
-            mode="static"
+          <pages-table
+            .dataSet=${fromRows(this._trustMetrics.scores, trustColumnDefs)}
+            .columnConfig=${trustColumnConfig}
+            .getRowKey=${(row: TypedRow) => `${row.text(columnId('agentId'))}-${row.text(columnId('capabilityTag'))}`}
+            .getRowClass=${this._getTrustRowClass}
+            mode="auto"
+            client-sort
             emptyMessage="No trust scores available"
-            sortable
-          ></pages-data-table>
+          ></pages-table>
         </div>
       </div>
     `;
   }
 
-  private _getTrustRowClass(row: AgentTrustScore): string {
-    if (row.score === null) return '';
-    if (row.score < 0.5) return 'row-low-trust';
-    if (row.score < 0.75) return 'row-medium-trust';
+  private _getTrustRowClass = (row: TypedRow): string => {
+    const scoreText = row.text(columnId('score'));
+    if (scoreText === '—') return '';
+    const score = parseFloat(scoreText);
+    if (isNaN(score)) return '';
+    if (score < 0.5) return 'row-low-trust';
+    if (score < 0.75) return 'row-medium-trust';
     return 'row-high-trust';
-  }
+  };
 
   // ========== Gates Tab ==========
 
@@ -552,17 +546,14 @@ export class AmlOperationsView extends LitElement {
       ([actionType, count]) => ({ actionType, count })
     );
 
-    const actionTypeColumns: ColumnDef<ActionTypeRow>[] = [
-      {
-        key: 'actionType',
-        header: 'Action Type',
-        getValue: (row) => row.actionType,
-      },
-      {
-        key: 'count',
-        header: 'Count',
-        getValue: (row) => String(row.count),
-      },
+    const actionTypeColumnConfig: TableColumnConfig[] = [
+      { id: columnId('actionType'), label: 'Action Type', sortable: true },
+      { id: columnId('count'), label: 'Count', sortable: true },
+    ];
+
+    const actionTypeColumnDefs = [
+      { id: columnId('actionType'), type: ColumnType.TEXT, getValue: (row: ActionTypeRow) => row.actionType },
+      { id: columnId('count'), type: ColumnType.TEXT, getValue: (row: ActionTypeRow) => String(row.count) },
     ];
 
     return html`
@@ -584,14 +575,14 @@ export class AmlOperationsView extends LitElement {
       <div class="section">
         <div class="section-title">By Action Type</div>
         <div class="table-container">
-          <pages-data-table
-            .columns=${actionTypeColumns}
-            .rows=${actionTypeRows}
-            .getRowKey=${(row: ActionTypeRow) => row.actionType}
-            mode="static"
+          <pages-table
+            .dataSet=${fromRows(actionTypeRows, actionTypeColumnDefs)}
+            .columnConfig=${actionTypeColumnConfig}
+            .getRowKey=${(row: TypedRow) => row.text(columnId('actionType'))}
+            mode="auto"
+            client-sort
             emptyMessage="No gate data"
-            sortable
-          ></pages-data-table>
+          ></pages-table>
         </div>
       </div>
     `;

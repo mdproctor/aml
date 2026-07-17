@@ -7,7 +7,9 @@ import type {
 
 @customElement('aml-findings-panel')
 export class AmlFindingsPanel extends LitElement {
-  @property() caseId = '';
+  @property({ attribute: false }) item: any = null;
+
+  get caseId(): string { return this.item?.caseId ?? ''; }
 
   @state() private _findings: InvestigationFindingsResponse | null = null;
   @state() private _loading = false;
@@ -247,7 +249,7 @@ export class AmlFindingsPanel extends LitElement {
   `;
 
   override updated(changedProps: Map<string, unknown>): void {
-    if (changedProps.has('caseId') && this.caseId) {
+    if (changedProps.has('item') && this.caseId) {
       this._fetchFindings();
     }
   }

@@ -1,7 +1,11 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import type { ColumnDef } from '@casehubio/blocks-ui-data-table';
-import './components/case-workbench/src/index.js';
+import type { TableColumnConfig } from '@casehubio/pages-table';
+import type { TypedRow } from '@casehubio/pages-data/dist/dataset/types.js';
+import type { TabDefinition } from '@casehubio/blocks-ui-detail-pane';
+import '@casehubio/blocks-ui-split-workbench';
+import '@casehubio/blocks-ui-list-pane';
+import '@casehubio/blocks-ui-detail-pane';
 import '@casehubio/blocks-ui-work-item-inbox';
 import './views/operations.js';
 import './panels/index.js';
@@ -17,35 +21,43 @@ interface Investigation {
   createdAt: string;
 }
 
+const investigationTabs: TabDefinition[] = [
+  { id: 'overview', label: 'Overview', tagName: 'aml-investigation-overview', order: 0 },
+  { id: 'findings', label: 'Findings', tagName: 'aml-findings-panel', order: 10 },
+  { id: 'routing', label: 'Routing & Trust', tagName: 'aml-routing-panel', order: 20 },
+  { id: 'compliance', label: 'Compliance', tagName: 'aml-compliance-panel', order: 25 },
+  { id: 'audit', label: 'Audit', tagName: 'aml-audit-trail', order: 30 },
+];
+
 @customElement('aml-app')
 export class AmlApp extends LitElement {
   @state() private _activeView: ViewId = 'investigations';
 
-  private _investigationColumns: ColumnDef<Investigation>[] = [
+  private _investigationColumns: TableColumnConfig[] = [
     {
-      key: 'caseId',
-      header: 'Case ID',
-      getValue: (row) => row.caseId.split('-')[0],
+      id: 'caseId',
+      label: 'Case ID',
+      sortable: true,
     },
     {
-      key: 'status',
-      header: 'Status',
-      getValue: (row) => row.status,
+      id: 'status',
+      label: 'Status',
+      sortable: true,
     },
     {
-      key: 'flagReason',
-      header: 'Flag Reason',
-      getValue: (row) => row.flagReason,
+      id: 'flagReason',
+      label: 'Flag Reason',
+      sortable: true,
     },
     {
-      key: 'amount',
-      header: 'Amount',
-      getValue: (row) => `${row.amount.toLocaleString()} ${row.currency}`,
+      id: 'amount',
+      label: 'Amount',
+      sortable: true,
     },
     {
-      key: 'createdAt',
-      header: 'Created',
-      getValue: (row) => new Date(row.createdAt).toLocaleDateString(),
+      id: 'createdAt',
+      label: 'Created',
+      sortable: true,
     },
   ];
 
@@ -129,9 +141,10 @@ export class AmlApp extends LitElement {
     }
   };
 
-  private _getRowClass = (row: Investigation): string => {
-    if (row.status === 'failed' || row.status === 'cancelled') return 'row-high-risk';
-    if (row.status === 'suspended') return 'row-medium-risk';
+  private _getRowClass = (row: TypedRow): string => {
+    const status = row.text('status');
+    if (status === 'failed' || status === 'cancelled') return 'row-high-risk';
+    if (status === 'suspended') return 'row-medium-risk';
     return '';
   };
 
@@ -164,18 +177,25 @@ export class AmlApp extends LitElement {
     switch (this._activeView) {
       case 'investigations':
         return html`
-          <case-workbench
-            endpoint="/api/investigations"
-            title="AML Investigations"
-            .columns=${this._investigationColumns}
-            .getRowKey=${(row: Investigation) => row.caseId}
-            .getRowClass=${this._getRowClass}
-          ></case-workbench>
+          <split-workbench selection-topic="case" title="AML Investigations">
+            <list-pane slot="list"
+              selection-topic="case"
+              endpoint="/api/investigations"
+              .columnConfig=${this._investigationColumns}
+              .getRowKey=${(row: TypedRow) => row.text('caseId')}
+              .getRowClass=${this._getRowClass}>
+            </list-pane>
+            <detail-pane slot="detail"
+              selection-topic="case"
+              .tabs=${investigationTabs}
+              empty-message="Select an investigation to view details">
+            </detail-pane>
+          </split-workbench>
         `;
       case 'compliance':
         return html`
           <work-item-inbox
-            endpoint="/api/work-items"
+            endpoint=""
             title="Compliance Review Queue"
           ></work-item-inbox>
         `;

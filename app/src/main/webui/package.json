@@ -7,17 +7,21 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "lit": "^3.0.0",
-    "@casehubio/blocks-ui-core": "file:../../../../../blocks-ui/packages/blocks-ui-core",
-    "@casehubio/blocks-ui-data-table": "file:../../../../../blocks-ui/components/data-table",
-    "@casehubio/blocks-ui-work-item-inbox": "file:../../../../../blocks-ui/components/work-item-inbox",
-    "@casehubio/blocks-ui-work-item-detail": "file:../../../../../blocks-ui/components/work-item-detail",
     "@casehubio/blocks-ui-approval-gate": "file:../../../../../blocks-ui/components/approval-gate",
+    "@casehubio/blocks-ui-core": "file:../../../../../blocks-ui/packages/blocks-ui-core",
+    "@casehubio/blocks-ui-detail-pane": "file:../../../../../blocks-ui/components/detail-pane",
     "@casehubio/blocks-ui-kpi-metric-row": "file:../../../../../blocks-ui/components/kpi-metric-row",
+    "@casehubio/blocks-ui-list-pane": "file:../../../../../blocks-ui/components/list-pane",
     "@casehubio/blocks-ui-sla-indicator": "file:../../../../../blocks-ui/components/sla-indicator",
-    "@casehubio/pages-data": "file:../../../../../pages/packages/pages-data",
+    "@casehubio/blocks-ui-split-workbench": "file:../../../../../blocks-ui/components/split-workbench",
+    "@casehubio/blocks-ui-work-item-detail": "file:../../../../../blocks-ui/components/work-item-detail",
+    "@casehubio/blocks-ui-work-item-inbox": "file:../../../../../blocks-ui/components/work-item-inbox",
     "@casehubio/pages-component": "file:../../../../../pages/packages/pages-component",
-    "@casehubio/pages-ui-tokens": "file:../../../../../pages/packages/pages-ui-tokens"
+    "@casehubio/pages-data": "file:../../../../../pages/packages/pages-data",
+    "@casehubio/pages-table": "file:../../../../../pages/packages/pages-table",
+    "@casehubio/pages-ui-tokens": "file:../../../../../pages/packages/pages-ui-tokens",
+    "jsonata": "^2.2.1",
+    "lit": "^3.0.0"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",

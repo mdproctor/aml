@@ -10,33 +10,33 @@ spec:
   capabilities:
     - name: entity-resolution
       description: "Resolve beneficial ownership chain from flagged transaction"
-      inputSchema: "{ transaction: .transaction }"
-      outputSchema: "{ entityResolution: . }"
+      inputProjection: "{ transaction: .transaction }"
+      outputProjection: "{ entityResolution: . }"
 
     - name: pattern-analysis
       description: "Detect layering, structuring, smurfing patterns"
-      inputSchema: "{ transaction: .transaction, entityGraph: .entityResolution.ownershipChain }"
-      outputSchema: "{ patternAnalysis: . }"
+      inputProjection: "{ transaction: .transaction, entityGraph: .entityResolution.ownershipChain }"
+      outputProjection: "{ patternAnalysis: . }"
 
     - name: osint-screening
       description: "Sanctions lists, PEP databases, adverse media screening"
-      inputSchema: "{ transaction: .transaction }"
-      outputSchema: "{ osintScreening: . }"
+      inputProjection: "{ transaction: .transaction }"
+      outputProjection: "{ osintScreening: . }"
 
     - name: senior-analyst-review
       description: "Senior analyst investigation for PEP entities and high-risk cases"
-      inputSchema: "{ transaction: .transaction, entityResolution: .entityResolution }"
-      outputSchema: "{ seniorAnalystReview: . }"
+      inputProjection: "{ transaction: .transaction, entityResolution: .entityResolution }"
+      outputProjection: "{ seniorAnalystReview: . }"
 
     - name: sar-drafting
       description: "Synthesise specialist findings into SAR narrative"
-      inputSchema: "{ transaction: .transaction, entityResolution: .entityResolution, patternAnalysis: .patternAnalysis, osintScreening: .osintScreening }"
-      outputSchema: "{ sarNarrative: .sarNarrative }"
+      inputProjection: "{ transaction: .transaction, entityResolution: .entityResolution, patternAnalysis: .patternAnalysis, osintScreening: .osintScreening }"
+      outputProjection: "{ sarNarrative: .sarNarrative }"
 
     - name: compliance-review-opening
       description: "Open compliance officer review WorkItem after MLRO gate approval"
-      inputSchema: "{ transaction: .transaction, entityResolution: .entityResolution, patternAnalysis: .patternAnalysis, osintScreening: .osintScreening, sarNarrative: .sarNarrative }"
-      outputSchema: "{ complianceTaskId: .complianceTaskId }"
+      inputProjection: "{ transaction: .transaction, entityResolution: .entityResolution, patternAnalysis: .patternAnalysis, osintScreening: .osintScreening, sarNarrative: .sarNarrative }"
+      outputProjection: "{ complianceTaskId: .complianceTaskId }"
 
   ## ─── Goals ──────────────────────────────────────────────────────────────────
   goals:

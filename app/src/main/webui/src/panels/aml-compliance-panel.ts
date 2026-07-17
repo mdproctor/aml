@@ -1,7 +1,11 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { ComplianceEvidence } from '../types.js';
-import '@casehubio/blocks-ui-data-table';
+import type { TableColumnConfig, ColumnRenderer } from '@casehubio/pages-table';
+import type { TypedRow, CellValue, ColumnId } from '@casehubio/pages-data/dist/dataset/types.js';
+import { fromRows } from '@casehubio/pages-data/dist/dataset/conversion.js';
+import { ColumnType, columnId } from '@casehubio/pages-data/dist/dataset/types.js';
+import '@casehubio/pages-table';
 
 interface RequirementRow {
   id: string;
@@ -12,7 +16,9 @@ interface RequirementRow {
 
 @customElement('aml-compliance-panel')
 export class AmlCompliancePanel extends LitElement {
-  @property() caseId = '';
+  @property({ attribute: false }) item: any = null;
+
+  get caseId(): string { return this.item?.caseId ?? ''; }
 
   @state() private _evidence: ComplianceEvidence | null = null;
   @state() private _loading = false;
@@ -231,7 +237,7 @@ export class AmlCompliancePanel extends LitElement {
   `;
 
   override updated(changedProps: Map<string, unknown>): void {
-    if (changedProps.has('caseId') && this.caseId) {
+    if (changedProps.has('item') && this.caseId) {
       this._fetchCompliance();
     }
   }
@@ -365,31 +371,42 @@ export class AmlCompliancePanel extends LitElement {
       },
     ];
 
-    const columns = [
-      { key: 'id', label: 'Requirement ID', sortable: false },
-      { key: 'citation', label: 'Citation', sortable: false },
-      { key: 'mechanism', label: 'Mechanism', sortable: false },
-      { key: 'status', label: 'Status', sortable: false },
+    const columnConfig: TableColumnConfig[] = [
+      { id: columnId('id'), label: 'Requirement ID', sortable: false },
+      { id: columnId('citation'), label: 'Citation', sortable: false },
+      { id: columnId('mechanism'), label: 'Mechanism', sortable: false },
+      { id: columnId('status'), label: 'Status', sortable: false },
     ];
+
+    const columnDefs = [
+      { id: columnId('id'), type: ColumnType.TEXT, getValue: (row: RequirementRow) => row.id },
+      { id: columnId('citation'), type: ColumnType.TEXT, getValue: (row: RequirementRow) => row.citation },
+      { id: columnId('mechanism'), type: ColumnType.TEXT, getValue: (row: RequirementRow) => row.mechanism },
+      { id: columnId('status'), type: ColumnType.TEXT, getValue: (row: RequirementRow) => row.status },
+    ];
+
+    const columnRenderers: ReadonlyMap<ColumnId, ColumnRenderer> = new Map([
+      [columnId('status'), (cell: CellValue) => {
+        const status = cell.type === 'NULL' ? '' : (cell as { value: string }).value;
+        const statusClass = status.toLowerCase().replace('_', '-');
+        return html`<span class="status-badge ${statusClass}">${status}</span>`;
+      }],
+    ]);
+
+    const dataSet = fromRows(rows, columnDefs);
 
     return html`
       <div class="section">
         <div class="section-title">FinCEN Requirements</div>
-        <pages-data-table
-          .columns=${columns}
-          .data=${rows}
-          .cellRenderer=${this._cellRenderer.bind(this)}
-        ></pages-data-table>
+        <pages-table
+          .dataSet=${dataSet}
+          .columnConfig=${columnConfig}
+          .columnRenderers=${columnRenderers}
+          mode="auto"
+          .getRowKey=${(row: TypedRow) => row.text(columnId('id'))}
+        ></pages-table>
       </div>
     `;
-  }
-
-  private _cellRenderer(columnKey: string, row: RequirementRow): unknown {
-    if (columnKey === 'status') {
-      const statusClass = row.status.toLowerCase().replace('_', '-');
-      return html`<span class="status-badge ${statusClass}">${row.status}</span>`;
-    }
-    return row[columnKey as keyof RequirementRow];
   }
 
   private _renderOfficerReview() {

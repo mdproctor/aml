@@ -1,7 +1,10 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { ColumnDef } from '@casehubio/blocks-ui-data-table';
-import '@casehubio/blocks-ui-data-table';
+import type { TableColumnConfig, ColumnRenderer } from '@casehubio/pages-table';
+import type { TypedRow, CellValue, ColumnId } from '@casehubio/pages-data/dist/dataset/types.js';
+import { fromRows } from '@casehubio/pages-data/dist/dataset/conversion.js';
+import { ColumnType, columnId } from '@casehubio/pages-data/dist/dataset/types.js';
+import '@casehubio/pages-table';
 import type {
   AuditTrailEntry,
   AmlInclusionProof,
@@ -15,7 +18,9 @@ interface VerificationResult {
 
 @customElement('aml-audit-trail')
 export class AmlAuditTrailPanel extends LitElement {
-  @property() caseId = '';
+  @property({ attribute: false }) item: any = null;
+
+  get caseId(): string { return this.item?.caseId ?? ''; }
 
   @state() private _entries: AuditTrailEntry[] = [];
   @state() private _loading = false;
@@ -24,59 +29,60 @@ export class AmlAuditTrailPanel extends LitElement {
   @state() private _verificationResults = new Map<string, VerificationResult>();
   @state() private _expandedProofs = new Set<string>();
 
-  private _columns: ColumnDef<AuditTrailEntry>[] = [
-    {
-      key: 'entryType',
-      header: 'Entry Type',
-      getValue: (row) => row.entryType,
-    },
-    {
-      key: 'actorId',
-      header: 'Actor ID',
-      getValue: (row) => row.actorId,
-    },
-    {
-      key: 'actorRole',
-      header: 'Role',
-      getValue: (row) => row.actorRole,
-    },
-    {
-      key: 'occurredAt',
-      header: 'Occurred At',
-      getValue: (row) => new Date(row.occurredAt).toLocaleString(),
-    },
-    {
-      key: 'causedByEntryId',
-      header: 'Caused By',
-      getValue: (row) => row.causedByEntryId ? this._shortenUuid(row.causedByEntryId) : '—',
-      render: (row) => {
-        if (!row.causedByEntryId) {
-          return html`<span>—</span>`;
-        }
-        return html`
-          <a
-            href="#"
-            @click=${(e: Event) => this._scrollToEntry(e, row.causedByEntryId!)}
-            class="link"
-          >
-            ${this._shortenUuid(row.causedByEntryId)}
-          </a>
-        `;
-      },
-    },
-    {
-      key: 'digest',
-      header: 'Digest',
-      getValue: (row) => row.digest.substring(0, 16),
-      render: (row) => html`<code class="digest">${row.digest.substring(0, 16)}</code>`,
-    },
-    {
-      key: 'verify',
-      header: 'Verify',
-      getValue: () => '',
-      render: (row) => this._renderVerifyButton(row),
-    },
+  private _columnConfig: TableColumnConfig[] = [
+    { id: columnId('entryType'), label: 'Entry Type', sortable: true },
+    { id: columnId('actorId'), label: 'Actor ID', sortable: true },
+    { id: columnId('actorRole'), label: 'Role', sortable: true },
+    { id: columnId('occurredAt'), label: 'Occurred At', sortable: true },
+    { id: columnId('causedByEntryId'), label: 'Caused By', sortable: true },
+    { id: columnId('digest'), label: 'Digest', sortable: true },
+    { id: columnId('verify'), label: 'Verify', sortable: true },
   ];
+
+  private _columnDefs = [
+    { id: columnId('entryType'), type: ColumnType.TEXT, getValue: (row: AuditTrailEntry) => row.entryType },
+    { id: columnId('actorId'), type: ColumnType.TEXT, getValue: (row: AuditTrailEntry) => row.actorId },
+    { id: columnId('actorRole'), type: ColumnType.TEXT, getValue: (row: AuditTrailEntry) => row.actorRole },
+    { id: columnId('occurredAt'), type: ColumnType.TEXT, getValue: (row: AuditTrailEntry) => new Date(row.occurredAt).toLocaleString() },
+    { id: columnId('causedByEntryId'), type: ColumnType.TEXT, getValue: (row: AuditTrailEntry) => row.causedByEntryId ? this._shortenUuid(row.causedByEntryId) : '—' },
+    { id: columnId('digest'), type: ColumnType.TEXT, getValue: (row: AuditTrailEntry) => row.digest.substring(0, 16) },
+    { id: columnId('verify'), type: ColumnType.TEXT, getValue: () => '' },
+    { id: columnId('entryId'), type: ColumnType.TEXT, getValue: (row: AuditTrailEntry) => row.entryId },
+  ];
+
+  private _columnRenderers: ReadonlyMap<ColumnId, ColumnRenderer> = new Map([
+    [columnId('causedByEntryId'), (cell: CellValue) => {
+      const value = cell.type === 'NULL' ? '' : (cell as { value: string }).value;
+      if (value === '—' || !value) {
+        return html`<span>—</span>`;
+      }
+      return html`
+        <a
+          href="#"
+          @click=${(e: Event) => {
+            e.preventDefault();
+            const targetRow = this.shadowRoot?.querySelector(`[data-entry-id="${value}"]`) as HTMLElement;
+            if (targetRow) {
+              targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              targetRow.style.backgroundColor = 'var(--pages-warning-2, #fef9c3)';
+              setTimeout(() => { targetRow.style.backgroundColor = ''; }, 2000);
+            }
+          }}
+          class="link"
+        >
+          ${value}
+        </a>
+      `;
+    }],
+    [columnId('digest'), (cell: CellValue) => {
+      const value = cell.type === 'NULL' ? '' : (cell as { value: string }).value;
+      return html`<code class="digest">${value}</code>`;
+    }],
+    [columnId('verify'), (cell: CellValue, row: TypedRow) => {
+      const entryId = row.text(columnId('entryId'));
+      return this._renderVerifyButton(entryId);
+    }],
+  ]);
 
   static override styles = css`
     :host {
@@ -281,7 +287,7 @@ export class AmlAuditTrailPanel extends LitElement {
   `;
 
   override updated(changedProps: Map<string, unknown>): void {
-    if (changedProps.has('caseId') && this.caseId) {
+    if (changedProps.has('item') && this.caseId) {
       this._verificationResults = new Map();
       this._expandedProofs = new Set();
       this._fetchAuditTrail();
@@ -359,27 +365,28 @@ export class AmlAuditTrailPanel extends LitElement {
     }
   }
 
-  private _getRowClass(row: AuditTrailEntry): string {
-    if (row.actorRole === 'HUMAN') return 'role-human';
-    if (row.actorRole === 'SYSTEM') return 'role-system';
+  private _getRowClass = (row: TypedRow): string => {
+    const actorRole = row.text(columnId('actorRole'));
+    if (actorRole === 'HUMAN') return 'role-human';
+    if (actorRole === 'SYSTEM') return 'role-system';
     return '';
-  }
+  };
 
-  private _renderVerifyButton(row: AuditTrailEntry) {
-    const result = this._verificationResults.get(row.entryId);
+  private _renderVerifyButton(entryId: string) {
+    const result = this._verificationResults.get(entryId);
 
     if (!result) {
       return html`
         <button
           class="verify-btn"
-          @click=${() => this._verifyEntry(row.entryId)}
+          @click=${() => this._verifyEntry(entryId)}
         >
           Verify
         </button>
       `;
     }
 
-    const isExpanded = this._expandedProofs.has(row.entryId);
+    const isExpanded = this._expandedProofs.has(entryId);
 
     if (result.verified && result.proof) {
       return html`
@@ -397,7 +404,7 @@ export class AmlAuditTrailPanel extends LitElement {
             <span>Verified</span>
             <button
               class="expand-proof-btn"
-              @click=${() => this._toggleProofExpansion(row.entryId)}
+              @click=${() => this._toggleProofExpansion(entryId)}
             >
               ${isExpanded ? 'Hide' : 'Show'} Proof
             </button>
@@ -485,18 +492,22 @@ export class AmlAuditTrailPanel extends LitElement {
       return html`<div class="placeholder">No audit trail entries available</div>`;
     }
 
+    const dataSet = fromRows(this._entries, this._columnDefs);
+
     return html`
       <div class="section">
         <div class="section-title">Ledger Entries</div>
         <div class="table-container">
-          <pages-data-table
-            .columns=${this._columns}
-            .rows=${this._entries}
-            .getRowKey=${(row: AuditTrailEntry) => row.entryId}
-            .getRowClass=${this._getRowClass.bind(this)}
-            mode="static"
+          <pages-table
+            .dataSet=${dataSet}
+            .columnConfig=${this._columnConfig}
+            .columnRenderers=${this._columnRenderers}
+            .getRowKey=${(row: TypedRow) => row.text(columnId('entryId'))}
+            .getRowClass=${this._getRowClass}
+            mode="auto"
+            client-sort
             emptyMessage="No ledger entries found"
-          ></pages-data-table>
+          ></pages-table>
         </div>
       </div>
     `;

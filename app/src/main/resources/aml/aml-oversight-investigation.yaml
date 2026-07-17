@@ -10,18 +10,18 @@ spec:
   capabilities:
     - name: entity-resolution
       description: "Identify entities and risk profile from suspicious transaction"
-      inputSchema: "{ transaction: .transaction }"
-      outputSchema: "{ entityResolution: . }"
+      inputProjection: "{ transaction: .transaction }"
+      outputProjection: "{ entityResolution: . }"
 
     - name: entity-link-proposal
       description: "Propose adding entity network link to investigation graph"
-      inputSchema: "{ entityResolution: .entityResolution }"
-      outputSchema: "{ entityLinkProposal: . }"
+      inputProjection: "{ entityResolution: .entityResolution }"
+      outputProjection: "{ entityLinkProposal: . }"
 
     - name: investigation-summary
       description: "Summarise investigation findings after entity link is confirmed"
-      inputSchema: "{ entityResolution: .entityResolution, entityLinkProposal: .entityLinkProposal }"
-      outputSchema: "{ investigationSummary: . }"
+      inputProjection: "{ entityResolution: .entityResolution, entityLinkProposal: .entityLinkProposal }"
+      outputProjection: "{ investigationSummary: . }"
 
   ## ─── Goals ────────────────────────────────────────────────────────────────
   goals:

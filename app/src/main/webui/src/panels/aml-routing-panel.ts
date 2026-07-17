@@ -1,7 +1,10 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { ColumnDef } from '@casehubio/blocks-ui-data-table';
-import '@casehubio/blocks-ui-data-table';
+import type { TableColumnConfig } from '@casehubio/pages-table';
+import type { TypedRow } from '@casehubio/pages-data/dist/dataset/types.js';
+import { fromRows } from '@casehubio/pages-data/dist/dataset/conversion.js';
+import { ColumnType } from '@casehubio/pages-data/dist/dataset/types.js';
+import '@casehubio/pages-table';
 import type {
   Layer6InvestigationResponse,
   WorkerRoutingDecision,
@@ -11,7 +14,9 @@ import type {
 
 @customElement('aml-routing-panel')
 export class AmlRoutingPanel extends LitElement {
-  @property() caseId = '';
+  @property({ attribute: false }) item: any = null;
+
+  get caseId(): string { return this.item?.caseId ?? ''; }
 
   @state() private _routingData: Layer6InvestigationResponse | null = null;
   @state() private _routingLoading = false;
@@ -21,22 +26,28 @@ export class AmlRoutingPanel extends LitElement {
   @state() private _gatesLoading = false;
   @state() private _gatesError: string | null = null;
 
-  private _routingColumns: ColumnDef<WorkerRoutingDecision>[] = [
+  private _routingColumnConfig: TableColumnConfig[] = [
     {
-      key: 'capabilityTag',
-      header: 'Capability',
-      getValue: (row) => row.capabilityTag,
+      id: 'capabilityTag',
+      label: 'Capability',
+      sortable: true,
     },
     {
-      key: 'selectedWorker',
-      header: 'Selected Worker',
-      getValue: (row) => row.selectedWorker,
+      id: 'selectedWorker',
+      label: 'Selected Worker',
+      sortable: true,
     },
     {
-      key: 'trustScore',
-      header: 'Trust Score',
-      getValue: (row) => row.trustScore !== null ? row.trustScore.toFixed(3) : '—',
+      id: 'trustScore',
+      label: 'Trust Score',
+      sortable: true,
     },
+  ];
+
+  private _routingColumnDefs = [
+    { id: 'capabilityTag', type: ColumnType.TEXT, getValue: (row: WorkerRoutingDecision) => row.capabilityTag },
+    { id: 'selectedWorker', type: ColumnType.TEXT, getValue: (row: WorkerRoutingDecision) => row.selectedWorker },
+    { id: 'trustScore', type: ColumnType.TEXT, getValue: (row: WorkerRoutingDecision) => row.trustScore !== null ? row.trustScore.toFixed(3) : '—' },
   ];
 
   static override styles = css`
@@ -230,7 +241,7 @@ export class AmlRoutingPanel extends LitElement {
   `;
 
   override updated(changedProps: Map<string, unknown>): void {
-    if (changedProps.has('caseId') && this.caseId) {
+    if (changedProps.has('item') && this.caseId) {
       this._fetchRoutingData();
       this._fetchGatesData();
     }
@@ -268,12 +279,15 @@ export class AmlRoutingPanel extends LitElement {
     }
   }
 
-  private _getRowClass(row: WorkerRoutingDecision): string {
-    if (row.trustScore === null) return '';
-    if (row.trustScore < 0.5) return 'row-low-trust';
-    if (row.trustScore < 0.75) return 'row-medium-trust';
+  private _getRowClass = (row: TypedRow): string => {
+    const trustScoreText = row.text('trustScore');
+    if (trustScoreText === '—') return '';
+    const trustScore = parseFloat(trustScoreText);
+    if (isNaN(trustScore)) return '';
+    if (trustScore < 0.5) return 'row-low-trust';
+    if (trustScore < 0.75) return 'row-medium-trust';
     return 'row-high-trust';
-  }
+  };
 
   override render() {
     return html`
@@ -314,18 +328,21 @@ export class AmlRoutingPanel extends LitElement {
       `;
     }
 
+    const dataSet = fromRows(this._routingData.routingDecisions, this._routingColumnDefs);
+
     return html`
       <div class="section">
         <div class="section-title">Routing Decisions</div>
         <div class="table-container">
-          <pages-data-table
-            .columns=${this._routingColumns}
-            .rows=${this._routingData.routingDecisions}
-            .getRowKey=${(row: WorkerRoutingDecision) => row.capabilityTag}
-            .getRowClass=${this._getRowClass.bind(this)}
-            mode="static"
+          <pages-table
+            .dataSet=${dataSet}
+            .columnConfig=${this._routingColumnConfig}
+            .getRowKey=${(row: TypedRow) => row.text('capabilityTag')}
+            .getRowClass=${this._getRowClass}
+            mode="auto"
+            client-sort
             emptyMessage="No routing decisions found"
-          ></pages-data-table>
+          ></pages-table>
         </div>
       </div>
     `;

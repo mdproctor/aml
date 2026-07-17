@@ -8,8 +8,10 @@ import type {
 
 @customElement('aml-investigation-overview')
 export class AmlInvestigationOverview extends LitElement {
-  @property() caseId = '';
-  @property({ type: Object }) caseData: InvestigationSummaryResponse | null = null;
+  @property({ attribute: false }) item: any = null;
+
+  get caseId(): string { return this.item?.caseId ?? ''; }
+  get caseData(): InvestigationSummaryResponse | null { return this.item; }
 
   @state() private _layer6Data: Layer6InvestigationResponse | null = null;
   @state() private _layer6Loading = false;
@@ -209,7 +211,7 @@ export class AmlInvestigationOverview extends LitElement {
   `;
 
   override updated(changedProps: Map<string, unknown>): void {
-    if (changedProps.has('caseId') && this.caseId) {
+    if (changedProps.has('item') && this.caseId) {
       this._fetchLayer6Data();
       this._fetchPriorContext();
     }

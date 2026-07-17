@@ -48,7 +48,7 @@ class InvestigationSummaryObserverTest {
         createSummaryRow(caseId);
 
         // Event with null caseStatus — should be ignored
-        fireEvent(new CaseLifecycleEvent(
+        fireEvent(CaseLifecycleEvent.of(
             caseId, TenancyConstants.DEFAULT_TENANT_ID,
             "START_CASE", "CASE_STARTING", null,
             "actor-001", "Orchestrator", "trace-001"
@@ -71,7 +71,7 @@ class InvestigationSummaryObserverTest {
         UUID caseId = UUID.randomUUID();
         createSummaryRow(caseId);
 
-        fireEvent(new CaseLifecycleEvent(
+        fireEvent(CaseLifecycleEvent.of(
             caseId, TenancyConstants.DEFAULT_TENANT_ID,
             "COMPLETE_CASE", "CASE_COMPLETED", "COMPLETED",
             "actor-002", "Orchestrator", "trace-002"
@@ -99,7 +99,7 @@ class InvestigationSummaryObserverTest {
         // To test the happy path properly, we'd need to write a ledger entry first.
         // For now, verify that the observer calls resolveOutcome and handles null gracefully.
 
-        fireEvent(new CaseLifecycleEvent(
+        fireEvent(CaseLifecycleEvent.of(
             caseId, TenancyConstants.DEFAULT_TENANT_ID,
             "COMPLETE_CASE", "CASE_COMPLETED", "COMPLETED",
             "actor-003", "Orchestrator", "trace-003"
@@ -123,7 +123,7 @@ class InvestigationSummaryObserverTest {
         UUID caseId = UUID.randomUUID();
         createSummaryRow(caseId);
 
-        fireEvent(new CaseLifecycleEvent(
+        fireEvent(CaseLifecycleEvent.of(
             caseId, TenancyConstants.DEFAULT_TENANT_ID,
             "FAULT_CASE", "CASE_FAULTED", "FAULTED",
             "actor-004", "Orchestrator", "trace-004"
@@ -145,7 +145,7 @@ class InvestigationSummaryObserverTest {
         UUID caseId = UUID.randomUUID();
         createSummaryRow(caseId);
 
-        fireEvent(new CaseLifecycleEvent(
+        fireEvent(CaseLifecycleEvent.of(
             caseId, TenancyConstants.DEFAULT_TENANT_ID,
             "CANCEL_CASE", "CASE_CANCELLED", "CANCELLED",
             "actor-005", "Orchestrator", "trace-005"
@@ -167,7 +167,7 @@ class InvestigationSummaryObserverTest {
         UUID unknownCaseId = UUID.randomUUID();
 
         // Fire event for a case that has no summary row — should log but not throw
-        fireEvent(new CaseLifecycleEvent(
+        fireEvent(CaseLifecycleEvent.of(
             unknownCaseId, TenancyConstants.DEFAULT_TENANT_ID,
             "COMPLETE_CASE", "CASE_COMPLETED", "COMPLETED",
             "actor-006", "Orchestrator", "trace-006"
