@@ -13,7 +13,7 @@ type RouteHandler = (url: URL, params: Record<string, string>) => unknown;
 const routes: Array<{ pattern: RegExp; handler: RouteHandler }> = [
   {
     pattern: /^\/api\/investigations$/,
-    handler: () => INVESTIGATIONS,
+    handler: () => INVESTIGATIONS.items,
   },
   {
     pattern: /^\/api\/layer6\/investigations\/([^/]+)$/,
@@ -79,6 +79,8 @@ const routes: Array<{ pattern: RegExp; handler: RouteHandler }> = [
     pattern: /^\/workitems\/([^/]+)$/,
     handler: (_url, params) => ({ id: params['1'], title: 'Work Item', status: 'PENDING' }),
   },
+  { pattern: /^\/queues$/, handler: () => [] },
+  { pattern: /^\/queues\/summary$/, handler: () => ({ queues: [] }) },
 ];
 
 const originalFetch = window.fetch.bind(window);

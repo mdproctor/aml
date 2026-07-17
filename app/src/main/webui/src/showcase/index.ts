@@ -5,7 +5,10 @@
  * component data fetches hit mock data instead of a real backend.
  */
 
-// Install mock fetch FIRST — before any component imports trigger data fetches
+// Guard MUST be first import — prevents duplicate custom element registration
+import './element-guard.js';
+
+// Install mock fetch BEFORE any component imports trigger data fetches
 import './mock-fetch.js';
 
 // Now import the real app — it will use mock fetch transparently
