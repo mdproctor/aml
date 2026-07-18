@@ -181,6 +181,14 @@
       <scope>test</scope>
     </dependency>
 
+    <!-- CBR in-memory store (test isolation for CbrCaseMemoryStore) -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-neocortex-memory-cbr-inmem</artifactId>
+      <version>${casehub.version}</version>
+      <scope>test</scope>
+    </dependency>
+
     <!-- In-memory engine persistence SPIs (CaseInstanceRepository, EventLogRepository,
          CaseMetaModelRepository) — activated at compile scope so the in-memory impls
          are available at augmentation time without requiring PostgreSQL. -->
