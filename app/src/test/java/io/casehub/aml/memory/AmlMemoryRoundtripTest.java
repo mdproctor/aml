@@ -1,11 +1,12 @@
 package io.casehub.aml.memory;
 
 import io.casehub.aml.domain.EntityResolutionResult;
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.PatternAnalysisResult;
 import io.casehub.aml.domain.SuspiciousTransaction;
-import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.neocortex.memory.CaseMemoryStore;
 import io.casehub.neocortex.memory.EraseRequest;
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
@@ -13,7 +14,8 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 class AmlMemoryRoundtripTest {
@@ -25,7 +27,7 @@ class AmlMemoryRoundtripTest {
 
     private SuspiciousTransaction tx(String id, String origin, String dest) {
         return new SuspiciousTransaction(id, origin, dest,
-            new BigDecimal("50000"), "USD", Instant.now(), "Structuring");
+            new BigDecimal("50000"), "USD", Instant.now(), FlagReason.STRUCTURING);
     }
 
     @Test

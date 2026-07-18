@@ -1,5 +1,6 @@
 package io.casehub.aml.trust;
 
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.engine.AmlEngineCoordinator;
 import io.casehub.work.runtime.model.WorkItem;
@@ -10,15 +11,23 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Layer 7: verifies that AmlTrustRoutingObserver writes attestation entries for each
@@ -120,6 +129,6 @@ class AmlTrustRoutingAttestationTest {
 
     private SuspiciousTransaction pep(String id) {
         return new SuspiciousTransaction(id, "ACC-A", "ACC-B",
-            new BigDecimal("200000"), "USD", Instant.now(), "PEP — high risk transfer");
+            new BigDecimal("200000"), "USD", Instant.now(), FlagReason.PEP_MATCH);
     }
 }

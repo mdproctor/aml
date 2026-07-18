@@ -1,5 +1,6 @@
 package io.casehub.aml.query;
 
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -11,7 +12,9 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Tests for {@link InvestigationSummaryService}.
@@ -32,7 +35,7 @@ class InvestigationSummaryServiceTest {
         UUID caseId = UUID.randomUUID();
         SuspiciousTransaction txn = new SuspiciousTransaction(
             "TX-001", "ACC-001", "ACC-002",
-            new BigDecimal("15000.00"), "USD", Instant.now(), "high-velocity"
+            new BigDecimal("15000.00"), "USD", Instant.now(), FlagReason.VELOCITY_ANOMALY
         );
 
         service.createSummary(caseId, txn);
@@ -48,7 +51,7 @@ class InvestigationSummaryServiceTest {
         assertEquals("ACC-002", summary.destinationAccount());
         assertEquals(0, new BigDecimal("15000.00").compareTo(summary.amount()));
         assertEquals("USD", summary.currency());
-        assertEquals("high-velocity", summary.flagReason());
+        assertEquals("VELOCITY_ANOMALY", summary.flagReason());
         assertNotNull(summary.createdAt());
     }
 
@@ -58,7 +61,7 @@ class InvestigationSummaryServiceTest {
         UUID caseId = UUID.randomUUID();
         SuspiciousTransaction txn = new SuspiciousTransaction(
             "TX-002", "ACC-003", "ACC-004",
-            new BigDecimal("5000.00"), "USD", Instant.now(), "structuring"
+            new BigDecimal("5000.00"), "USD", Instant.now(), FlagReason.STRUCTURING
         );
         service.createSummary(caseId, txn);
         em.flush();
@@ -87,7 +90,7 @@ class InvestigationSummaryServiceTest {
         UUID caseId = UUID.randomUUID();
         SuspiciousTransaction txn = new SuspiciousTransaction(
             "TX-003", "ACC-005", "ACC-006",
-            new BigDecimal("25000.00"), "USD", Instant.now(), "round-amount"
+            new BigDecimal("25000.00"), "USD", Instant.now(), FlagReason.STRUCTURING
         );
         service.createSummary(caseId, txn);
         em.flush();
@@ -116,7 +119,7 @@ class InvestigationSummaryServiceTest {
         UUID caseId = UUID.randomUUID();
         SuspiciousTransaction txn = new SuspiciousTransaction(
             "TX-004", "ACC-007", "ACC-008",
-            new BigDecimal("100000.00"), "USD", Instant.now(), "pep-involvement"
+            new BigDecimal("100000.00"), "USD", Instant.now(), FlagReason.PEP_MATCH
         );
         service.createSummary(caseId, txn);
         em.flush();

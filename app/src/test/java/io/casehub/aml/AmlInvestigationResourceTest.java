@@ -40,7 +40,7 @@ class AmlInvestigationResourceTest {
               "amount": 100000,
               "currency": "USD",
               "timestamp": "2024-03-15T10:00:00Z",
-              "flagReason": "Structuring"
+              "flagReason": "STRUCTURING"
             }
             """;
 

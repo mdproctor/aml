@@ -1,5 +1,6 @@
 package io.casehub.aml.simulation;
 
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
 
 import java.math.BigDecimal;
@@ -31,7 +32,7 @@ public enum AmlScenarioTemplate {
         "ACCT-DEST-PEP-001",
         new BigDecimal("75000.00"),
         "USD",
-        "PEP_DETECTED"
+        FlagReason.PEP_MATCH
     ),
 
     /**
@@ -45,7 +46,7 @@ public enum AmlScenarioTemplate {
         "ACCT-DEST-STRUCT-001",
         new BigDecimal("9500.00"),
         "USD",
-        "STRUCTURING_PATTERN"
+        FlagReason.STRUCTURING
     ),
 
     /**
@@ -59,7 +60,7 @@ public enum AmlScenarioTemplate {
         "ACCT-DEST-BENIGN-001",
         new BigDecimal("1200.00"),
         "USD",
-        "ROUTINE_REVIEW"
+        FlagReason.VELOCITY_ANOMALY
     ),
 
     /**
@@ -73,7 +74,7 @@ public enum AmlScenarioTemplate {
         "ACCT-DEST-ERROR-001",
         new BigDecimal("25000.00"),
         "USD",
-        "SYSTEM_FAILURE_TEST"
+        FlagReason.STRUCTURING
     ),
 
     /**
@@ -88,7 +89,7 @@ public enum AmlScenarioTemplate {
         "ACCT-DEST-GATE-001",
         new BigDecimal("150000.00"),
         "USD",
-        "HIGH_RISK_JURISDICTION"
+        FlagReason.HIGH_RISK_JURISDICTION
     ),
 
     /**
@@ -102,7 +103,7 @@ public enum AmlScenarioTemplate {
         "ACCT-DEST-GDPR-001",
         new BigDecimal("5000.00"),
         "EUR",
-        "PRIVACY_ERASURE_TEST"
+        FlagReason.STRUCTURING
     ),
 
     /**
@@ -117,7 +118,7 @@ public enum AmlScenarioTemplate {
         "ACCT-DEST-HIGHVOL-001",
         new BigDecimal("500000.00"),
         "USD",
-        "LARGE_VOLUME_WIRE"
+        FlagReason.LARGE_VOLUME
     );
 
     private final String transactionId;
@@ -125,7 +126,7 @@ public enum AmlScenarioTemplate {
     private final String destinationAccountId;
     private final BigDecimal amount;
     private final String currency;
-    private final String flagReason;
+    private final FlagReason flagReason;
 
     AmlScenarioTemplate(
             final String transactionId,
@@ -133,7 +134,7 @@ public enum AmlScenarioTemplate {
             final String destinationAccountId,
             final BigDecimal amount,
             final String currency,
-            final String flagReason) {
+            final FlagReason flagReason) {
         this.transactionId = transactionId;
         this.originAccountId = originAccountId;
         this.destinationAccountId = destinationAccountId;

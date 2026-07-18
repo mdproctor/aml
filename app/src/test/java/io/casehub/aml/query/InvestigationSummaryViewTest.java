@@ -52,7 +52,7 @@ class InvestigationSummaryViewTest {
                 "ACC-B",
                 new BigDecimal("10000.50"),
                 "USD",
-                "Structuring"
+                "STRUCTURING"
         );
 
         // When
@@ -68,7 +68,7 @@ class InvestigationSummaryViewTest {
         assertEquals("ACC-B", found.get().destinationAccount());
         assertEquals(0, new BigDecimal("10000.50").compareTo(found.get().amount()));
         assertEquals("USD", found.get().currency());
-        assertEquals("Structuring", found.get().flagReason());
+        assertEquals("STRUCTURING", found.get().flagReason());
         assertEquals("IN_PROGRESS", found.get().status());
         assertNull(found.get().outcomeType());
         assertNotNull(found.get().createdAt());
@@ -117,7 +117,7 @@ class InvestigationSummaryViewTest {
         UUID case3 = UUID.randomUUID();
 
         InvestigationSummaryView inProgress1 = new InvestigationSummaryView(
-                case1, "TXN-001", "ACC-A", "ACC-B", new BigDecimal("1000"), "USD", "Structuring"
+                case1, "TXN-001", "ACC-A", "ACC-B", new BigDecimal("1000"), "USD", "STRUCTURING"
         );
         InvestigationSummaryView inProgress2 = new InvestigationSummaryView(
                 case2, "TXN-002", "ACC-C", "ACC-D", new BigDecimal("2000"), "EUR", "Smurfing"
@@ -151,7 +151,7 @@ class InvestigationSummaryViewTest {
         UUID case2 = UUID.randomUUID();
 
         InvestigationSummaryView summary1 = new InvestigationSummaryView(
-                case1, "TXN-001", "ACC-A", "ACC-B", new BigDecimal("1000"), "USD", "Structuring"
+                case1, "TXN-001", "ACC-A", "ACC-B", new BigDecimal("1000"), "USD", "STRUCTURING"
         );
         InvestigationSummaryView summary2 = new InvestigationSummaryView(
                 case2, "TXN-002", "ACC-C", "ACC-D", new BigDecimal("2000"), "EUR", "Smurfing"
@@ -183,7 +183,7 @@ class InvestigationSummaryViewTest {
         // Given
         UUID caseId = UUID.randomUUID();
         InvestigationSummaryView summary = new InvestigationSummaryView(
-                caseId, "TXN-001", "ACC-A", "ACC-B", new BigDecimal("1000"), "USD", "Structuring"
+                caseId, "TXN-001", "ACC-A", "ACC-B", new BigDecimal("1000"), "USD", "STRUCTURING"
         );
         repository.persist(summary);
         em.flush();
@@ -207,7 +207,7 @@ class InvestigationSummaryViewTest {
     void countByStatus_returnsCorrectCount() {
         // Given
         InvestigationSummaryView inProgress = new InvestigationSummaryView(
-                UUID.randomUUID(), "TXN-001", "ACC-A", "ACC-B", new BigDecimal("1000"), "USD", "Structuring"
+                UUID.randomUUID(), "TXN-001", "ACC-A", "ACC-B", new BigDecimal("1000"), "USD", "STRUCTURING"
         );
         InvestigationSummaryView completed = new InvestigationSummaryView(
                 UUID.randomUUID(), "TXN-002", "ACC-C", "ACC-D", new BigDecimal("2000"), "EUR", "Smurfing"

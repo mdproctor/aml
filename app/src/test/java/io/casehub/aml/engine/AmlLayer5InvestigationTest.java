@@ -121,7 +121,7 @@ class AmlLayer5InvestigationTest {
 
     @Test
     void investigationCompletes_allCoreWorkersRun() {
-        final UUID caseId = startInvestigation("TXN-COMPLETE-001", "Unusual pattern");
+        final UUID caseId = startInvestigation("TXN-COMPLETE-001", "STRUCTURING");
 
         // Trust routing may dispatch 'osint-screening-agent-senior' or 'osint-screening-agent'
         // depending on trust scores — use prefix match to accept either.
@@ -143,7 +143,7 @@ class AmlLayer5InvestigationTest {
         // PEP routing via prior context is tested by AmlLayer8RoutingTest.
         // This test verifies the investigation completes fully for PEP-flagged transactions.
         final UUID caseId = startInvestigation("TXN-PEP-001",
-                "PEP entity detected — high risk transfer");
+                "PEP_MATCH");
 
         awaitAndApproveGate(caseId);
         drainInvestigation(caseId);
@@ -152,7 +152,7 @@ class AmlLayer5InvestigationTest {
     @Test
     void nonPepTransaction_seniorAnalystDoesNotFire() {
         final UUID caseId = startInvestigation("TXN-CORP-001",
-                "Structuring pattern detected");
+                "STRUCTURING");
 
         // Wait for sar-drafting to be scheduled (proves entity+pattern+osint completed).
         // Capture the snapshot inside Awaitility to avoid a re-query race window.
@@ -172,7 +172,7 @@ class AmlLayer5InvestigationTest {
     @Test
     void patternAndOsintRunInParallel_bothFireAfterEntity() {
         final UUID caseId = startInvestigation("TXN-PARALLEL-001",
-                "Suspicious cross-border transfer");
+                "LAYERING");
 
         // Wait until both have completed — they should fire simultaneously after entity
         // Trust routing may dispatch 'osint-screening-agent-senior' — use prefix match.
@@ -193,7 +193,7 @@ class AmlLayer5InvestigationTest {
     void osintDecline_doesNotBlockSarDrafting() {
         // OSINT always declines in stubs — verify SAR still drafts successfully
         final UUID caseId = startInvestigation("TXN-OSINT-DECLINE-001",
-                "Structuring below reporting threshold");
+                "STRUCTURING");
 
         await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL).until(() ->
                 scheduledWorkerNames(caseId).stream().anyMatch(w -> w.startsWith("sar-drafting-agent")));
