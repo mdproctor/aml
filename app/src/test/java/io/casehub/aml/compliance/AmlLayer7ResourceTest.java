@@ -1,5 +1,6 @@
 package io.casehub.aml.compliance;
 
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.trust.AmlTrustAttestationRepository;
 import io.casehub.work.runtime.model.WorkItem;
@@ -22,7 +23,16 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.anyOf;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -268,6 +278,6 @@ class AmlLayer7ResourceTest {
 
     private SuspiciousTransaction pepTransaction(String id) {
         return new SuspiciousTransaction(id, "ACC-A", "ACC-B",
-            new BigDecimal("200000"), "USD", Instant.now(), "PEP -- high risk");
+            new BigDecimal("200000"), "USD", Instant.now(), FlagReason.PEP_MATCH);
     }
 }

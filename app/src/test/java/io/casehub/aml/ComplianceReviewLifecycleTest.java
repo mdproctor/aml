@@ -1,10 +1,15 @@
 package io.casehub.aml;
 
-import io.casehub.aml.domain.*;
+import io.casehub.aml.domain.EntityResolutionResult;
+import io.casehub.aml.domain.FlagReason;
+import io.casehub.aml.domain.InvestigationSummary;
+import io.casehub.aml.domain.PatternAnalysisResult;
+import io.casehub.aml.domain.SpecialistOutcome;
+import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.ledger.AmlLedgerService;
-import io.casehub.work.runtime.model.WorkItem;
 import io.casehub.work.api.WorkItemCreateRequest;
 import io.casehub.work.api.WorkItemPriority;
+import io.casehub.work.runtime.model.WorkItem;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -16,10 +21,13 @@ import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class ComplianceReviewLifecycleTest {
@@ -29,12 +37,12 @@ class ComplianceReviewLifecycleTest {
     private final SuspiciousTransaction tx = new SuspiciousTransaction(
             "TXN-CLR", "ACC-A", "ACC-B",
             new BigDecimal("75000"), "USD",
-            Instant.parse("2024-06-01T00:00:00Z"), "Test");
+            Instant.parse("2024-06-01T00:00:00Z"), FlagReason.STRUCTURING);
 
     private final InvestigationSummary summary = new InvestigationSummary(
             tx,
             new SpecialistOutcome.Completed<>(new EntityResolutionResult("E-1", "chain", "CORPORATE", 0.35)),
-            new SpecialistOutcome.Completed<>(new PatternAnalysisResult(true, "structuring")),
+            new SpecialistOutcome.Completed<>(new PatternAnalysisResult(true, "Structuring")),
             new SpecialistOutcome.Declined<>("agent", "osint-screening", "clearance"),
             "narrative");
 

@@ -1,5 +1,6 @@
 package io.casehub.aml.engine;
 
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.engine.common.spi.cache.CaseInstanceCache;
 import io.casehub.work.runtime.model.WorkItem;
@@ -38,13 +39,13 @@ class AmlLayer9ResourceTest {
             "ACC-C", "ACC-D",
             new BigDecimal("50000"), "USD",
             Instant.parse("2024-12-01T00:00:00Z"),
-            "Routine structured layering — CORPORATE");
+            FlagReason.LAYERING);
 
     private static SuspiciousTransaction pepTransaction(final String id) {
         return new SuspiciousTransaction(id, "ACC-PEP-A", "ACC-PEP-B",
                 new BigDecimal("200000"), "USD",
                 Instant.parse("2024-12-01T00:00:00Z"),
-                "PEP -- high risk");
+                FlagReason.PEP_MATCH);
     }
 
     private List<WorkItem> findGateWorkItems(final UUID caseId) {

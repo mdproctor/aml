@@ -32,4 +32,9 @@ public final class AmlMemoryDomains {
     public static final MemoryDomain PATTERN     = new MemoryDomain("aml.pattern");
 
     private AmlMemoryDomains() {}
+
+    /**
+     * Case-Based Reasoning case profiles — similarity dimensions for investigation retrieval.
+     */
+    public static final MemoryDomain CBR = new MemoryDomain("aml.cbr");
 }

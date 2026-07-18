@@ -1,20 +1,19 @@
 package io.casehub.aml.ledger;
 
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-
-import jakarta.inject.Inject;
-
-import org.junit.jupiter.api.Test;
-
 import io.casehub.aml.AmlInvestigationApplicationService;
 import io.casehub.aml.domain.AmlInvestigationResult;
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -90,6 +89,6 @@ class AmlLedgerChainTest {
         return new SuspiciousTransaction(
                 id, "ACC-A", "ACC-B",
                 new BigDecimal("75000"), "USD",
-                Instant.now(), "Structuring");
+                Instant.now(), FlagReason.STRUCTURING);
     }
 }

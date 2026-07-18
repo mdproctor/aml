@@ -1,6 +1,6 @@
 package io.casehub.aml.query;
 
-import io.casehub.aml.domain.InvestigationOutcome;
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.engine.AmlInvestigationOutcomeService;
 import io.casehub.engine.common.spi.event.CaseLifecycleEvent;
@@ -19,7 +19,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Tests for {@link InvestigationSummaryObserver}.
@@ -185,7 +186,7 @@ class InvestigationSummaryObserverTest {
         SuspiciousTransaction txn = new SuspiciousTransaction(
             "TX-" + caseId.toString().substring(0, 8),
             "ACC-ORIGIN", "ACC-DEST",
-            new BigDecimal("10000.00"), "USD", Instant.now(), "test-flag"
+            new BigDecimal("10000.00"), "USD", Instant.now(), FlagReason.STRUCTURING
         );
         summaryService.createSummary(caseId, txn);
         em.flush();

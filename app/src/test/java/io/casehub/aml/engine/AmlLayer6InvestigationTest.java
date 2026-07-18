@@ -3,6 +3,7 @@ package io.casehub.aml.engine;
 import io.casehub.aml.domain.AmlGroups;
 import io.casehub.aml.domain.SarOutcome;
 import io.casehub.aml.domain.SarVerdict;
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
@@ -16,6 +17,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -23,8 +25,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Full end-to-end integration test for Layer 6 trust routing.
@@ -60,7 +66,7 @@ class AmlLayer6InvestigationTest {
                 "ACC-A", "ACC-B",
                 new BigDecimal("120000"), "USD",
                 Instant.parse("2024-09-15T00:00:00Z"),
-                "Structured layering — CORPORATE");
+                FlagReason.LAYERING);
 
         // Step 1: Start investigation (async)
         final String caseIdStr = given().contentType(ContentType.JSON).body(tx)

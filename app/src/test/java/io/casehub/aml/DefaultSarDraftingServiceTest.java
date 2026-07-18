@@ -1,15 +1,15 @@
 package io.casehub.aml;
 
-import java.math.BigDecimal;
-import java.time.Instant;
-
-import org.junit.jupiter.api.Test;
-
 import io.casehub.aml.domain.EntityResolutionResult;
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.OsintResult;
 import io.casehub.aml.domain.PatternAnalysisResult;
 import io.casehub.aml.domain.SpecialistOutcome;
 import io.casehub.aml.domain.SuspiciousTransaction;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,12 +21,12 @@ class DefaultSarDraftingServiceTest {
     private final SuspiciousTransaction tx = new SuspiciousTransaction(
             "TXN-SAR", "ACC-A", "ACC-B",
             new BigDecimal("50000"), "USD",
-            Instant.parse("2024-01-01T00:00:00Z"), "Test");
+            Instant.parse("2024-01-01T00:00:00Z"), FlagReason.STRUCTURING);
 
     private final SpecialistOutcome<EntityResolutionResult> completedEntity =
             new SpecialistOutcome.Completed<>(new EntityResolutionResult("E-1", "A -> B", "CORPORATE", 0.35));
     private final SpecialistOutcome<PatternAnalysisResult> completedPattern =
-            new SpecialistOutcome.Completed<>(new PatternAnalysisResult(true, "structuring"));
+            new SpecialistOutcome.Completed<>(new PatternAnalysisResult(true, "Structuring"));
     private final SpecialistOutcome<OsintResult> completedOsint =
             new SpecialistOutcome.Completed<>(new OsintResult(false, false, "clean"));
 

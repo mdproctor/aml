@@ -1,10 +1,10 @@
 package io.casehub.aml;
 
-import org.junit.jupiter.api.Test;
-
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.InvestigationSummary;
 import io.casehub.aml.domain.SpecialistOutcome;
 import io.casehub.aml.domain.SuspiciousTransaction;
+import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -20,7 +20,7 @@ class DefaultAmlInvestigationServiceTest {
         return new SuspiciousTransaction(
                 id, "ACC-A", "ACC-B",
                 new java.math.BigDecimal("100000"), "USD",
-                java.time.Instant.parse("2024-03-15T10:00:00Z"), "Structuring");
+                java.time.Instant.parse("2024-03-15T10:00:00Z"), FlagReason.STRUCTURING);
     }
 
     @Test

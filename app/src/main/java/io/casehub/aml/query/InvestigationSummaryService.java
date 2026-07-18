@@ -35,7 +35,7 @@ public class InvestigationSummaryService {
     public void createSummary(UUID caseId, SuspiciousTransaction txn) {
         var summary = new InvestigationSummaryView(
             caseId, txn.id(), txn.originAccountId(), txn.destinationAccountId(),
-            txn.amount(), txn.currency(), txn.flagReason());
+            txn.amount(), txn.currency(), txn.flagReason().name());
         repository.persist(summary);
         LOG.debugf("Investigation summary created: caseId=%s txId=%s", caseId, txn.id());
     }

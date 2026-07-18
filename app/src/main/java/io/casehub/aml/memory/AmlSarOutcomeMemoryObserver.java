@@ -1,5 +1,6 @@
 package io.casehub.aml.memory;
 
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.engine.SarOutcomeRecordedEvent;
 import io.casehub.aml.ledger.AmlCaseOpenedLedgerEntry;
@@ -37,8 +38,10 @@ public class AmlSarOutcomeMemoryObserver {
 
     private static final Logger LOG = Logger.getLogger(AmlSarOutcomeMemoryObserver.class);
 
-    @Inject LedgerEntryRepository ledgerRepository;
-    @Inject AmlMemoryService memoryService;
+    @Inject
+    LedgerEntryRepository ledgerRepository;
+    @Inject
+    AmlMemoryService      memoryService;
 
     @Transactional(TxType.REQUIRES_NEW)
     public void onSarOutcome(@Observes final SarOutcomeRecordedEvent event) {
@@ -48,28 +51,28 @@ public class AmlSarOutcomeMemoryObserver {
         // was written during startInvestigation() in a prior request that has already committed, so
         // reading it here is safe regardless of the outer transaction boundary.
         final AmlCaseOpenedLedgerEntry caseEntry = ledgerRepository
-                .findBySubjectId(event.caseId(), io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID).stream()
-                .filter(AmlCaseOpenedLedgerEntry.class::isInstance)
-                .map(AmlCaseOpenedLedgerEntry.class::cast)
-                .findFirst()
-                .orElse(null);
+                                                           .findBySubjectId(event.caseId(), io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID).stream()
+                                                           .filter(AmlCaseOpenedLedgerEntry.class::isInstance)
+                                                           .map(AmlCaseOpenedLedgerEntry.class::cast)
+                                                           .findFirst()
+                                                           .orElse(null);
 
         if (caseEntry == null) {
             LOG.warnf("No AmlCaseOpenedLedgerEntry found for caseId=%s — skipping SAR memory write",
-                    event.caseId());
+                      event.caseId());
             return;
         }
 
         final SuspiciousTransaction transaction = new SuspiciousTransaction(
-            caseEntry.transactionId,
-            caseEntry.originAccountId,
-            caseEntry.destinationAccountId,
-            BigDecimal.ZERO,
-            "UNKNOWN",
-            Instant.EPOCH,
-            "SAR_OUTCOME");
+                caseEntry.transactionId,
+                caseEntry.originAccountId,
+                caseEntry.destinationAccountId,
+                BigDecimal.ZERO,
+                "UNKNOWN",
+                Instant.EPOCH,
+                FlagReason.STRUCTURING);
         memoryService.storeSarOutcome(event.caseId(), transaction, event.outcome());
         LOG.infof("SAR outcome memory stored: caseId=%s verdict=%s",
-                event.caseId(), event.outcome().verdict());
+                  event.caseId(), event.outcome().verdict());
     }
 }

@@ -1,17 +1,18 @@
 package io.casehub.aml.memory;
 
 import io.casehub.aml.domain.EntityResolutionResult;
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.PatternAnalysisResult;
 import io.casehub.aml.domain.SarOutcome;
 import io.casehub.aml.domain.SarVerdict;
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
-import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.neocortex.memory.CaseMemoryStore;
 import io.casehub.neocortex.memory.Memory;
 import io.casehub.neocortex.memory.MemoryAttributeKeys;
-import io.casehub.neocortex.memory.MemoryDomain;
 import io.casehub.neocortex.memory.MemoryInput;
 import io.casehub.neocortex.memory.MemoryQuery;
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.platform.api.preferences.PreferenceProvider;
 import io.casehub.platform.api.preferences.Preferences;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,9 +28,14 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class AmlMemoryServiceTest {
@@ -57,7 +63,7 @@ class AmlMemoryServiceTest {
     private SuspiciousTransaction transaction() {
         return new SuspiciousTransaction(
             "tx-001", "origin-acc", "dest-acc",
-            new BigDecimal("50000.00"), "USD", Instant.now(), "Structured deposits");
+            new BigDecimal("50000.00"), "USD", Instant.now(), FlagReason.STRUCTURING);
     }
 
     private EntityResolutionResult entityResult() {
@@ -74,7 +80,7 @@ class AmlMemoryServiceTest {
 
     // ── Text formatting ────────────────────────────────────────────────────────
 
-    // 1. storeEntityRisk — text contains entity type ("PEP") and risk score ("0.9200")
+    // 1. storeEntityRisk — text contains entity type (FlagReason.PEP_MATCH) and risk score ("0.9200")
     @Test
     void storeEntityRiskTextContainsEntityTypeAndRiskScore() {
         EntityResolutionResult result = entityResult();

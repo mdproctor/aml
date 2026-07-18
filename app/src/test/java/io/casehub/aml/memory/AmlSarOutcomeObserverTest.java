@@ -2,13 +2,14 @@ package io.casehub.aml.memory;
 
 import io.casehub.aml.domain.SarOutcome;
 import io.casehub.aml.domain.SarVerdict;
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.engine.AmlEngineCoordinator;
 import io.casehub.aml.engine.SarOutcomeRecordedEvent;
-import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.neocortex.memory.CaseMemoryStore;
 import io.casehub.neocortex.memory.MemoryAttributeKeys;
 import io.casehub.neocortex.memory.MemoryQuery;
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.work.runtime.model.WorkItem;
 import io.casehub.work.runtime.service.WorkItemService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -28,7 +29,10 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 class AmlSarOutcomeObserverTest {
@@ -74,7 +78,7 @@ class AmlSarOutcomeObserverTest {
     void sarOutcomeEvent_writesMemoryForBothAccounts() {
         SuspiciousTransaction tx = new SuspiciousTransaction(
             "TXN-SAR-MEM-001-" + UUID.randomUUID(), "ACC-SAR-ORIGIN-1-" + UUID.randomUUID(), "ACC-SAR-DEST-1-" + UUID.randomUUID(),
-            new BigDecimal("80000"), "USD", Instant.now(), "SAR outcome test");
+            new BigDecimal("80000"), "USD", Instant.now(), FlagReason.STRUCTURING);
         UUID caseId = coordinator.startInvestigation(tx);
         awaitAndApproveGate(caseId);
         drain(caseId);
@@ -96,7 +100,7 @@ class AmlSarOutcomeObserverTest {
     void withdrawn_sarOutcome_writesZeroConfidenceReversal() {
         SuspiciousTransaction tx = new SuspiciousTransaction(
             "TXN-SAR-MEM-002-" + UUID.randomUUID(), "ACC-SAR-WITHDRAWN-" + UUID.randomUUID(), "ACC-SAR-WITHDRAWN-DEST-" + UUID.randomUUID(),
-            new BigDecimal("30000"), "USD", Instant.now(), "SAR withdrawn test");
+            new BigDecimal("30000"), "USD", Instant.now(), FlagReason.STRUCTURING);
         UUID caseId = coordinator.startInvestigation(tx);
         awaitAndApproveGate(caseId);
         drain(caseId);

@@ -1,5 +1,6 @@
 package io.casehub.aml.engine;
 
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.work.runtime.model.WorkItem;
 import io.casehub.work.runtime.service.WorkItemService;
@@ -62,7 +63,7 @@ class ZAmlAuditTrailResourceTest {
                 "TXN-AUDIT-" + UUID.randomUUID(),
                 "acct-001", "acct-002",
                 new BigDecimal("200000"), "USD",
-                Instant.now(), "PEP — high risk");
+                Instant.now(), FlagReason.PEP_MATCH);
 
         final String caseIdStr = given()
                 .contentType(ContentType.JSON)

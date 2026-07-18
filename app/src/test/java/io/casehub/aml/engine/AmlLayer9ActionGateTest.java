@@ -1,6 +1,7 @@
 package io.casehub.aml.engine;
 
 import io.casehub.aml.domain.AmlGroups;
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.work.runtime.model.WorkItem;
 import io.casehub.work.runtime.service.WorkItemService;
@@ -12,13 +13,17 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Layer 9: verifies the AML oversight gate fires for PEP entity link creation and
@@ -47,7 +52,7 @@ class AmlLayer9ActionGateTest {
             "TXN-GATE-" + UUID.randomUUID(), "ACC-GATE-A", "ACC-GATE-B",
             new BigDecimal("500000"), "GBP",
             Instant.parse("2024-12-01T00:00:00Z"),
-            "Entity link — PEP suspected beneficial owner");
+            FlagReason.PEP_MATCH);
 
         final String caseIdStr = given().contentType(ContentType.JSON).body(tx)
             .when().post("/api/layer9/investigations")
@@ -98,7 +103,7 @@ class AmlLayer9ActionGateTest {
             "TXN-AUTO-" + UUID.randomUUID(), "ACC-AUTO-C", "ACC-AUTO-D",
             new BigDecimal("50000"), "GBP",
             Instant.parse("2024-12-01T00:00:00Z"),
-            "Routine structured layering — CORPORATE");
+            FlagReason.LAYERING);
 
         final String caseIdStr = given().contentType(ContentType.JSON).body(tx)
             .when().post("/api/layer9/investigations")

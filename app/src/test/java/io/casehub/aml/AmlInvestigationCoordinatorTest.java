@@ -1,22 +1,21 @@
 package io.casehub.aml;
 
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.junit.jupiter.api.Test;
-
 import io.casehub.aml.domain.AmlInvestigationResult;
 import io.casehub.aml.domain.EntityResolutionResult;
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.InvestigationSummary;
 import io.casehub.aml.domain.OsintResult;
 import io.casehub.aml.domain.PatternAnalysisResult;
 import io.casehub.aml.domain.SpecialistOutcome;
 import io.casehub.aml.domain.SuspiciousTransaction;
-import io.casehub.work.runtime.model.WorkItem;
-
 import io.casehub.aml.ledger.AmlLedgerService;
+import io.casehub.work.runtime.model.WorkItem;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -27,7 +26,7 @@ class AmlInvestigationCoordinatorTest {
     private final SuspiciousTransaction tx = new SuspiciousTransaction(
             "TXN-COORD", "ACC-A", "ACC-B",
             new BigDecimal("95000"), "USD",
-            Instant.parse("2024-01-01T00:00:00Z"), "Structuring");
+            Instant.parse("2024-01-01T00:00:00Z"), FlagReason.STRUCTURING);
 
     private static WorkItem workItemWith(UUID id) {
         WorkItem wi = new WorkItem();

@@ -1,17 +1,21 @@
 package io.casehub.aml.ledger;
 
 import io.casehub.aml.AmlInvestigationApplicationService;
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import static org.junit.jupiter.api.Assertions.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
 class AmlLedgerCausedByTest {
@@ -42,6 +46,6 @@ class AmlLedgerCausedByTest {
 
     private SuspiciousTransaction tx(String id) {
         return new SuspiciousTransaction(id, "ACC-A", "ACC-B",
-            new BigDecimal("50000"), "USD", Instant.now(), "Structuring");
+            new BigDecimal("50000"), "USD", Instant.now(), FlagReason.STRUCTURING);
     }
 }

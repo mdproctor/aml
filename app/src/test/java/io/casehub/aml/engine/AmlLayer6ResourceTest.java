@@ -2,6 +2,7 @@ package io.casehub.aml.engine;
 
 import io.casehub.aml.domain.SarOutcome;
 import io.casehub.aml.domain.SarVerdict;
+import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.engine.common.spi.cache.CaseInstanceCache;
 import io.casehub.work.runtime.model.WorkItem;
@@ -14,13 +15,19 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @QuarkusTest
@@ -39,13 +46,13 @@ class AmlLayer6ResourceTest {
             "ACC-ORIGIN", "ACC-DEST",
             new BigDecimal("95000"), "USD",
             Instant.parse("2024-06-01T00:00:00Z"),
-            "Structured layering pattern — CORPORATE");
+            FlagReason.LAYERING);
 
     private static SuspiciousTransaction pepTransaction(final String id) {
         return new SuspiciousTransaction(id, "ACC-PEP-A", "ACC-PEP-B",
                 new BigDecimal("200000"), "USD",
                 Instant.parse("2024-12-01T00:00:00Z"),
-                "PEP -- high risk");
+                FlagReason.PEP_MATCH);
     }
 
     @Test
