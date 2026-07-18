@@ -30,6 +30,13 @@
       <version>${casehub.version}</version>
     </dependency>
 
+    <!-- Neocortex memory API — FeatureValue for CaseProfile.toFeatures() (Tier 1 pure Java) -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-neocortex-memory-api</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
+
     <!-- Test dependencies -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>
