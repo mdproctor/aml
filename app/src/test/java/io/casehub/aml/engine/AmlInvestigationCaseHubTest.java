@@ -28,32 +28,32 @@ class AmlInvestigationCaseHubTest {
     }
 
     @Test
-    void hasSixCapabilities() {
+    void hasEightCapabilities() {
         final var names = caseHub.getDefinition().getCapabilities()
                                  .stream().map(c -> c.name()).toList();
-        assertEquals(6, names.size());
+        assertEquals(8, names.size());
         assertTrue(names.containsAll(List.of(
                 "entity-resolution", "pattern-analysis", "osint-screening",
-                "senior-analyst-review", "sar-drafting", "compliance-review-opening")));
+                "senior-analyst-review", "sar-drafting", "compliance-review-opening",
+                "investigation-triage", "cbr-path-advisor")));
     }
 
     @Test
-    void hasSevenBindings() {
-        // senior-analyst-required split into two bindings (prior-context + resolution)
-        // to prevent double-dispatch race in async Quartz execution
+    void hasNineBindings() {
         final var names = caseHub.getDefinition().getBindings()
                                  .stream().map(b -> b.getName()).toList();
-        assertEquals(7, names.size());
+        assertEquals(9, names.size());
         assertTrue(names.containsAll(List.of(
                 "entity-resolution", "pattern-analysis", "osint-screening",
                 "senior-analyst-required-prior-context", "senior-analyst-required-resolution",
+                "cbr-path-advisor", "investigation-triage",
                 "sar-drafting", "compliance-review-opening")));
     }
 
     @Test
-    void hasInvestigationCompleteGoal() {
+    void hasInvestigationGoals() {
         final var goals = caseHub.getDefinition().getGoals();
-        assertEquals(1, goals.size());
+        assertEquals(2, goals.size());
         assertEquals("investigation-complete", goals.get(0).getName());
         assertTrue(goals.get(0).getCondition() instanceof JQExpressionEvaluator jq
                    && jq.expression().contains("complianceTaskId"),
@@ -61,14 +61,15 @@ class AmlInvestigationCaseHubTest {
     }
 
     @Test
-    void hasEightWorkers() {
+    void hasTenWorkers() {
         final var workers = caseHub.getDefinition().getWorkers();
-        assertEquals(8, workers.size(), "Exactly 8 workers expected — size catches double-augmentation");
+        assertEquals(10, workers.size(), "Exactly 10 workers expected — size catches double-augmentation");
         final var names = Set.copyOf(workers.stream().map(w -> w.name()).toList());
         assertEquals(Set.of(
                 "entity-resolution-agent", "pattern-analysis-agent",
                 "osint-screening-agent", "osint-screening-agent-senior",
-                "senior-analyst-agent",
+                "senior-analyst-agent", "investigation-triage-agent",
+                "cbr-path-advisor-agent",
                 "sar-drafting-agent-junior", "sar-drafting-agent-senior",
                 "compliance-review-opening-agent"), names);
     }

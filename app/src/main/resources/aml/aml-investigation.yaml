@@ -33,6 +33,11 @@ spec:
       inputProjection: "{ transaction: .transaction, entityResolution: .entityResolution, patternAnalysis: .patternAnalysis, osintScreening: .osintScreening }"
       outputProjection: "{ sarNarrative: .sarNarrative }"
 
+    - name: cbr-path-advisor
+      description: "Analyse similar past cases and produce path recommendations"
+      inputProjection: "{ cbrExperiences: .cbrExperiences }"
+      outputProjection: "{ cbrPathAdvice: . }"
+
     - name: investigation-triage
       description: "Evaluate specialist findings and decide whether SAR is warranted"
       inputProjection: "{ entityResolution: .entityResolution, patternAnalysis: .patternAnalysis, osintScreening: .osintScreening, cbrPathAdvice: .cbrPathAdvice }"
@@ -101,19 +106,29 @@ spec:
       when: >-
         .entityResolution != null and
         .priorEntityContext.knownHighRisk != true and
-        (.entityResolution.entityType == "PEP" or .entityResolution.riskScore > 0.8) and
+        (.entityResolution.entityType == "PEP" or
+         .entityResolution.riskScore > 0.8 or
+         (.cbrPathAdvice != null and
+          .cbrPathAdvice.capabilities["senior-analyst-review"].frequency > 0.6)) and
         .seniorAnalystReview == null
       capability: senior-analyst-review
 
-    ## Fires once all specialist findings are present.
-    ## CBR-gating (.cbrPathAdvice) is added in Task 4 when the advisor exists.
+    ## Fires at case start when retrieved CBR experiences exist.
+    - name: cbr-path-advisor
+      on: { contextChange: {} }
+      when: ".cbrExperiences != null and (.cbrExperiences | length) > 0 and .cbrPathAdvice == null"
+      capability: cbr-path-advisor
+
+    ## Fires once all specialist findings are present. Gates on CBR path advice
+    ## when experiences exist — waits for the advisor to complete before firing.
     - name: investigation-triage
       on: { contextChange: {} }
       when: >-
         .entityResolution != null and
         .patternAnalysis != null and
         .osintScreening != null and
-        .investigationTriage == null
+        .investigationTriage == null and
+        (.cbrPathAdvice != null or .cbrExperiences == null or (.cbrExperiences | length) == 0)
       capability: investigation-triage
 
     ## Fires when triage decides SAR is warranted.

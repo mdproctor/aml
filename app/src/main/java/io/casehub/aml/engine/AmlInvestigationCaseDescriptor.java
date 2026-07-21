@@ -2,7 +2,10 @@ package io.casehub.aml.engine;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.casehub.aml.ComplianceReviewLifecycle;
+import io.casehub.aml.cbr.CbrPathAdvisorWorker;
 import io.casehub.aml.cbr.InvestigationTriageWorker;
+import io.casehub.ledger.api.spi.LedgerEntryRepository;
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.aml.domain.AmlActionType;
 import io.casehub.aml.domain.EntityResolutionResult;
 import io.casehub.aml.domain.FlagReason;
@@ -46,12 +49,18 @@ public final class AmlInvestigationCaseDescriptor {
 
     private final ComplianceReviewLifecycle complianceReviewLifecycle;
     private final ObjectMapper              objectMapper;
+    private final LedgerEntryRepository     ledgerRepository;
+    private final CurrentPrincipal          principal;
 
     public AmlInvestigationCaseDescriptor(
             final ComplianceReviewLifecycle complianceReviewLifecycle,
-            final ObjectMapper objectMapper) {
+            final ObjectMapper objectMapper,
+            final LedgerEntryRepository ledgerRepository,
+            final CurrentPrincipal principal) {
         this.complianceReviewLifecycle = complianceReviewLifecycle;
         this.objectMapper              = objectMapper;
+        this.ledgerRepository          = ledgerRepository;
+        this.principal                 = principal;
     }
 
     List<Worker> workers() {
@@ -62,6 +71,7 @@ public final class AmlInvestigationCaseDescriptor {
                 osintScreeningWorkerSenior(),
                 seniorAnalystWorker(),
                 InvestigationTriageWorker.create(),
+                CbrPathAdvisorWorker.create(ledgerRepository, principal),
                 sarDraftingWorkerJunior(),
                 sarDraftingWorkerSenior(),
                 complianceReviewOpeningWorker()
