@@ -33,6 +33,11 @@ spec:
       inputProjection: "{ transaction: .transaction, entityResolution: .entityResolution, patternAnalysis: .patternAnalysis, osintScreening: .osintScreening }"
       outputProjection: "{ sarNarrative: .sarNarrative }"
 
+    - name: investigation-triage
+      description: "Evaluate specialist findings and decide whether SAR is warranted"
+      inputProjection: "{ entityResolution: .entityResolution, patternAnalysis: .patternAnalysis, osintScreening: .osintScreening, cbrPathAdvice: .cbrPathAdvice }"
+      outputProjection: "{ investigationTriage: . }"
+
     - name: compliance-review-opening
       description: "Open compliance officer review WorkItem after MLRO gate approval"
       inputProjection: "{ transaction: .transaction, entityResolution: .entityResolution, patternAnalysis: .patternAnalysis, osintScreening: .osintScreening, sarNarrative: .sarNarrative }"
@@ -43,12 +48,16 @@ spec:
     - name: investigation-complete
       kind: success
       condition: ".complianceTaskId != null"
+    - name: investigation-cleared
+      kind: success
+      condition: '.investigationTriage.decision == "FALSE_POSITIVE" or .investigationTriage.decision == "INCONCLUSIVE"'
 
   ## ─── Completion ─────────────────────────────────────────────────────────────
   completion:
     success:
-      allOf:
+      anyOf:
         - investigation-complete
+        - investigation-cleared
 
   ## ─── Bindings ────────────────────────────────────────────────────────────────
   bindings:
@@ -96,7 +105,18 @@ spec:
         .seniorAnalystReview == null
       capability: senior-analyst-review
 
-    ## Fires once all specialist findings are present (entity + pattern + osint).
+    ## Fires once all specialist findings are present.
+    ## CBR-gating (.cbrPathAdvice) is added in Task 4 when the advisor exists.
+    - name: investigation-triage
+      on: { contextChange: {} }
+      when: >-
+        .entityResolution != null and
+        .patternAnalysis != null and
+        .osintScreening != null and
+        .investigationTriage == null
+      capability: investigation-triage
+
+    ## Fires when triage decides SAR is warranted.
     ## SAR-drafting worker synthesises the narrative and declares PlannedAction(SAR_FILING);
     ## complianceTaskId is set by compliance-review-opening after MLRO gate approval.
     - name: sar-drafting
@@ -105,6 +125,7 @@ spec:
         .entityResolution != null and
         .patternAnalysis != null and
         .osintScreening != null and
+        .investigationTriage.decision == "SAR_WARRANTED" and
         .sarNarrative == null
       capability: sar-drafting
 

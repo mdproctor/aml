@@ -41,7 +41,7 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
                                          .minSimilarity(0.5)
                                          .vectorWeight(0.0)
                                          .timing(CbrRetrievalTiming.CASE_LIFETIME)
-                                         .cbrType("feature-vector")
+                                         .cbrType("plan")
                                          .weight("flag_reason", 0.30)
                                          .weight("transaction_amount", 0.15)
                                          .weight("prior_incident_count", 0.10)

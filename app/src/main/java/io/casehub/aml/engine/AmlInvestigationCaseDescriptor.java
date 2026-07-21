@@ -2,6 +2,7 @@ package io.casehub.aml.engine;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.casehub.aml.ComplianceReviewLifecycle;
+import io.casehub.aml.cbr.InvestigationTriageWorker;
 import io.casehub.aml.domain.AmlActionType;
 import io.casehub.aml.domain.EntityResolutionResult;
 import io.casehub.aml.domain.FlagReason;
@@ -60,11 +61,11 @@ public final class AmlInvestigationCaseDescriptor {
                 osintScreeningWorker(),
                 osintScreeningWorkerSenior(),
                 seniorAnalystWorker(),
+                InvestigationTriageWorker.create(),
                 sarDraftingWorkerJunior(),
                 sarDraftingWorkerSenior(),
                 complianceReviewOpeningWorker()
-                      );
-    }
+                      );}
 
     private static Worker entityResolutionWorker() {
         return Worker.builder()

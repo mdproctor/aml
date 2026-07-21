@@ -35,8 +35,8 @@ public class AmlCaseProfileLedgerEntry extends JpaLedgerEntry {
     @Column(name = "outcome", nullable = false, length = 50)
     public String outcome;
 
-    @Column(name = "confidence", nullable = false)
-    public double confidence;
+    @Column(name = "confidence", nullable = true)
+    public Double confidence;
 
     @Column(name = "investigation_path", nullable = false, length = 1000)
     public String investigationPath;
@@ -44,15 +44,14 @@ public class AmlCaseProfileLedgerEntry extends JpaLedgerEntry {
     @Override
     protected byte[] domainContentBytes() {
         return String.join("|",
-                flagReason != null ? flagReason : "",
-                transactionAmount != null ? transactionAmount.toPlainString() : "",
-                String.valueOf(priorIncidentCount),
-                entityType != null ? entityType : "",
-                jurisdictionRisk != null ? jurisdictionRisk : "",
-                networkComplexity != null ? networkComplexity : "",
-                outcome != null ? outcome : "",
-                String.valueOf(confidence),
-                investigationPath != null ? investigationPath : ""
-        ).getBytes(StandardCharsets.UTF_8);
-    }
+                           flagReason != null ? flagReason : "",
+                           transactionAmount != null ? transactionAmount.toPlainString() : "",
+                           String.valueOf(priorIncidentCount),
+                           entityType != null ? entityType : "",
+                           jurisdictionRisk != null ? jurisdictionRisk : "",
+                           networkComplexity != null ? networkComplexity : "",
+                           outcome != null ? outcome : "",
+                           confidence != null ? String.valueOf(confidence) : "",
+                           investigationPath != null ? investigationPath : ""
+                          ).getBytes(StandardCharsets.UTF_8);}
 }

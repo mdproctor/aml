@@ -7,7 +7,8 @@ import io.casehub.engine.common.internal.model.CaseInstance;
 import io.casehub.engine.common.spi.cache.CaseInstanceCache;
 import io.casehub.neocortex.memory.cbr.CbrCaseMemoryStore;
 import io.casehub.neocortex.memory.cbr.FeatureValue;
-import io.casehub.neocortex.memory.cbr.FeatureVectorCbrCase;
+import io.casehub.neocortex.memory.cbr.PlanCbrCase;
+import io.casehub.neocortex.memory.cbr.PlanTrace;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.platform.api.path.Path;
 import io.restassured.http.ContentType;
@@ -43,10 +44,12 @@ class AmlCbrRetrieveTest {
         features.put("prior_incident_count", FeatureValue.number(2));
         features.put("entity_type", FeatureValue.string("CORPORATE"));
 
-        var pastCase = new FeatureVectorCbrCase(
+        var pastCase = new PlanCbrCase(
                 "Past structuring case TX-PAST-001",
-                "entity-resolution → pattern-analysis → sar-drafting",
-                "UPHELD", 0.87, features);
+                "entity-resolution→entity-resolution-agent(SUCCESS)",
+                "SAR_WARRANTED", 0.87, features,
+                List.of(new PlanTrace("entity-resolution", "entity-resolution",
+                        "entity-resolution-agent", "SUCCESS", 0, Map.of())));
 
         String entityId = UUID.nameUUIDFromBytes(
                 "aml-cbr:test-past-case".getBytes()).toString();
@@ -78,7 +81,7 @@ class AmlCbrRetrieveTest {
                       @SuppressWarnings("unchecked")
                       var list = (List<Map<String, Object>>) experiences;
                       assertThat(list).isNotEmpty();
-                      assertThat(list.get(0)).containsEntry("outcome", "UPHELD");
+                      assertThat(list.get(0)).containsEntry("outcome", "SAR_WARRANTED");
                       assertThat((double) list.get(0).get("similarityScore"))
                               .isGreaterThan(0.0);
                   });
