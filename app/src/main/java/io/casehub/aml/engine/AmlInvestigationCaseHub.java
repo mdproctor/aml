@@ -24,6 +24,8 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
     io.casehub.ledger.api.spi.LedgerEntryRepository ledgerRepository;
     @Inject
     io.casehub.platform.api.identity.CurrentPrincipal principal;
+    @Inject
+    io.casehub.platform.api.preferences.PreferenceProvider preferenceProvider;
 
     public AmlInvestigationCaseHub() {
         super("aml/aml-investigation.yaml");
@@ -31,7 +33,7 @@ public class AmlInvestigationCaseHub extends YamlCaseHub {
 
     @Override
     protected void augment(CaseDefinition definition) {
-        final var descriptor = new AmlInvestigationCaseDescriptor(complianceReviewLifecycle, objectMapper, ledgerRepository, principal);
+        final var descriptor = new AmlInvestigationCaseDescriptor(complianceReviewLifecycle, objectMapper, ledgerRepository, principal, preferenceProvider);
         definition.getWorkers().addAll(descriptor.workers());
 
         definition.setCbrConfig(CbrConfig.builder()

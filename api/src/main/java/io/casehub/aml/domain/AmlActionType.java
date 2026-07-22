@@ -41,7 +41,12 @@ public enum AmlActionType {
     LAW_ENFORCEMENT_REFERRAL(
         GatePolicy.ALWAYS, false,
         List.of(AmlGroups.AML_SENIOR_COMPLIANCE),
-        "Law enforcement referral — senior compliance director approval required");
+        "Law enforcement referral — senior compliance director approval required"),
+
+    INVESTIGATION_CLEARANCE(
+        GatePolicy.ALWAYS, true,
+        List.of(AmlGroups.AML_COMPLIANCE),
+        "Investigation clearance on inconclusive evidence — compliance review required");
 
     /** Gate policy variants — determines how the classifier evaluates context. */
     public enum GatePolicy {

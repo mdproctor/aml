@@ -60,12 +60,12 @@ class InvestigationTriageFlowTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void sarPath_triageStubReturnsSarWarranted_investigationCompletes() {
+    void sarPath_shellCompanyHardGate_investigationCompletes() {
         SuspiciousTransaction tx = new SuspiciousTransaction(
                 "TXN-TRIAGE-SAR-" + UUID.randomUUID(),
                 "ACC-TRIAGE-O-" + UUID.randomUUID(),
                 "ACC-TRIAGE-D-" + UUID.randomUUID(),
-                new BigDecimal("80000"), "USD", Instant.now(), FlagReason.STRUCTURING);
+                new BigDecimal("80000"), "USD", Instant.now(), FlagReason.HIGH_RISK_JURISDICTION);
 
         UUID caseId = coordinator.startInvestigation(tx);
         awaitAndApproveGate(caseId);
@@ -76,6 +76,49 @@ class InvestigationTriageFlowTest {
         assertThat(ctx.get("investigationTriage")).isNotNull();
         var triage = (Map<String, Object>) ctx.get("investigationTriage");
         assertThat(triage.get("decision")).isEqualTo("SAR_WARRANTED");
+        assertThat(triage.get("hardGate")).isEqualTo("SHELL_COMPANY");
+        assertThat(triage.get("riskScore")).isEqualTo(1.0);
         assertThat(ctx.get("complianceTaskId")).isNotNull();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void falsePositivePath_lowRisk_investigationCleared() {
+        SuspiciousTransaction tx = new SuspiciousTransaction(
+                "TXN-FP-" + UUID.randomUUID(),
+                "ACC-FP-O-" + UUID.randomUUID(),
+                "ACC-FP-D-" + UUID.randomUUID(),
+                new BigDecimal("500"), "USD", Instant.now(), FlagReason.LARGE_VOLUME);
+
+        UUID caseId = coordinator.startInvestigation(tx);
+        drain(caseId);
+
+        var instance = caseInstanceCache.get(caseId);
+        var ctx = instance.getCaseContext();
+        var triage = (Map<String, Object>) ctx.get("investigationTriage");
+        assertThat(triage.get("decision")).isEqualTo("FALSE_POSITIVE");
+        assertThat(ctx.get("sarNarrative")).isNull();
+        assertThat(ctx.get("complianceTaskId")).isNull();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void inconclusivePath_pepMatch_gateApproved_investigationCleared() {
+        SuspiciousTransaction tx = new SuspiciousTransaction(
+                "TXN-INC-" + UUID.randomUUID(),
+                "ACC-INC-O-" + UUID.randomUUID(),
+                "ACC-INC-D-" + UUID.randomUUID(),
+                new BigDecimal("15000"), "USD", Instant.now(), FlagReason.PEP_MATCH);
+
+        UUID caseId = coordinator.startInvestigation(tx);
+        awaitAndApproveGate(caseId);
+        drain(caseId);
+
+        var instance = caseInstanceCache.get(caseId);
+        var ctx = instance.getCaseContext();
+        var triage = (Map<String, Object>) ctx.get("investigationTriage");
+        assertThat(triage.get("decision")).isEqualTo("INCONCLUSIVE");
+        assertThat(ctx.get("sarNarrative")).isNull();
+        assertThat(ctx.get("complianceTaskId")).isNull();
     }
 }

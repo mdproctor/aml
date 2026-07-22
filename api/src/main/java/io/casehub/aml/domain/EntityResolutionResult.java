@@ -1,14 +1,14 @@
 package io.casehub.aml.domain;
 
-/**
- * Output of entity resolution for a flagged transaction.
- *
- * <p>Layer 5 adds {@code entityType} and {@code riskScore} to drive adaptive routing:
- * the engine's {@code senior-analyst-required} binding fires when {@code entityType == "PEP"}
- * or {@code riskScore > 0.8}.
- */
 public record EntityResolutionResult(
         String entityId,
         String ownershipChain,
         String entityType,
-        double riskScore) {}
+        double riskScore) {
+    public EntityResolutionResult {
+        if (riskScore < 0.0 || riskScore > 1.0) {
+            throw new IllegalArgumentException(
+                    "riskScore must be in [0.0, 1.0], got: " + riskScore);
+        }
+    }
+}

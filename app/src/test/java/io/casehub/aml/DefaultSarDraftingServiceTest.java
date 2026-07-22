@@ -28,7 +28,7 @@ class DefaultSarDraftingServiceTest {
     private final SpecialistOutcome<PatternAnalysisResult> completedPattern =
             new SpecialistOutcome.Completed<>(new PatternAnalysisResult(true, "Structuring"));
     private final SpecialistOutcome<OsintResult> completedOsint =
-            new SpecialistOutcome.Completed<>(new OsintResult(false, false, "clean"));
+            new SpecialistOutcome.Completed<>(new OsintResult(false, false, false, "clean"));
 
     private final SpecialistOutcome<EntityResolutionResult> declinedEntity =
             new SpecialistOutcome.Declined<>("entity-agent", "entity-resolution", "insufficient clearance");

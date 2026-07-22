@@ -6,6 +6,7 @@ import io.casehub.aml.cbr.CbrPathAdvisorWorker;
 import io.casehub.aml.cbr.InvestigationTriageWorker;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.platform.api.identity.CurrentPrincipal;
+import io.casehub.platform.api.preferences.PreferenceProvider;
 import io.casehub.aml.domain.AmlActionType;
 import io.casehub.aml.domain.EntityResolutionResult;
 import io.casehub.aml.domain.FlagReason;
@@ -51,16 +52,19 @@ public final class AmlInvestigationCaseDescriptor {
     private final ObjectMapper              objectMapper;
     private final LedgerEntryRepository     ledgerRepository;
     private final CurrentPrincipal          principal;
+    private final PreferenceProvider        preferenceProvider;
 
     public AmlInvestigationCaseDescriptor(
             final ComplianceReviewLifecycle complianceReviewLifecycle,
             final ObjectMapper objectMapper,
             final LedgerEntryRepository ledgerRepository,
-            final CurrentPrincipal principal) {
+            final CurrentPrincipal principal,
+            final PreferenceProvider preferenceProvider) {
         this.complianceReviewLifecycle = complianceReviewLifecycle;
         this.objectMapper              = objectMapper;
         this.ledgerRepository          = ledgerRepository;
         this.principal                 = principal;
+        this.preferenceProvider        = preferenceProvider;
     }
 
     List<Worker> workers() {
@@ -70,7 +74,7 @@ public final class AmlInvestigationCaseDescriptor {
                 osintScreeningWorker(),
                 osintScreeningWorkerSenior(),
                 seniorAnalystWorker(),
-                InvestigationTriageWorker.create(),
+                InvestigationTriageWorker.create(objectMapper, preferenceProvider),
                 CbrPathAdvisorWorker.create(ledgerRepository, principal),
                 sarDraftingWorkerJunior(),
                 sarDraftingWorkerSenior(),
@@ -90,15 +94,20 @@ public final class AmlInvestigationCaseDescriptor {
                                                  final String flagReason = tx != null
                                                                            ? (String) tx.getOrDefault("flagReason", "") : "";
                                                  final boolean isPep = FlagReason.PEP_MATCH.name().equals(flagReason);
+                                                 final boolean isHighRiskJurisdiction = FlagReason.HIGH_RISK_JURISDICTION.name().equals(flagReason);
                                                  final String txId = tx != null
                                                                      ? String.valueOf(tx.getOrDefault("id", "unknown")) : "unknown";
+                                                 final String entityType = isPep ? "PEP" : isHighRiskJurisdiction ? "SHELL_COMPANY" : "CORPORATE";
+                                                 final double riskScore = isPep ? 0.87 : isHighRiskJurisdiction ? 0.95 : 0.35;
                                                  return Map.of(
                                                          "entityId", "entity-" + txId,
                                                          "ownershipChain", isPep
                                                                            ? "Direct → PEP Principal"
+                                                                           : isHighRiskJurisdiction
+                                                                           ? "Shell Company → Offshore Entity"
                                                                            : "Direct → Corporate Entity",
-                                                         "entityType", isPep ? "PEP" : "CORPORATE",
-                                                         "riskScore", isPep ? 0.87 : 0.35
+                                                         "entityType", entityType,
+                                                         "riskScore", riskScore
                                                               );
                                              }, Map.class))
                                      .build()))
@@ -287,7 +296,7 @@ public final class AmlInvestigationCaseDescriptor {
                                                             ? new SpecialistOutcome.Declined<>(
                 "osint-agent", "osint-screening",
                 "insufficient clearance for PEP database access")
-                                                            : new SpecialistOutcome.Completed<>(new OsintResult(false, false, "no matches"));
+                                                            : new SpecialistOutcome.Completed<>(new OsintResult(false, false, false, "no matches"));
         return new InvestigationSummary(tx, entityOutcome, patternOutcome, osintOutcome, sarNarrative);
     }
 

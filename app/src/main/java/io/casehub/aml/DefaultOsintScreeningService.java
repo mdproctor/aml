@@ -8,6 +8,6 @@ public class DefaultOsintScreeningService implements OsintScreeningService {
 
     @Override
     public OsintResult screen(SuspiciousTransaction transaction) {
-        return new OsintResult(false, false, "");
+        return new OsintResult(false, false, false, "");
     }
 }

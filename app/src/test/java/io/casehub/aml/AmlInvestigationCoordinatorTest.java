@@ -45,7 +45,7 @@ class AmlInvestigationCoordinatorTest {
                     transaction,
                     new SpecialistOutcome.Completed<>(new EntityResolutionResult("E-1", "chain", "CORPORATE", 0.35)),
                     new SpecialistOutcome.Completed<>(new PatternAnalysisResult(false, "none")),
-                    new SpecialistOutcome.Completed<>(new OsintResult(false, false, "clean")),
+                    new SpecialistOutcome.Completed<>(new OsintResult(false, false, false, "clean")),
                     "narrative");
         };
 
@@ -74,7 +74,7 @@ class AmlInvestigationCoordinatorTest {
                 transaction,
                 new SpecialistOutcome.Completed<>(new EntityResolutionResult("E-1", "chain", "CORPORATE", 0.35)),
                 new SpecialistOutcome.Completed<>(new PatternAnalysisResult(false, "none")),
-                new SpecialistOutcome.Completed<>(new OsintResult(false, false, "clean")),
+                new SpecialistOutcome.Completed<>(new OsintResult(false, false, false, "clean")),
                 "narrative");
 
         AmlInvestigationCoordinator coordinator = new AmlInvestigationCoordinator(
