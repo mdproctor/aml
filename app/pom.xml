@@ -149,6 +149,13 @@
       <version>${casehub.version}</version>
     </dependency>
 
+    <!-- Layer 10: RBAC enforcement (@RolesAllowed bridge) -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-platform-oidc</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
+
     <!-- YAML-backed PreferenceProvider — displaces MockPreferenceProvider @DefaultBean
          automatically when on the classpath. Reads casehub.platform.config.files. -->
     <dependency>
@@ -247,6 +254,12 @@
     <!-- ================================================================ -->
     <!-- Test                                                              -->
     <!-- ================================================================ -->
+    <!-- @TestSecurity — controls SecurityIdentity in @QuarkusTest without a real OIDC server -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-test-security</artifactId>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-junit</artifactId>

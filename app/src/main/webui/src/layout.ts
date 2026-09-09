@@ -1,4 +1,4 @@
-import { dockWorkbench, hostPanel } from '@casehubio/pages-ui/dist/dsl/builders.js';
+import { dockWorkbench, hostPanel, withAccess } from '@casehubio/pages-ui/dist/dsl/builders.js';
 
 export const workbench = dockWorkbench({
   storageKey: 'aml-workbench',
@@ -16,6 +16,9 @@ export const workbench = dockWorkbench({
       content: hostPanel('aml-findings-dock') },
     { key: 'compliance', label: 'Compliance', icon: 'verified',
       content: hostPanel('aml-compliance-dock') },
+    { key: 'gdpr', label: 'GDPR', icon: 'delete_sweep',
+      content: withAccess({ roles: ['aml-senior-compliance'] },
+        hostPanel('aml-gdpr-dock')) },
     { key: 'audit', label: 'Audit', icon: 'history',
       defaultOpen: true, content: hostPanel('aml-audit-dock') },
     { key: 'routing', label: 'Routing', icon: 'route',

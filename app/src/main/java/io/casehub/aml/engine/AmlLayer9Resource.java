@@ -6,6 +6,7 @@ import io.casehub.aml.query.InvestigationSummaryRepository;
 import io.casehub.api.engine.CaseHubRuntime;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -62,6 +63,7 @@ public class AmlLayer9Resource {
     @POST
     @Path("/{caseId}/suspend")
     @Consumes(MediaType.WILDCARD)
+    @RolesAllowed({"aml-compliance", "aml-mlro"})
     public Response suspendInvestigation(@PathParam("caseId") final UUID caseId) {
         try {
             caseHubRuntime.suspendCase(caseId);
@@ -70,7 +72,7 @@ public class AmlLayer9Resource {
                 return Response.status(Response.Status.NOT_FOUND).build();
             }
             return Response.status(Response.Status.CONFLICT)
-                    .entity(Map.of("error", e.getMessage())).build();
+                           .entity(Map.of("error", e.getMessage())).build();
         }
         return Response.noContent().build();
     }
@@ -78,6 +80,7 @@ public class AmlLayer9Resource {
     @POST
     @Path("/{caseId}/resume")
     @Consumes(MediaType.WILDCARD)
+    @RolesAllowed({"aml-compliance", "aml-mlro"})
     public Response resumeInvestigation(@PathParam("caseId") final UUID caseId) {
         try {
             caseHubRuntime.resumeCase(caseId);
@@ -86,7 +89,7 @@ public class AmlLayer9Resource {
                 return Response.status(Response.Status.NOT_FOUND).build();
             }
             return Response.status(Response.Status.CONFLICT)
-                    .entity(Map.of("error", e.getMessage())).build();
+                           .entity(Map.of("error", e.getMessage())).build();
         }
         return Response.noContent().build();
     }

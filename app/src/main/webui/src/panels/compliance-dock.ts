@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import '@casehubio/blocks-ui-compliance-summary';
-import '@casehubio/blocks-ui-gdpr-erasure-action';
+
 
 @customElement('aml-compliance-dock')
 export class AmlComplianceDock extends LitElement {
@@ -46,11 +46,7 @@ export class AmlComplianceDock extends LitElement {
       <blocks-compliance-summary
         endpoint="/api/investigations/${this._caseId}/compliance-evidence">
       </blocks-compliance-summary>
-      <div class="section-label">GDPR Erasure</div>
-      <blocks-gdpr-erasure-action
-        endpoint="/api/actors"
-        subject-label="Actor">
-      </blocks-gdpr-erasure-action>
+
     `;
   }
 }

@@ -1,7 +1,11 @@
 package io.casehub.aml.domain;
 
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class AmlGroupsTest {
 
@@ -20,5 +24,12 @@ class AmlGroupsTest {
         assertNotEquals(AmlGroups.MLRO, AmlGroups.AML_COMPLIANCE);
         assertNotEquals(AmlGroups.MLRO, AmlGroups.AML_SENIOR_COMPLIANCE);
         assertNotEquals(AmlGroups.AML_COMPLIANCE, AmlGroups.AML_SENIOR_COMPLIANCE);
+    }
+
+    @Test
+    void complianceOfficersConstantExists() {
+        assertNotNull(AmlGroups.COMPLIANCE_OFFICERS);
+        assertFalse(AmlGroups.COMPLIANCE_OFFICERS.isBlank());
+        assertEquals("compliance-officers", AmlGroups.COMPLIANCE_OFFICERS);
     }
 }

@@ -4,9 +4,9 @@ import io.casehub.aml.domain.FlagReason;
 import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.engine.AmlEngineCoordinator;
 import io.casehub.aml.trust.AmlTrustScoreSeeder;
+import io.casehub.api.model.CaseStatus;
 import io.casehub.engine.common.internal.model.CaseInstance;
-import io.casehub.engine.common.internal.model.CaseStatus;
-import io.casehub.engine.common.spi.CaseInstanceCache;
+import io.casehub.engine.common.spi.cache.CaseInstanceCache;
 import io.casehub.pages.scenario.client.ScenarioAction;
 import io.casehub.work.api.WorkItemStatus;
 import io.casehub.work.runtime.model.WorkItemEntity;
@@ -75,7 +75,7 @@ public class AmlScenarioActions {
 
     @ScenarioAction("seed-trust-scores")
     public Map<String, Object> seedTrustScores(Map<String, Object> params) {
-        trustSeeder.seedInitialScores();
+        trustSeeder.seed();
         LOG.info("Scenario: seeded trust scores");
         return Map.of("seeded", true);
     }

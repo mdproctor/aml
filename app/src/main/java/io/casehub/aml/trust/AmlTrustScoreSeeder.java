@@ -67,4 +67,10 @@ public class AmlTrustScoreSeeder {
             }
         }
     }
+
+    @Transactional
+    public void seed() {
+        onStart(null);
+    }
+
 }

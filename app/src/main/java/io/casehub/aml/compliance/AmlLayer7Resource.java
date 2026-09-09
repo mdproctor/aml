@@ -1,14 +1,20 @@
 package io.casehub.aml.compliance;
 
 import io.casehub.ledger.api.model.ErasureReason;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
 import java.util.UUID;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.QueryParam;
 
 /**
  * Layer 7: compliance evidence endpoint.
@@ -35,15 +41,10 @@ public class AmlLayer7Resource {
     }
 }
 
-/**
- * Layer 7: GDPR erasure endpoint.
- *
- * <p>POST /api/actors/{actorId}/erasure — pseudonymizes an actor's identity in
- * ledger entries, preserving audit structure while satisfying GDPR Art. 17.
- */
 @ApplicationScoped
 @Path("/api/actors/{actorId}/erasure")
 @Produces(MediaType.APPLICATION_JSON)
+@RolesAllowed("aml-senior-compliance")
 class AmlGdprErasureResource {
 
     @Inject
@@ -55,15 +56,10 @@ class AmlGdprErasureResource {
     }
 }
 
-/**
- * Layer 7: Entity memory erasure endpoint.
- *
- * <p>POST /api/entities/{entityId}/erasure — erases all CaseMemoryStore records
- * for an entity, writes audit ledger entry with receipt.
- */
 @ApplicationScoped
 @Path("/api/entities/{entityId}/erasure")
 @Produces(MediaType.APPLICATION_JSON)
+@RolesAllowed("aml-senior-compliance")
 class AmlEntityErasureResource {
 
     @Inject
@@ -84,6 +80,7 @@ class AmlEntityErasureResource {
 @Path("/api/entities/{entityId}/erasure/cross-tenant")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@RolesAllowed("aml-senior-compliance")
 class AmlCrossTenantErasureResource {
 
     @Inject

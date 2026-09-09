@@ -3,6 +3,7 @@ import './panels/centre.js';
 import './panels/investigation-nav.js';
 import './panels/audit-dock.js';
 import './panels/compliance-dock.js';
+import './panels/gdpr-dock.js';
 import './panels/routing-dock.js';
 import './panels/findings-dock.js';
 import './panels/operations-dock.js';
@@ -38,6 +39,7 @@ registerPanel('aml-centre', 'aml-centre');
 registerPanel('aml-investigation-nav', 'aml-investigation-nav');
 registerPanel('aml-audit-dock', 'aml-audit-dock');
 registerPanel('aml-compliance-dock', 'aml-compliance-dock');
+registerPanel('aml-gdpr-dock', 'aml-gdpr-dock');
 registerPanel('aml-routing-dock', 'aml-routing-dock');
 registerPanel('aml-findings-dock', 'aml-findings-dock');
 
