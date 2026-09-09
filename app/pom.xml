@@ -114,6 +114,14 @@
       <version>${casehub.version}</version>
     </dependency>
 
+    <!-- FuncDSL builder API — demoted to test scope in engine-flow (engine#1062),
+         but AML uses it in production code (AmlInvestigationCaseDescriptor, AmlOversightCaseHub). -->
+    <dependency>
+      <groupId>io.serverlessworkflow</groupId>
+      <artifactId>serverlessworkflow-experimental-fluent-func</artifactId>
+      <version>7.25.1.Final</version>
+    </dependency>
+
     <!-- JQEvaluator required by engine CDI beans (GE-20260523-86ed13) -->
     <dependency>
       <groupId>io.casehub</groupId>

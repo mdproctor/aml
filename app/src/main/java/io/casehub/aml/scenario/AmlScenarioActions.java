@@ -42,7 +42,7 @@ public class AmlScenarioActions {
 
         FlagReason flagReason = FlagReason.valueOf(flagReasonStr);
         SuspiciousTransaction txn = new SuspiciousTransaction(
-                UUID.randomUUID().toString(), origin, dest, amount, currency, flagReason);
+                UUID.randomUUID().toString(), origin, dest, amount, currency, java.time.Instant.now(), flagReason);
 
         UUID caseId = coordinator.startInvestigation(txn);
         LOG.infof("Scenario: started investigation caseId=%s flagReason=%s", caseId, flagReason);
@@ -66,8 +66,8 @@ public class AmlScenarioActions {
             if (gate.callerRef.contains(actionType) || gates.size() == 1) {
                 gate.status = WorkItemStatus.COMPLETED;
                 gate.completedAt = java.time.Instant.now();
-                LOG.infof("Scenario: approved gate workItemId=%s actionType=%s", gate.id(), actionType);
-                return Map.of("workItemId", gate.id().toString(), "approved", true);
+                LOG.infof("Scenario: approved gate workItemId=%s actionType=%s", gate.id, actionType);
+                return Map.of("workItemId", gate.id.toString(), "approved", true);
             }
         }
         return Map.of("approved", false, "reason", "No matching pending gate found");
@@ -92,7 +92,7 @@ public class AmlScenarioActions {
             if (instance != null && instance.getState() == CaseStatus.COMPLETED) {
                 return Map.of("status", "COMPLETED", "caseId", caseIdStr);
             }
-            if (instance != null && instance.getState() == CaseStatus.FAILED) {
+            if (instance != null && instance.getState() == CaseStatus.FAULTED) {
                 return Map.of("status", "FAILED", "caseId", caseIdStr);
             }
             try { TimeUnit.MILLISECONDS.sleep(500); } catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }

@@ -6,6 +6,7 @@ import io.casehub.aml.engine.AmlEngineCoordinator;
 import io.casehub.aml.ledger.AmlCaseProfileLedgerEntry;
 import io.casehub.aml.memory.AmlMemoryDomains;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
+import io.casehub.neocortex.cognitive.Confidence;
 import io.casehub.neocortex.memory.cbr.CbrCaseMemoryStore;
 import io.casehub.neocortex.memory.cbr.FeatureValue;
 import io.casehub.neocortex.memory.cbr.PlanCbrCase;
@@ -64,7 +65,7 @@ class SarNarrativeSeedingIntegrationTest {
         var pastCase = new PlanCbrCase(
                 "Past structuring case TX-SEED-PAST",
                 "entity-resolution→er-agent(SUCCESS), sar-drafting→sar-agent(SUCCESS)",
-                "SAR_WARRANTED", 0.9, features,
+                "SAR_WARRANTED", Confidence.stated(0.9, Instant.now()), features,
                 List.of(new PlanTrace("entity-resolution", "entity-resolution",
                         "er-agent", "SUCCESS", 0, Map.of(), null)),
                 null, null);

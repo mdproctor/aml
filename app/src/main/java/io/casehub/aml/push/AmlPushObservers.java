@@ -64,7 +64,7 @@ public class AmlPushObservers {
 
     void onGateDecision(@ObservesAsync WorkItemLifecycleEvent event) {
         if (event.workItem() == null) return;
-        String callerRef = event.workItem().callerRef;
+        String callerRef = event.workItem().callerRef();
         if (callerRef == null || !callerRef.contains("/gate:")) return;
         if (!event.workItem().status().isTerminal()) return;
         try {

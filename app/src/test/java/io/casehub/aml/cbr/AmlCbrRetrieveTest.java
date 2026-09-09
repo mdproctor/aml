@@ -5,6 +5,7 @@ import io.casehub.aml.domain.SuspiciousTransaction;
 import io.casehub.aml.memory.AmlMemoryDomains;
 import io.casehub.engine.common.internal.model.CaseInstance;
 import io.casehub.engine.common.spi.cache.CaseInstanceCache;
+import io.casehub.neocortex.cognitive.Confidence;
 import io.casehub.neocortex.memory.cbr.CbrCaseMemoryStore;
 import io.casehub.neocortex.memory.cbr.FeatureValue;
 import io.casehub.neocortex.memory.cbr.PlanCbrCase;
@@ -47,7 +48,7 @@ class AmlCbrRetrieveTest {
         var pastCase = new PlanCbrCase(
                 "Past structuring case TX-PAST-001",
                 "entity-resolution→entity-resolution-agent(SUCCESS)",
-                "SAR_WARRANTED", 0.87, features,
+                "SAR_WARRANTED", Confidence.stated(0.87, Instant.now()), features,
                 List.of(new PlanTrace("entity-resolution", "entity-resolution",
                         "entity-resolution-agent", "SUCCESS", 0, Map.of(), null)),
                 null, null);

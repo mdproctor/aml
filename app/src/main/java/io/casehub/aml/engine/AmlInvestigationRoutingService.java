@@ -55,7 +55,7 @@ public class AmlInvestigationRoutingService {
                             .toList();
                 }
             } catch (Exception e) {
-                LOG.debugf(e, "Failed to parse routing rationale for entry %s", entry.getId());
+                LOG.debugf(e, "Failed to parse routing rationale for entry %s", entry.id);
             }
         }
 
