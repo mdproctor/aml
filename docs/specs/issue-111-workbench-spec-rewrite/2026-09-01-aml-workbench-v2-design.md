@@ -899,9 +899,9 @@ Based on this spec:
 
 ---
 
-## Role Model (deferred — #86)
+## Role Model (implemented — #86)
 
-The workbench has a two-tier group model. Auth is deferred but the API layer enforces these groups now:
+The workbench has a two-tier group model. `casehub-platform-oidc` provides `@RolesAllowed` enforcement; `casehub-pages` `withAccess()` provides UI role filtering.
 
 | Group | Role | Scope |
 |-------|------|-------|
@@ -910,7 +910,7 @@ The workbench has a two-tier group model. Auth is deferred but the API layer enf
 | `aml-mlro` | MLRO | SAR_FILING gate (exclusive) |
 | `aml-senior-compliance` | Senior Compliance Director | LAW_ENFORCEMENT_REFERRAL gate, GDPR erasure |
 
-Non-gated consequential actions (suspend, resume, escalate) require `aml-compliance` or `aml-mlro` at the REST endpoint level. Gate actions are protected by WorkItem `candidateGroup` matching. UI role filtering via `withAccess()` is a follow-up (#86).
+Non-gated consequential actions (suspend, resume, escalate) enforce `@RolesAllowed({"aml-compliance", "aml-mlro"})`. GDPR erasure enforces `@RolesAllowed("aml-senior-compliance")`. Gate actions are protected by WorkItem `candidateGroup` matching. UI role filtering via `withAccess()` on the GDPR dock panel (#86).
 
 ---
 
@@ -918,7 +918,7 @@ Non-gated consequential actions (suspend, resume, escalate) require `aml-complia
 
 | Concern | Issue | Notes |
 |---------|-------|-------|
-| Authentication and role-based UI access | #86 | `withAccess()` available when needed; gate actions already API-protected |
+| ~~Authentication and role-based UI access~~ | ~~#86~~ | **Implemented** — `@RolesAllowed` on REST endpoints, `withAccess()` on GDPR dock |
 | Mobile responsiveness | TBD | Desktop-first operational tool — file issue before implementation |
 | Internationalisation | TBD | English-only for initial release — file issue before implementation |
 
@@ -953,7 +953,7 @@ Every requirement from the June 2026 spec mapped to this spec's coverage:
 | §View 4: Intervention | ✅ | Operations dock + suspend/resume endpoints |
 | §Simulation & Seed Data | ✅ | Pages scenario orchestrator + YAML scripts |
 | §Parameterised Dataset URLs | ✅ | Resolved: blocks-ui endpoint attributes, not pages datasets (GE-20260810-cfc53d) |
-| §Role Model | Deferred | #86 — gate actions already API-protected |
+| §Role Model | ✅ Implemented | #86 — `@RolesAllowed` + `withAccess()` |
 | §Component Ownership | ✅ | Component Map section above |
 | §New API Endpoints | ✅ | Backend API Contracts section above |
 | Domain worker workbench (#110) | ✅ | Domain Worker Workbench section above |

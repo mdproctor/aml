@@ -140,7 +140,7 @@ Read these **before designing**, not after. The concern column tells you when ea
 | Concern | Read first |
 |---------|-----------|
 | Writing a new Flyway migration | `../garden/docs/protocols/universal/flyway-migration-rules.md` — naming, H2 MODE=PostgreSQL |
-| Assigning a migration version number | `../garden/docs/protocols/casehub/flyway-version-range-allocation.md` — V1–V999 domain, V1004+ ledger subclass joins. **AML engine-ledger uses V3000+** (renumbered from V2002+ to avoid qhorus V2000-V2002 collision) |
+| Assigning a migration version number | `../garden/docs/protocols/casehub/flyway-version-range-allocation.md` — V1–V999 domain, V1004+ ledger subclass joins. **AML engine-ledger uses V3000+** (renumbered from V2002+ to avoid qhorus V2000-V2002 collision). V3001 is aml-trust-routing (renumbered from V2004 to avoid qhorus V2004-V2006 collision) |
 | Adding a named persistence unit or datasource | *(protocol not yet written — `quarkus-named-datasource-schema-generation`)* |
 | Extending LedgerEntry (adding a tamper-evident subclass) | `casehub-ledger.md` Consumer Pattern section — JOINED inheritance, V2001+ migration (V2000 = qhorus join table; consumer joins start V2001) |
 
@@ -390,6 +390,13 @@ Consult `docs/conventions/` in the local parent before writing any test — the 
 - **casehub-eidos runtime (August 2026) — `DefaultCapabilityHealth` CDI ambiguity:** Adding `casehub-eidos` (runtime scope) brings `DefaultCapabilityHealth @Default @ApplicationScoped` which conflicts with the engine's `NoOpCapabilityHealth @Default`. Exclude from BOTH `application.properties` files: `io.casehub.eidos.runtime.health.DefaultCapabilityHealth`. The eidos alternative (`EidosSarNarrativeService`) is not in `selected-alternatives` by default — it activates only with explicit configuration.
 - **engine SNAPSHOT (August 2026) — `WorkerDecisionEntry.routingRationale` column:** Engine added `routing_rationale TEXT` to `WorkerDecisionEntry` entity. V3011 migration added to AML: `V3011__worker_decision_routing_rationale.sql`.
 - **SarNarrativeSeedingIntegrationTest timeout (aml#121):** Both tests timeout after engine SNAPSHOT update. Layer 9 tests pass (same worker code) — issue is in `AmlEngineCoordinator.startInvestigation()` entry path vs REST path. Not caused by #114 SarNarrativeService refactoring.
+- **casehub-platform-oidc RBAC testing (aml#86):** `@TestSecurity` from `quarkus-test-security` controls `SecurityIdentity` for `@RolesAllowed` checks. Requires dummy OIDC config in test `application.properties` (`quarkus.oidc.auth-server-url`, `discovery-enabled=false`, `jwks-path`, `keycloak.devservices.enabled=false`) — without it, `@TestSecurity` annotations are silently ignored. Pattern matches casehub-life (GE-20260521-f50602).
+- **neocortex-memory SNAPSHOT (September 2026) — `MemoryInput` 10-arg constructor:** Old 7-arg `MemoryInput(entityId, domain, tenancyId, caseId, content, metadata, null)` replaced. New 10-arg adds `Confidence`, `Double` score, `Double` alpha, `Double` beta. Pass `null, null, null, null` to preserve old behavior. 7-arg form removed.
+- **engine SNAPSHOT (September 2026) — `CaseStatus.FAILED` → `CaseStatus.FAULTED`:** Enum value renamed. Update all references.
+- **work SNAPSHOT (September 2026) — `WorkItem.callerRef` private:** Field access removed. Use `callerRef()` method accessor.
+- **work SNAPSHOT (September 2026) — `WorkItemLifecycleEvent.fromWire()` 18 args:** Added `candidateScores` parameter (was 17 — position 18, UUID type). Update all test mocks.
+- **engine-flow SNAPSHOT (September 2026) — `serverlessworkflow-fluent-func` demoted to test scope:** AML uses FuncDSL in production code (`AmlInvestigationCaseDescriptor`, `AmlOversightCaseHub`). Added `serverlessworkflow-experimental-fluent-func:7.25.1.Final` as direct compile dep.
+- **qhorus SNAPSHOT (September 2026) — Flyway V2004-V2006 added:** Collides with AML's former V2004. AML trust-routing migration renumbered V2004 → V3001 per V3000+ allocation.
 
 ### Code review
 
