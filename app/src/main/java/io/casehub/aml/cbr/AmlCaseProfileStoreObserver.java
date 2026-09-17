@@ -24,8 +24,8 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.neocortex.memory.cbr.CbrCaseMemoryStore;
 import io.casehub.neocortex.memory.cbr.FeatureValue;
-import io.casehub.neocortex.memory.cbr.PlanCbrCase;
-import io.casehub.neocortex.memory.cbr.PlanTrace;
+import io.casehub.aml.cbr.PlanCbrCase;
+import io.casehub.aml.cbr.PlanTrace;
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.platform.api.path.Path;
@@ -146,7 +146,7 @@ public class AmlCaseProfileStoreObserver implements CaseOutcomeObserver {
                                                     capabilityNameMap.getOrDefault(r.bindingName(), r.bindingName()),
                                                     r.executorName(),
                                                     OUTCOME_MAP.getOrDefault(r.status(), r.status().name()),
-                                                    index[0]++, Map.of(), null))
+                                                    index[0]++, Map.of()))
                             .toList();
 
         String solution = traces.stream()
@@ -167,7 +167,7 @@ public class AmlCaseProfileStoreObserver implements CaseOutcomeObserver {
         }
 
         var cbrCase = new PlanCbrCase(problem, solution,
-                                      triageDecision.name(), null, features, traces, null, null);
+                                      triageDecision.name(), null, features, traces);
 
         String entityId = UUID.nameUUIDFromBytes(
                 ("aml-cbr:" + caseId).getBytes(StandardCharsets.UTF_8)).toString();

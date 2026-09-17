@@ -8,8 +8,8 @@ import io.casehub.aml.domain.NetworkComplexity;
 import io.casehub.aml.domain.TriageDecision;
 import io.casehub.aml.memory.AmlMemoryDomains;
 import io.casehub.neocortex.memory.cbr.CbrCaseMemoryStore;
-import io.casehub.neocortex.memory.cbr.PlanCbrCase;
-import io.casehub.neocortex.memory.cbr.PlanTrace;
+import io.casehub.aml.cbr.PlanCbrCase;
+import io.casehub.aml.cbr.PlanTrace;
 import io.casehub.platform.api.path.Path;
 import org.jboss.logging.Logger;
 
@@ -81,7 +81,7 @@ public class CbrSyntheticSeeder {
                     .orElse("(direct-verdict)");
 
             var cbrCase = new PlanCbrCase(problem, solution,
-                    outcome.name(), null, features, traces, null, null);
+                    outcome.name(), null, features, traces);
 
             String entityId = UUID.nameUUIDFromBytes(
                     ("synthetic-cbr:" + i).getBytes(StandardCharsets.UTF_8)).toString();
@@ -142,6 +142,6 @@ public class CbrSyntheticSeeder {
     }
 
     private static PlanTrace trace(String bindingName, String workerName, int index) {
-        return new PlanTrace(bindingName, bindingName, workerName, "SUCCESS", index, Map.of(), null);
+        return new PlanTrace(bindingName, bindingName, workerName, "SUCCESS", index, Map.of());
     }
 }

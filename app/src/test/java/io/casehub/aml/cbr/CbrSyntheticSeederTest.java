@@ -6,7 +6,7 @@ import io.casehub.neocortex.memory.cbr.CbrCaseMemoryStore;
 import io.casehub.neocortex.memory.cbr.CbrFeatureSchema;
 import io.casehub.neocortex.memory.cbr.CbrQuery;
 import io.casehub.neocortex.memory.cbr.CbrRetentionPolicy;
-import io.casehub.neocortex.memory.cbr.PlanCbrCase;
+import io.casehub.aml.cbr.PlanCbrCase;
 import io.casehub.neocortex.memory.cbr.ScoredCbrCase;
 import io.casehub.platform.api.path.Path;
 import org.junit.jupiter.api.Test;

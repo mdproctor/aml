@@ -8,7 +8,7 @@ import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.neocortex.memory.cbr.CbrCaseMemoryStore;
 import io.casehub.neocortex.memory.cbr.CbrQuery;
 import io.casehub.neocortex.memory.cbr.FeatureValue;
-import io.casehub.neocortex.memory.cbr.PlanCbrCase;
+import io.casehub.aml.cbr.PlanCbrCase;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.work.runtime.model.WorkItemEntity;
 import io.casehub.work.runtime.service.WorkItemService;
