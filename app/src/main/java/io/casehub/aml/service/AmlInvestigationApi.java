@@ -47,11 +47,11 @@ public class AmlInvestigationApi {
     }
 
     @PlatformQuery("List investigations with optional status filter")
-    @PaginatedResponse
+    @PaginatedResponse(totalCountMethod = "total")
     @RestPath("/")
     public PagedResponse<InvestigationSummaryResponse> listInvestigations(
-            String status, Integer page, Integer pageSize) {
-        int p = page != null ? page : 0;
+            String status, Integer pageIndex, Integer pageSize) {
+        int p = pageIndex != null ? pageIndex : 0;
         int ps = pageSize != null ? pageSize : 25;
         int offset = p * ps;
 
@@ -67,7 +67,7 @@ public class AmlInvestigationApi {
                     .map(this::toResponse).toList();
             total = summaryRepository.count();
         }
-        return new PagedResponse<>(items, total, p, ps);
+        return new PagedResponse<>(items, total, pageIndex != null ? pageIndex : 0, ps);
     }
 
     @PlatformQuery("Get prior context for an investigation")
