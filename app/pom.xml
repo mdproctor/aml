@@ -405,7 +405,7 @@
             </path>
           </annotationProcessorPaths>
           <compilerArgs>
-            <arg>-AdomainFilter=aml/investigations,aml/engine,aml/workers,aml/audit,aml/compliance,aml/metrics,aml/simulation</arg>
+            <arg>-AdomainFilter=aml/investigations,aml/engine,aml/workers,aml/audit,aml/compliance,aml/erasure,aml/oversight-control,aml/metrics,aml/simulation</arg>
             <arg>-AgenerateGraphQL=false</arg>
           </compilerArgs>
         </configuration>
