@@ -6,10 +6,13 @@ import io.casehub.platform.api.mcp.McpDomain;
 import io.casehub.platform.api.mcp.PathParam;
 import io.casehub.platform.api.mcp.PlatformMutation;
 import io.casehub.platform.api.mcp.PlatformQuery;
+import io.casehub.platform.api.mcp.HttpMethod;
+import io.casehub.platform.api.mcp.RestMethod;
 import io.casehub.platform.api.mcp.RestPath;
 import io.casehub.platform.api.mcp.RestStatus;
 
 import io.quarkus.arc.properties.IfBuildProperty;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 
@@ -17,6 +20,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @McpDomain(value = "aml/simulation", basePath = "/api/simulation")
+@ApplicationScoped
 @IfBuildProperty(name = "casehub.aml.simulation.enabled", stringValue = "true")
 public class AmlSimulationApi {
 
@@ -46,6 +50,7 @@ public class AmlSimulationApi {
 
     @PlatformMutation("Reset all simulation data")
     @RestPath("/seed")
+    @RestMethod(HttpMethod.DELETE)
     @RestStatus(204)
     public void resetSimulation() {
         LOG.warn("Resetting simulation data");
@@ -74,6 +79,7 @@ public class AmlSimulationApi {
 
     @PlatformMutation("Clear all CBR cases from the store")
     @RestPath("/seed/cbr")
+    @RestMethod(HttpMethod.DELETE)
     @RestStatus(204)
     public void clearCbr() {
         LOG.warn("Clearing CBR case base");
