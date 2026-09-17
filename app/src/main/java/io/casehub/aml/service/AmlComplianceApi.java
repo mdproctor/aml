@@ -13,6 +13,7 @@ import io.casehub.platform.api.mcp.PlatformMutation;
 import io.casehub.platform.api.mcp.PlatformQuery;
 import io.casehub.platform.api.mcp.RestPath;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.NotFoundException;
@@ -35,12 +36,14 @@ public class AmlComplianceApi {
 
     @PlatformMutation("Erase an actor's personal data (GDPR Art.17)")
     @RestPath("/actors/{actorId}/erasure")
+    @RolesAllowed("aml-senior-compliance")
     public ActorErasureResult eraseActor(@PathParam String actorId) {
         return erasureService.erase(actorId, ErasureReason.GDPR_ART_17_REQUEST);
     }
 
     @PlatformMutation("Erase an entity's personal data (GDPR Art.17)")
     @RestPath("/entities/{entityId}/erasure")
+    @RolesAllowed("aml-senior-compliance")
     public EntityErasureResult eraseEntity(@PathParam String entityId, String tenantId) {
         if (tenantId != null) {
             return erasureService.eraseEntity(entityId, tenantId, ErasureReason.GDPR_ART_17_REQUEST);
@@ -50,6 +53,7 @@ public class AmlComplianceApi {
 
     @PlatformMutation("Erase an entity's data across multiple tenants")
     @RestPath("/entities/{entityId}/erasure/cross-tenant")
+    @RolesAllowed("aml-senior-compliance")
     public CrossTenantErasureResult eraseEntityAcrossTenants(
             @PathParam String entityId, CrossTenantErasureRequest request) {
         return erasureService.eraseEntityAcrossTenants(
