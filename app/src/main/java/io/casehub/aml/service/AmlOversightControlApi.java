@@ -10,7 +10,11 @@ import io.casehub.platform.api.mcp.RestStatus;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.Response;
 
+import java.util.Map;
 import java.util.UUID;
 
 @McpDomain(value = "aml/oversight-control", basePath = "/api")
@@ -24,7 +28,15 @@ public class AmlOversightControlApi {
     @RolesAllowed({"aml-compliance", "aml-mlro"})
     @RestStatus(204)
     public void suspendInvestigation(@PathParam UUID caseId) {
-        caseHubRuntime.suspendCase(caseId);
+        try {
+            caseHubRuntime.suspendCase(caseId);
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                throw new NotFoundException(e.getMessage());
+            }
+            throw new WebApplicationException(Response.status(409)
+                    .entity(Map.of("error", e.getMessage())).build());
+        }
     }
 
     @PlatformMutation("Resume a suspended investigation")
@@ -32,6 +44,14 @@ public class AmlOversightControlApi {
     @RolesAllowed({"aml-compliance", "aml-mlro"})
     @RestStatus(204)
     public void resumeInvestigation(@PathParam UUID caseId) {
-        caseHubRuntime.resumeCase(caseId);
+        try {
+            caseHubRuntime.resumeCase(caseId);
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && e.getMessage().contains("not found")) {
+                throw new NotFoundException(e.getMessage());
+            }
+            throw new WebApplicationException(Response.status(409)
+                    .entity(Map.of("error", e.getMessage())).build());
+        }
     }
 }

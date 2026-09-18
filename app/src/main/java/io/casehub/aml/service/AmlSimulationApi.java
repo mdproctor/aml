@@ -41,7 +41,15 @@ public class AmlSimulationApi {
     @RestPath("/seed/{scenario}")
     @RestStatus(202)
     public Map<String, Object> seedScenario(@PathParam String scenario) {
-        AmlScenarioTemplate template = AmlScenarioTemplate.valueOf(scenario.toUpperCase());
+        AmlScenarioTemplate template;
+        try {
+            template = AmlScenarioTemplate.valueOf(scenario.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new jakarta.ws.rs.WebApplicationException(
+                    jakarta.ws.rs.core.Response.status(400)
+                            .entity(Map.of("error", "Invalid scenario name: " + scenario))
+                            .type(jakarta.ws.rs.core.MediaType.APPLICATION_JSON).build());
+        }
         LOG.infof("Seeding scenario: %s", template);
         return simulationService.seedScenario(template)
                 .map(caseId -> Map.<String, Object>of("caseId", caseId))
@@ -61,7 +69,21 @@ public class AmlSimulationApi {
     @RestPath("/investigate")
     @RestStatus(202)
     public Map<String, Object> startLiveInvestigation(InvestigationRequest request) {
-        AmlScenarioTemplate template = AmlScenarioTemplate.valueOf(request.scenario.toUpperCase());
+        if (request == null || request.scenario == null) {
+            throw new jakarta.ws.rs.WebApplicationException(
+                    jakarta.ws.rs.core.Response.status(400)
+                            .entity(Map.of("error", "Missing 'scenario' field"))
+                            .type(jakarta.ws.rs.core.MediaType.APPLICATION_JSON).build());
+        }
+        AmlScenarioTemplate template;
+        try {
+            template = AmlScenarioTemplate.valueOf(request.scenario.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new jakarta.ws.rs.WebApplicationException(
+                    jakarta.ws.rs.core.Response.status(400)
+                            .entity(Map.of("error", "Invalid scenario name: " + request.scenario))
+                            .type(jakarta.ws.rs.core.MediaType.APPLICATION_JSON).build());
+        }
         LOG.infof("Starting live investigation: %s", template);
         UUID caseId = simulationService.startLiveInvestigation(template);
         return Map.of("caseId", caseId);

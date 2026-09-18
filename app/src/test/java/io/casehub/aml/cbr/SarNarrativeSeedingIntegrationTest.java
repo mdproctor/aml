@@ -71,7 +71,7 @@ class SarNarrativeSeedingIntegrationTest {
 
         String entityId = UUID.nameUUIDFromBytes("aml-cbr:seed-test-past".getBytes()).toString();
         cbrStore.store(pastCase, AmlCbrSchema.CASE_TYPE, entityId,
-                       AmlMemoryDomains.CBR, TENANT, "seed-test-past", Path.root());
+                       AmlMemoryDomains.CBR, TENANT, "seed-test-past", Path.of("casehubio", "aml"));
 
         var tx = new SuspiciousTransaction(
                 "TXN-SEED-" + UUID.randomUUID(),

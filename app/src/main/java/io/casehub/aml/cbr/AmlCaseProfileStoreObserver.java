@@ -174,7 +174,7 @@ public class AmlCaseProfileStoreObserver implements CaseOutcomeObserver {
 
         try {
             cbrStore.store(cbrCase, AmlCbrSchema.CASE_TYPE, entityId,
-                           AmlMemoryDomains.CBR, tenantId, caseId.toString(), Path.root());
+                           AmlMemoryDomains.CBR, tenantId, caseId.toString(), Path.of("casehubio", "aml"));
             LOG.infof("CBR case profile stored: caseId=%s outcome=%s traces=%d",
                       caseId, triageDecision, traces.size());
         } catch (Exception e) {

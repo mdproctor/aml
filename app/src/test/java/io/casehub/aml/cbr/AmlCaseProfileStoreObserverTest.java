@@ -93,20 +93,27 @@ class AmlCaseProfileStoreObserverTest {
         UUID caseId = coordinator.startInvestigation(tx);
         awaitGateApprovalAndDrain(caseId);
 
-        var ledgerEntries = ledgerRepository.findBySubjectId(caseId, TENANT);
-        var profileEntry = ledgerEntries.stream()
-                                        .filter(AmlCaseProfileLedgerEntry.class::isInstance)
-                                        .map(AmlCaseProfileLedgerEntry.class::cast)
-                                        .findFirst()
-                                        .orElse(null);
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).pollInterval(200, TimeUnit.MILLISECONDS)
+            .until(() -> QuarkusTransaction.requiringNew().call(() ->
+                    ledgerRepository.findBySubjectId(caseId, TENANT).stream()
+                            .anyMatch(AmlCaseProfileLedgerEntry.class::isInstance)));
 
-        assertNotNull(profileEntry, "AmlCaseProfileLedgerEntry must be written");
-        assertEquals("HIGH_RISK_JURISDICTION", profileEntry.flagReason);
-        assertEquals(0, new BigDecimal("75000").compareTo(profileEntry.transactionAmount));
-        assertEquals("SAR_WARRANTED", profileEntry.outcome);
-        assertNull(profileEntry.confidence);
-        assertNotNull(profileEntry.investigationPath);
-        assertFalse(profileEntry.investigationPath.isBlank());
+        QuarkusTransaction.requiringNew().run(() -> {
+            var ledgerEntries = ledgerRepository.findBySubjectId(caseId, TENANT);
+            var profileEntry = ledgerEntries.stream()
+                                            .filter(AmlCaseProfileLedgerEntry.class::isInstance)
+                                            .map(AmlCaseProfileLedgerEntry.class::cast)
+                                            .findFirst()
+                                            .orElse(null);
+
+            assertNotNull(profileEntry, "AmlCaseProfileLedgerEntry must be written");
+            assertEquals("HIGH_RISK_JURISDICTION", profileEntry.flagReason);
+            assertEquals(0, new BigDecimal("75000").compareTo(profileEntry.transactionAmount));
+            assertEquals("SAR_WARRANTED", profileEntry.outcome);
+            assertNull(profileEntry.confidence);
+            assertNotNull(profileEntry.investigationPath);
+            assertFalse(profileEntry.investigationPath.isBlank());
+        });
     }
 
     @Test
@@ -120,8 +127,16 @@ class AmlCaseProfileStoreObserverTest {
         UUID caseId = coordinator.startInvestigation(tx);
         awaitGateApprovalAndDrain(caseId);
 
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).pollInterval(200, TimeUnit.MILLISECONDS)
+            .until(() -> !cbrStore.retrieveSimilar(
+                    CbrQuery.of(TENANT, io.casehub.aml.memory.AmlMemoryDomains.CBR,
+                            io.casehub.platform.api.path.Path.of("casehubio", "aml"),
+                            AmlCbrSchema.CASE_TYPE,
+                            Map.of("flag_reason", FeatureValue.string("HIGH_RISK_JURISDICTION")), 1)
+                    .withWeights(AmlCbrSchema.WEIGHTS).withNotBefore(before), PlanCbrCase.class).isEmpty());
+
         var query = CbrQuery.of(TENANT, io.casehub.aml.memory.AmlMemoryDomains.CBR,
-                                io.casehub.platform.api.path.Path.root(),
+                                io.casehub.platform.api.path.Path.of("casehubio", "aml"),
                                 AmlCbrSchema.CASE_TYPE,
                                 Map.of("flag_reason", FeatureValue.string("HIGH_RISK_JURISDICTION")), 10)
                             .withWeights(AmlCbrSchema.WEIGHTS)

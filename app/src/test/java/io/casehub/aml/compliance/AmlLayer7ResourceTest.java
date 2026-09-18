@@ -131,6 +131,10 @@ class AmlLayer7ResourceTest {
             .until(() -> attestationRepo.findByInvestigationCaseId(caseUUID).stream()
                 .anyMatch(a -> "sar-drafting".equals(a.capabilityTag)));
 
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).pollInterval(200, TimeUnit.MILLISECONDS)
+            .until(() -> given().when().get("/api/investigations/{caseId}/compliance-evidence", caseId)
+                    .then().extract().statusCode() == 200);
+
         given().when().get("/api/investigations/{caseId}/compliance-evidence", caseId)
             .then().statusCode(200)
             .body("caseId", equalTo(caseId))

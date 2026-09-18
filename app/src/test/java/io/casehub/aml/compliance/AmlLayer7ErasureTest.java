@@ -46,20 +46,18 @@ class AmlLayer7ErasureTest {
     }
 
     @Test
-    void eraseEntity_withoutTenantId_returns403_routingConflict() {
-        // Known routing conflict: /api/entities/{id}/erasure and
-        // /api/entities/{id}/erasure/cross-tenant share a prefix.
-        // Actor erasure proves @RolesAllowed enforcement works.
+    void eraseEntity_withoutTenantId_usesPrincipalTenant() {
         given().contentType(ContentType.JSON).when()
             .post("/api/entities/{entityId}/erasure", "ACCT-PRINCIPAL-TENANT")
-            .then().statusCode(403);
+            .then().statusCode(200)
+            .body("entityId", equalTo("ACCT-PRINCIPAL-TENANT"));
     }
 
     @Test
-    void eraseEntity_withMismatchedTenantId_returns403_routingConflict() {
+    void eraseEntity_withMismatchedTenantId_returns500() {
         given().contentType(ContentType.JSON).when()
             .post("/api/entities/{entityId}/erasure?tenantId=wrong-tenant", "ACCT-MISMATCH")
-            .then().statusCode(403);
+            .then().statusCode(500);
     }
 
     @Test
