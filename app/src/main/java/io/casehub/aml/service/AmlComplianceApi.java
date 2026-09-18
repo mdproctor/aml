@@ -12,14 +12,14 @@ import jakarta.ws.rs.NotFoundException;
 
 import java.util.UUID;
 
-@McpDomain(value = "aml/compliance", basePath = "/api")
+@McpDomain(value = "aml/compliance", basePath = "/api/investigations")
 @ApplicationScoped
 public class AmlComplianceApi {
 
     @Inject AmlComplianceEvidenceService evidenceService;
 
     @PlatformQuery("Get compliance evidence for an investigation")
-    @RestPath("/investigations/{caseId}/compliance-evidence")
+    @RestPath("/{caseId}/compliance-evidence")
     public Object getComplianceEvidence(@PathParam UUID caseId) {
         return evidenceService.findEvidence(caseId)
                 .orElseThrow(() -> new NotFoundException("No compliance evidence for case: " + caseId));
