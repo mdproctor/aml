@@ -171,6 +171,7 @@ class AmlLayer7ResourceTest {
     }
 
     @Test
+    @io.quarkus.test.security.TestSecurity(user = "compliance-officer", roles = "aml-senior-compliance")
     void gdprDemoFlow_officerReview_erasure() {
         // Use Layer 5 endpoint (sync start) — Layer 6 has case-definition registration timing
         // issues as the first async investigation in a fresh JVM (same approach as test 1).

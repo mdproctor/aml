@@ -56,7 +56,7 @@ class AmlCbrRetrieveTest {
                 "aml-cbr:test-past-case".getBytes()).toString();
         cbrStore.store(pastCase, AmlCbrSchema.CASE_TYPE, entityId,
                        AmlMemoryDomains.CBR, TenancyConstants.DEFAULT_TENANT_ID,
-                       "test-past-case", Path.of("casehubio", "aml"));
+                       "test-past-case", Path.root());
 
         var tx = new SuspiciousTransaction(
                 "TXN-CBR-" + UUID.randomUUID(),
