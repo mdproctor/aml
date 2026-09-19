@@ -8,7 +8,7 @@ import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.neocortex.memory.cbr.CbrCaseMemoryStore;
 import io.casehub.neocortex.memory.cbr.CbrQuery;
 import io.casehub.neocortex.memory.cbr.FeatureValue;
-import io.casehub.aml.cbr.PlanCbrCase;
+import io.casehub.neocortex.memory.cbr.ResolvedCase;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.work.runtime.model.WorkItemEntity;
 import io.casehub.work.runtime.service.WorkItemService;
@@ -117,7 +117,7 @@ class AmlCaseProfileStoreObserverTest {
     }
 
     @Test
-    void onCaseOutcome_cbrStoreContainsPlanCbrCase() {
+    void onCaseOutcome_cbrStoreContainsResolvedCase() {
         Instant before = Instant.now();
         SuspiciousTransaction tx = new SuspiciousTransaction(
                 "TXN-CBR-002-" + UUID.randomUUID(),
@@ -130,24 +130,24 @@ class AmlCaseProfileStoreObserverTest {
         Awaitility.await().atMost(10, TimeUnit.SECONDS).pollInterval(200, TimeUnit.MILLISECONDS)
             .until(() -> !cbrStore.retrieveSimilar(
                     CbrQuery.of(TENANT, io.casehub.aml.memory.AmlMemoryDomains.CBR,
-                            io.casehub.platform.api.path.Path.of("casehubio", "aml"),
+                            io.casehub.platform.api.path.Path.root(),
                             AmlCbrSchema.CASE_TYPE,
                             Map.of("flag_reason", FeatureValue.string("HIGH_RISK_JURISDICTION")), 1)
-                    .withWeights(AmlCbrSchema.WEIGHTS).withNotBefore(before), PlanCbrCase.class).isEmpty());
+                    .withWeights(AmlCbrSchema.WEIGHTS).withNotBefore(before), ResolvedCase.class).isEmpty());
 
         var query = CbrQuery.of(TENANT, io.casehub.aml.memory.AmlMemoryDomains.CBR,
-                                io.casehub.platform.api.path.Path.of("casehubio", "aml"),
+                                io.casehub.platform.api.path.Path.root(),
                                 AmlCbrSchema.CASE_TYPE,
                                 Map.of("flag_reason", FeatureValue.string("HIGH_RISK_JURISDICTION")), 10)
                             .withWeights(AmlCbrSchema.WEIGHTS)
                             .withNotBefore(before);
 
-        var results = cbrStore.retrieveSimilar(query, PlanCbrCase.class);
+        var results = cbrStore.retrieveSimilar(query, ResolvedCase.class);
         assertFalse(results.isEmpty(), "Should find at least one CBR case");
         var match = results.stream()
                            .filter(r -> "SAR_WARRANTED".equals(r.cbrCase().outcome()))
                            .findFirst().orElse(null);
-        assertNotNull(match, "CBR store must contain a PlanCbrCase with SAR_WARRANTED outcome");
-        assertNotNull(match.cbrCase().planTrace(), "PlanCbrCase must have planTrace");
+        assertNotNull(match, "CBR store must contain a ResolvedCase with SAR_WARRANTED outcome");
+        assertNotNull(match.cbrCase().resolutionStep(), "ResolvedCase must have resolutionStep");
     }
 }

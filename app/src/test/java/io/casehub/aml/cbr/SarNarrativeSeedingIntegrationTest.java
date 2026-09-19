@@ -9,8 +9,8 @@ import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.neocortex.cognitive.Confidence;
 import io.casehub.neocortex.memory.cbr.CbrCaseMemoryStore;
 import io.casehub.neocortex.memory.cbr.FeatureValue;
-import io.casehub.aml.cbr.PlanCbrCase;
-import io.casehub.aml.cbr.PlanTrace;
+import io.casehub.neocortex.memory.cbr.ResolvedCase;
+import io.casehub.neocortex.memory.cbr.ResolutionStep;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.platform.api.path.Path;
 import io.casehub.work.runtime.model.WorkItemEntity;
@@ -62,12 +62,12 @@ class SarNarrativeSeedingIntegrationTest {
         features.put("entity_type", FeatureValue.string("SHELL_COMPANY"));
         features.put("sar_narrative", FeatureValue.string("Past SAR narrative for structuring via shell company"));
 
-        var pastCase = new PlanCbrCase(
+        var pastCase = new ResolvedCase(
                 "Past structuring case TX-SEED-PAST",
                 "entity-resolution→er-agent(SUCCESS), sar-drafting→sar-agent(SUCCESS)",
                 "SAR_WARRANTED", Confidence.stated(0.9, Instant.now()), features,
-                List.of(new PlanTrace("entity-resolution", "entity-resolution",
-                        "er-agent", "SUCCESS", 0, Map.of())));
+                List.of(new ResolutionStep("entity-resolution", "entity-resolution",
+                        "er-agent", "SUCCESS", 0, Map.of(), null)), null, null);
 
         String entityId = UUID.nameUUIDFromBytes("aml-cbr:seed-test-past".getBytes()).toString();
         cbrStore.store(pastCase, AmlCbrSchema.CASE_TYPE, entityId,

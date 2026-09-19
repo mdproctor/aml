@@ -8,8 +8,8 @@ import io.casehub.engine.common.spi.cache.CaseInstanceCache;
 import io.casehub.neocortex.cognitive.Confidence;
 import io.casehub.neocortex.memory.cbr.CbrCaseMemoryStore;
 import io.casehub.neocortex.memory.cbr.FeatureValue;
-import io.casehub.aml.cbr.PlanCbrCase;
-import io.casehub.aml.cbr.PlanTrace;
+import io.casehub.neocortex.memory.cbr.ResolvedCase;
+import io.casehub.neocortex.memory.cbr.ResolutionStep;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.platform.api.path.Path;
 import io.restassured.http.ContentType;
@@ -45,12 +45,12 @@ class AmlCbrRetrieveTest {
         features.put("prior_incident_count", FeatureValue.number(2));
         features.put("entity_type", FeatureValue.string("CORPORATE"));
 
-        var pastCase = new PlanCbrCase(
+        var pastCase = new ResolvedCase(
                 "Past structuring case TX-PAST-001",
                 "entity-resolution→entity-resolution-agent(SUCCESS)",
                 "SAR_WARRANTED", Confidence.stated(0.87, Instant.now()), features,
-                List.of(new PlanTrace("entity-resolution", "entity-resolution",
-                        "entity-resolution-agent", "SUCCESS", 0, Map.of())));
+                List.of(new ResolutionStep("entity-resolution", "entity-resolution",
+                        "entity-resolution-agent", "SUCCESS", 0, Map.of(), null)), null, null);
 
         String entityId = UUID.nameUUIDFromBytes(
                 "aml-cbr:test-past-case".getBytes()).toString();

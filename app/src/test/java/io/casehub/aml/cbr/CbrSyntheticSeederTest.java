@@ -6,7 +6,7 @@ import io.casehub.neocortex.memory.cbr.CbrCaseMemoryStore;
 import io.casehub.neocortex.memory.cbr.CbrFeatureSchema;
 import io.casehub.neocortex.memory.cbr.CbrQuery;
 import io.casehub.neocortex.memory.cbr.CbrRetentionPolicy;
-import io.casehub.aml.cbr.PlanCbrCase;
+import io.casehub.neocortex.memory.cbr.ResolvedCase;
 import io.casehub.neocortex.memory.cbr.ScoredCbrCase;
 import io.casehub.platform.api.path.Path;
 import org.junit.jupiter.api.Test;
@@ -71,8 +71,8 @@ class CbrSyntheticSeederTest {
         var sarCase = store.stored.stream()
                 .filter(c -> "SAR_WARRANTED".equals(c.outcome()))
                 .findFirst().orElseThrow();
-        assertTrue(sarCase.planTrace().size() >= 6,
-                "SAR path should have at least 6 trace steps, got " + sarCase.planTrace().size());
+        assertTrue(sarCase.resolutionStep().size() >= 6,
+                "SAR path should have at least 6 trace steps, got " + sarCase.resolutionStep().size());
     }
 
     @Test
@@ -82,7 +82,7 @@ class CbrSyntheticSeederTest {
         var fpCase = store.stored.stream()
                 .filter(c -> "FALSE_POSITIVE".equals(c.outcome()))
                 .findFirst().orElseThrow();
-        assertEquals(4, fpCase.planTrace().size(),
+        assertEquals(4, fpCase.resolutionStep().size(),
                 "Cleared path should have 4 trace steps");
     }
 
@@ -100,12 +100,12 @@ class CbrSyntheticSeederTest {
     }
 
     private static class CapturingStore implements CbrCaseMemoryStore {
-        final List<PlanCbrCase> stored = new ArrayList<>();
+        final List<ResolvedCase> stored = new ArrayList<>();
 
         @Override
         public String store(CbrCase cbrCase, String caseType, String entityId,
                             MemoryDomain domain, String tenantId, String sourceId, Path scope) {
-            if (cbrCase instanceof PlanCbrCase p) {
+            if (cbrCase instanceof ResolvedCase p) {
                 stored.add(p);
             }
             return UUID.randomUUID().toString();
